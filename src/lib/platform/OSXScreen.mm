@@ -756,9 +756,26 @@ OSXScreen::enable()
 										kCGEventMaskForAllEvents,
 										handleCGInputEvent,
 										this);
+		
+		if (!m_eventTapPort) {
+			LOG((CLOG_ERR "failed to create quartz event tap"));
+			return;
+		}
 	}
 	else {
-		// FIXME -- prevent system from entering power save mode
+		// prevent system from entering power save mode
+		if (!m_hasPowerAssertion) {
+			CFStringRef reasonForActivity = CFSTR("Barrier Client Active");
+			IOReturn success = IOPMAssertionCreateWithName(kIOPMAssertionTypePreventUserIdleSystemSleep,
+														   kIOPMAssertionLevelOn,
+														   reasonForActivity,
+														   &m_powerAssertion);
+			if (success == kIOReturnSuccess) {
+				m_hasPowerAssertion = true;
+			} else {
+				LOG((CLOG_ERR "failed to acquire power assertion"));
+			}
+		}
 
 		if (m_autoShowHideCursor) {
 			hideCursor();
@@ -778,6 +795,7 @@ OSXScreen::enable()
 
 	if (!m_eventTapPort) {
 		LOG((CLOG_ERR "failed to create quartz event tap"));
+		return;
 	}
 
 	m_eventTapRLSR = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, m_eventTapPort, 0);

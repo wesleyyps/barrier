@@ -53,11 +53,25 @@ OSXEventQueueBuffer::init()
     m_carbonEventQueue = GetCurrentEventQueue();
 }
 
+#include <unistd.h>
+#include "base/Stopwatch.h"
+
 void
 OSXEventQueueBuffer::waitForEvent(double timeout)
 {
     EventRef event;
-    ReceiveNextEvent(0, NULL, timeout, false, &event);
+    if (timeout > 0.0) {
+        Stopwatch timer(true);
+        while (timer.getTime() < timeout) {
+            OSStatus status = ReceiveNextEvent(0, NULL, 0.0, false, &event);
+            if (status != eventLoopTimedOutErr) {
+                break;
+            }
+            usleep(1000); // 1 ms sleep
+        }
+    } else {
+        ReceiveNextEvent(0, NULL, 0.0, false, &event);
+    }
 }
 
 IEventQueueBuffer::Type

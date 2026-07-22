@@ -48,6 +48,11 @@ runCocoaApp()
 	g_dragView = dragView;
 	[window setContentView: dragView];
 
+	id activity = [[NSProcessInfo processInfo] beginActivityWithOptions:
+					NSActivityUserInitiated | NSActivityLatencyCritical
+					reason:@"Barrier Client Main Loop"];
+	[activity retain];
+
 	NSLog(@"starting cocoa loop");
 	[NSApp run];
 

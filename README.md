@@ -112,3 +112,10 @@ A: Edit your configuration to include the server's ip address manually with
     (...)
     section: options
         serverhostname=<AAA.BBB.CCC.DDD>
+
+## Development Notes
+
+### Legacy Test Frameworks (gtest & gmock)
+Barrier's test suite relies on legacy 1.6.0 versions of `gtest` and `gmock` included as Git submodules in the `ext/` directory. Because these versions are over a decade old, they trigger heavy deprecation warnings during the build process on modern systems. 
+
+To suppress the aggressive CMake deprecation warnings (e.g., `Compatibility with CMake < 2.8.12 will be removed`), we have applied a minor patch inside both the `ext/gtest` and `ext/gmock` submodules to bump their `cmake_minimum_required` version from `2.6.2` to `3.10`. This does not change any underlying testing logic, but it ensures a cleaner and more readable build output.
