@@ -63,7 +63,7 @@ ClientProxy1_0::ClientProxy1_0(const std::string& name, barrier::IStream* stream
                             new TMethodEventJob<ClientProxy1_0>(this,
                                 &ClientProxy1_0::handleFlatline, NULL));
 
-    setHeartbeatRate(kHeartRate, kHeartRate * kHeartBeatsUntilDeath);
+    ClientProxy1_0::setHeartbeatRate(kHeartRate, kHeartRate * kHeartBeatsUntilDeath);
 
     LOG((CLOG_DEBUG1 "querying client \"%s\" info", getName().c_str()));
     ProtocolUtil::writef(getStream(), kMsgQInfo);
@@ -99,7 +99,7 @@ ClientProxy1_0::removeHandlers()
     m_events->removeHandler(Event::kTimer, this);
 
     // remove timer
-    removeHeartbeatTimer();
+    ClientProxy1_0::removeHeartbeatTimer();
 }
 
 void

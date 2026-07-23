@@ -107,7 +107,7 @@ Server::Server(
 		clipboard.m_clipboardOwner  = primaryName;
 		clipboard.m_clipboardSeqNum = m_seqNum;
 		if (clipboard.m_clipboard.open(0)) {
-			clipboard.m_clipboard.empty();
+			(void)clipboard.m_clipboard.empty();
 			clipboard.m_clipboard.close();
 		}
 		clipboard.m_clipboardData   = clipboard.m_clipboard.marshall();
@@ -1248,7 +1248,7 @@ Server::handleClipboardGrabbed(const Event& event, void* vclient)
 
 	// clear the clipboard data (since it's not known at this point)
 	if (clipboard.m_clipboard.open(0)) {
-		clipboard.m_clipboard.empty();
+		(void)clipboard.m_clipboard.empty();
 		clipboard.m_clipboard.close();
 	}
 	clipboard.m_clipboardData = clipboard.m_clipboard.marshall();
