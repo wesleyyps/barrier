@@ -2329,7 +2329,7 @@ Server::SwitchToScreenInfo::alloc(const std::string& screen)
 	SwitchToScreenInfo* info =
 		(SwitchToScreenInfo*)malloc(sizeof(SwitchToScreenInfo) +
 								screen.size());
-	strcpy(info->m_screen, screen.c_str());
+	memcpy(info->m_screen, screen.c_str(), screen.size() + 1);
 	return info;
 }
 
@@ -2368,7 +2368,7 @@ Server::KeyboardBroadcastInfo::alloc(State state, const std::string& screens)
 		(KeyboardBroadcastInfo*)malloc(sizeof(KeyboardBroadcastInfo) +
 								screens.size());
 	info->m_state = state;
-	strcpy(info->m_screens, screens.c_str());
+	memcpy(info->m_screens, screens.c_str(), screens.size() + 1);
 	return info;
 }
 

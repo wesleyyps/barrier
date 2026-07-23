@@ -1,0 +1,20 @@
+---
+# Basic Clang-Tidy Configuration for Barrier
+Checks: >
+  -*,
+  clang-diagnostic-*,
+  clang-analyzer-*,
+  bugprone-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  -readability-magic-numbers,
+  -readability-braces-around-statements,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  -modernize-use-nodiscard,
+  -modernize-pass-by-value
+WarningsAsErrors: ''
+HeaderFilterRegex: ''
+FormatStyle: none
+...

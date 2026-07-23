@@ -33,5 +33,5 @@ getDraggedFileURL()
 		[string appendString: @"\0"];
 	}
 	
-	return (CFStringRef)string;
+	return (CFStringRef)[string autorelease];
 }

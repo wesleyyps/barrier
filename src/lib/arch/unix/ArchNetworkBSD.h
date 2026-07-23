@@ -97,8 +97,8 @@ private:
     const int*            getUnblockPipe();
     const int*            getUnblockPipeForThread(ArchThread);
     void                setBlockingOnSocket(int fd, bool blocking);
-    void                throwError(int);
-    void                throwNameError(int);
+    [[noreturn]] void   throwError(int);
+    [[noreturn]] void   throwNameError(int);
 
 private:
     ArchMutex            m_mutex;

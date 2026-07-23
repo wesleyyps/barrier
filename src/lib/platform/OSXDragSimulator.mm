@@ -56,6 +56,9 @@ runCocoaApp()
 	NSLog(@"starting cocoa loop");
 	[NSApp run];
 
+	[[NSProcessInfo processInfo] endActivity:activity];
+	[activity release];
+
 	NSLog(@"cocoa: release");
 	[pool release];
 }
@@ -91,8 +94,11 @@ fakeDragging(const char* str, int cursorX, int cursorY)
 
 	[g_dragView setFileExt:g_ext];
 
-	CGEventRef down = CGEventCreateMouseEvent(CGEventSourceCreate(kCGEventSourceStateHIDSystemState), kCGEventLeftMouseDown, CGPointMake(cursorX, cursorY), kCGMouseButtonLeft);
+	CGEventSourceRef source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
+	CGEventRef down = CGEventCreateMouseEvent(source, kCGEventLeftMouseDown, CGPointMake(cursorX, cursorY), kCGMouseButtonLeft);
 	CGEventPost(kCGHIDEventTap, down);
+	CFRelease(down);
+	CFRelease(source);
 	});
 }
 

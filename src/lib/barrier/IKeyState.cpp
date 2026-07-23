@@ -62,7 +62,7 @@ IKeyState::KeyInfo::alloc(KeyID id,
     info->m_button  = button;
     info->m_count   = count;
     info->m_screens = info->m_screensBuffer;
-    strcpy(info->m_screensBuffer, screens.c_str());
+    memcpy(info->m_screensBuffer, screens.c_str(), screens.size() + 1);
     return info;
 }
 
@@ -76,7 +76,7 @@ IKeyState::KeyInfo::alloc(const KeyInfo& x)
     info->m_button  = x.m_button;
     info->m_count   = x.m_count;
     info->m_screens = x.m_screens ? info->m_screensBuffer : NULL;
-    strcpy(info->m_screensBuffer, x.m_screensBuffer);
+    memcpy(info->m_screensBuffer, x.m_screensBuffer, strlen(x.m_screensBuffer) + 1);
     return info;
 }
 

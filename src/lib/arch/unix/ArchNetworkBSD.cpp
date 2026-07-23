@@ -292,7 +292,7 @@ ArchNetworkBSD::pollSocket(PollEntry pe[], int num, double timeout)
     assert(pe != NULL || num == 0);
 
     // return if nothing to do
-    if (num == 0) {
+    if (num <= 0) {
         if (timeout > 0.0) {
             ARCH->sleep(timeout);
         }
@@ -907,7 +907,7 @@ ArchNetworkBSD::getUnblockPipeForThread(ArchThread thread)
     return unblockPipe;
 }
 
-void
+[[noreturn]] void
 ArchNetworkBSD::throwError(int err)
 {
     switch (err) {
@@ -979,7 +979,7 @@ ArchNetworkBSD::throwError(int err)
     }
 }
 
-void
+[[noreturn]] void
 ArchNetworkBSD::throwNameError(int err)
 {
     static const char* s_msg[] = {

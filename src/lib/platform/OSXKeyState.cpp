@@ -858,6 +858,8 @@ OSXKeyState::getGroups(GroupList& groups) const
 
     if (!gotLayouts) {
         LOG((CLOG_DEBUG1 "can't get keyboard layouts"));
+        if (dict) CFRelease(dict);
+        if (kbds) CFRelease(kbds);
         return false;
     }
 
@@ -871,6 +873,8 @@ OSXKeyState::getGroups(GroupList& groups) const
         if (addToGroups)
             groups.push_back(keyboardLayout);
     }
+    if (dict) CFRelease(dict);
+    if (kbds) CFRelease(kbds);
     return true;
 }
 
@@ -896,6 +900,8 @@ void
 OSXKeyState::adjustAltGrModifier(const KeyIDs& ids,
                 KeyModifierMask* mask, bool isCommand) const
 {
+    if (!mask) return;
+
     if (!isCommand) {
         for (KeyIDs::const_iterator i = ids.begin(); i != ids.end(); ++i) {
             KeyID id = *i;

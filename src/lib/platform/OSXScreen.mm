@@ -594,7 +594,6 @@ void OSXScreen::get_drop_target_thread()
 	while (ARCH->time() < timeout) {
 		CFStringRef cfstr = getCocoaDropTarget();
 		cstr = CFStringRefToUTF8String(cfstr);
-		CFRelease(cfstr);
 
 		if (cstr != NULL) {
 			break;
@@ -1699,7 +1698,6 @@ void OSXScreen::watchSystemPowerThread()
 		CFRunLoopRemoveSource(m_pmRunloop,
 								runloopSourceRef, kCFRunLoopDefaultMode);
 		CFRunLoopSourceInvalidate(runloopSourceRef);
-		CFRelease(runloopSourceRef);
 	}
 
 	Lock lock(m_pmMutex);
@@ -2062,6 +2060,7 @@ OSXScreen::CFStringRefToUTF8String(CFStringRef aString)
 	if (CFStringGetCString(aString, buffer, maxSize, kCFStringEncodingUTF8)) {
 		return buffer;
 	}
+	free(buffer);
 	return NULL;
 }
 
@@ -2094,9 +2093,9 @@ OSXScreen::getDraggingFilename()
 		}
 		else {
 			LOG((CLOG_DEBUG "drag info: %s", info));
-			CFRelease(dragInfo);
 			String fileList(info);
 			m_draggingFilename = fileList;
+			free(info);
 		}
 
 		// fake a escape key down and up then left mouse button up
