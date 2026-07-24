@@ -37,3 +37,5 @@ When a bug category is addressed, it must be logged here with the files affected
 | 2026-07-24 | USE_AFTER_FREE | `OSXKeyState.cpp` | 54f9ddf4 | Fixed EXC_BAD_ACCESS caused by improper memory management of `TISInputSourceRef`. | **COMMITTED** |
 
 | 2026-07-24 | IMPLICIT_BOOL | `OSXKeyState.cpp`, `VersionChecker.cpp`, `barriers.cpp`, `ZeroconfBrowser.cpp` | 84be6dab | Replaced implicit boolean conversions with explicit comparisons or correct types. | **COMMITTED** |
+| 2026-07-24 | USE_NULLPTR | `ZeroconfBrowser.cpp`, `IDataSocket.cpp`, `ClientProxy1_0.cpp`, `ArchTimeUnix.cpp`, `ClientTaskBarReceiver.cpp` | 90e3fb4e | Replaced legacy NULL macros and 0s with modern C++ nullptr. | **COMMITTED** |
+| 2026-07-24 | AVOID_C_ARRAYS | `ClientProxy1_0.cpp` | 90e3fb4e | Converted C-style array to std::array. | **COMMITTED** |

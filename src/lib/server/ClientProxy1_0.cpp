@@ -18,6 +18,7 @@
 
 #include "server/ClientProxy1_0.h"
 
+#include <array>
 #include "barrier/ProtocolUtil.h"
 #include "barrier/XBarrier.h"
 #include "io/IStream.h"
@@ -34,7 +35,7 @@
 ClientProxy1_0::ClientProxy1_0(const std::string& name, barrier::IStream* stream,
                                IEventQueue* events) :
     ClientProxy(name, stream),
-    m_heartbeatTimer(NULL),
+    m_heartbeatTimer(nullptr),
     m_parser(&ClientProxy1_0::parseHandshakeMessage),
     m_events(events)
 {
@@ -42,26 +43,26 @@ ClientProxy1_0::ClientProxy1_0(const std::string& name, barrier::IStream* stream
     m_events->adoptHandler(m_events->forIStream().inputReady(),
                             stream->getEventTarget(),
                             new TMethodEventJob<ClientProxy1_0>(this,
-                                &ClientProxy1_0::handleData, NULL));
+                                &ClientProxy1_0::handleData, nullptr));
     m_events->adoptHandler(m_events->forIStream().outputError(),
                             stream->getEventTarget(),
                             new TMethodEventJob<ClientProxy1_0>(this,
-                                &ClientProxy1_0::handleWriteError, NULL));
+                                &ClientProxy1_0::handleWriteError, nullptr));
     m_events->adoptHandler(m_events->forIStream().inputShutdown(),
                             stream->getEventTarget(),
                             new TMethodEventJob<ClientProxy1_0>(this,
-                                &ClientProxy1_0::handleDisconnect, NULL));
+                                &ClientProxy1_0::handleDisconnect, nullptr));
     m_events->adoptHandler(m_events->forIStream().inputFormatError(),
                            stream->getEventTarget(),
                            new TMethodEventJob<ClientProxy1_0>(this,
-                                &ClientProxy1_0::handleDisconnect, NULL));
+                                &ClientProxy1_0::handleDisconnect, nullptr));
     m_events->adoptHandler(m_events->forIStream().outputShutdown(),
                             stream->getEventTarget(),
                             new TMethodEventJob<ClientProxy1_0>(this,
-                                &ClientProxy1_0::handleWriteError, NULL));
+                                &ClientProxy1_0::handleWriteError, nullptr));
     m_events->adoptHandler(Event::kTimer, this,
                             new TMethodEventJob<ClientProxy1_0>(this,
-                                &ClientProxy1_0::handleFlatline, NULL));
+                                &ClientProxy1_0::handleFlatline, nullptr));
 
     ClientProxy1_0::setHeartbeatRate(kHeartRate, kHeartRate * kHeartBeatsUntilDeath);
 
@@ -113,9 +114,9 @@ ClientProxy1_0::addHeartbeatTimer()
 void
 ClientProxy1_0::removeHeartbeatTimer()
 {
-    if (m_heartbeatTimer != NULL) {
+    if (m_heartbeatTimer != nullptr) {
         m_events->deleteTimer(m_heartbeatTimer);
-        m_heartbeatTimer = NULL;
+        m_heartbeatTimer = nullptr;
     }
 }
 
@@ -143,8 +144,8 @@ void
 ClientProxy1_0::handleData(const Event&, void*)
 {
     // handle messages until there are no more.  first read message code.
-    UInt8 code[4];
-    UInt32 n = getStream()->read(code, 4);
+    std::array<UInt8, 4> code;
+    UInt32 n = getStream()->read(code.data(), 4);
     while (n != 0) {
         // verify we got an entire code
         if (n != 4) {
@@ -156,7 +157,7 @@ ClientProxy1_0::handleData(const Event&, void*)
         // parse message
         try {
             LOG((CLOG_DEBUG2 "msg from \"%s\": %c%c%c%c", getName().c_str(), code[0], code[1], code[2], code[3]));
-            if (!(this->*m_parser)(code)) {
+            if (!(this->*m_parser)(code.data())) {
                 LOG((CLOG_ERR "invalid message from client \"%s\": %c%c%c%c", getName().c_str(), code[0], code[1], code[2], code[3]));
                 disconnect();
                 return;
@@ -171,7 +172,7 @@ ClientProxy1_0::handleData(const Event&, void*)
         }
 
         // next message
-        n = getStream()->read(code, 4);
+        n = getStream()->read(code.data(), 4);
     }
 
     // restart heartbeat timer
