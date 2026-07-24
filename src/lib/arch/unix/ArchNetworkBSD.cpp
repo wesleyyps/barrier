@@ -337,6 +337,7 @@ ArchNetworkBSD::pollSocket(PollEntry pe[], int num, double timeout)
 
         do {
             ignore = read(unblockPipe[0], dummy, sizeof(dummy));
+            (void)ignore;
         } while (errno != EAGAIN);
 
         // don't count this unblock pipe in return value
@@ -511,6 +512,7 @@ ArchNetworkBSD::unblockPollSocket(ArchThread thread)
         int ignore;
 
         ignore = write(unblockPipe[1], &dummy, 1);
+        (void)ignore;
     }
 }
 

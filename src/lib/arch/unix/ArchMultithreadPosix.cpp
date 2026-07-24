@@ -165,6 +165,7 @@ ArchMultithreadPosix::newCondVar()
     int status = pthread_cond_init(&cond->m_cond, NULL);
     (void)status;
     assert(status == 0);
+    (void)status;
     return cond;
 }
 
@@ -174,6 +175,7 @@ ArchMultithreadPosix::closeCondVar(ArchCond cond)
     int status = pthread_cond_destroy(&cond->m_cond);
     (void)status;
     assert(status == 0);
+    (void)status;
     delete cond;
 }
 
@@ -183,6 +185,7 @@ ArchMultithreadPosix::signalCondVar(ArchCond cond)
     int status = pthread_cond_signal(&cond->m_cond);
     (void)status;
     assert(status == 0);
+    (void)status;
 }
 
 void
@@ -191,6 +194,7 @@ ArchMultithreadPosix::broadcastCondVar(ArchCond cond)
     int status = pthread_cond_broadcast(&cond->m_cond);
     (void)status;
     assert(status == 0);
+    (void)status;
 }
 
 bool
@@ -255,9 +259,11 @@ ArchMultithreadPosix::newMutex()
     pthread_mutexattr_t attr;
     int status = pthread_mutexattr_init(&attr);
     assert(status == 0);
+    (void)status;
     ArchMutexImpl* mutex = new ArchMutexImpl;
     status = pthread_mutex_init(&mutex->m_mutex, &attr);
     assert(status == 0);
+    (void)status;
     return mutex;
 }
 
@@ -267,6 +273,7 @@ ArchMultithreadPosix::closeMutex(ArchMutex mutex)
     int status = pthread_mutex_destroy(&mutex->m_mutex);
     (void)status;
     assert(status == 0);
+    (void)status;
     delete mutex;
 }
 

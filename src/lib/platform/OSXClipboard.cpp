@@ -118,7 +118,7 @@ void OSXClipboard::add(EFormat format, const std::string& data)
             std::string osXData = converter->fromIClipboard(data);
             CFStringRef flavorType = converter->getOSXFormat();
             CFDataRef dataRef = CFDataCreate(kCFAllocatorDefault, (UInt8 *)osXData.data(), osXData.size());
-            PasteboardItemID itemID = 0;
+            PasteboardItemID itemID = (PasteboardItemID)1;
 
             PasteboardPutItemFlavor(
                 m_pboard,
@@ -173,9 +173,7 @@ OSXClipboard::has(EFormat format) const
             PasteboardFlavorFlags flags;
             CFStringRef type = converter->getOSXFormat();
 
-            OSStatus res;
-
-            if ((res = PasteboardGetItemFlavorFlags(m_pboard, item, type, &flags)) == noErr) {
+            if (PasteboardGetItemFlavorFlags(m_pboard, item, type, &flags) == noErr) {
                 return true;
             }
         }

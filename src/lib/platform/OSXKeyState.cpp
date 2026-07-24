@@ -135,6 +135,14 @@ static const KeyEntry    s_controlKeys[] = {
     { kKeyZenkaku, kVK_ANSI_Grave }
 };
 
+static void clearGroupList(std::vector<TISInputSourceRef>& groups) {
+    for (size_t i = 0; i < groups.size(); ++i) {
+        if (groups[i]) {
+            CFRelease(groups[i]);
+        }
+    }
+    groups.clear();
+}
 
 //
 // OSXKeyState
@@ -154,6 +162,7 @@ OSXKeyState::OSXKeyState(IEventQueue* events, barrier::KeyMap& keyMap) :
 
 OSXKeyState::~OSXKeyState()
 {
+    clearGroupList(m_groups);
 }
 
 void
@@ -490,10 +499,12 @@ static io_connect_t getEventDriver(void)
         // Get master device port
         kr = IOMasterPort(bootstrap_port, &masterPort);
         assert(KERN_SUCCESS == kr);
+        (void)kr;
 
         kr = IOServiceGetMatchingServices(masterPort,
                 IOServiceMatching(kIOHIDSystemClass), &iter);
         assert(KERN_SUCCESS == kr);
+        (void)kr;
 
         service = IOIteratorNext(iter);
         assert(service);
@@ -501,6 +512,7 @@ static io_connect_t getEventDriver(void)
         kr = IOServiceOpen(service, mach_task_self(),
                 kIOHIDParamConnectType, &sEventDrvrRef);
         assert(KERN_SUCCESS == kr);
+        (void)kr;
 
         IOObjectRelease(service);
         IOObjectRelease(iter);
@@ -519,7 +531,7 @@ OSXKeyState::postHIDVirtualKey(const UInt8 virtualKeyCode,
     IOGPoint loc = { 0, 0 };
     UInt32 modifiersDelta = 0;
 
-    bzero(&event, sizeof(NXEventData));
+    memset(&event, 0, sizeof(NXEventData));
 
     switch (virtualKeyCode)
     {
@@ -565,6 +577,7 @@ OSXKeyState::postHIDVirtualKey(const UInt8 virtualKeyCode,
         kr = IOHIDPostEvent(getEventDriver(), NX_FLAGSCHANGED, loc,
                 &event, kNXEventDataVersion, modifiers, true);
         assert(KERN_SUCCESS == kr);
+        (void)kr;
         break;
 
     default:
@@ -576,6 +589,7 @@ OSXKeyState::postHIDVirtualKey(const UInt8 virtualKeyCode,
                 postDown ? NX_KEYDOWN : NX_KEYUP,
                 loc, &event, kNXEventDataVersion, 0, false);
         assert(KERN_SUCCESS == kr);
+        (void)kr;
         break;
     }
 }
@@ -864,14 +878,16 @@ OSXKeyState::getGroups(GroupList& groups) const
     }
 
     // get each layout
-    groups.clear();
+    clearGroupList(groups);
     for (CFIndex i = 0; i < n; ++i) {
         bool addToGroups = true;
         TISInputSourceRef keyboardLayout =
             (TISInputSourceRef)CFArrayGetValueAtIndex(kbds, i);
 
-        if (addToGroups)
+        if (addToGroups) {
+            if (keyboardLayout) CFRetain(keyboardLayout);
             groups.push_back(keyboardLayout);
+        }
     }
     if (dict) CFRelease(dict);
     if (kbds) CFRelease(kbds);
@@ -894,6 +910,7 @@ OSXKeyState::checkKeyboardLayout()
         updateKeyMap();
         updateKeyState();
     }
+    clearGroupList(groups);
 }
 
 void
