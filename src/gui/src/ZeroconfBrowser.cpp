@@ -28,11 +28,11 @@ ZeroconfBrowser::ZeroconfBrowser(QObject* parent) :
 
 ZeroconfBrowser::~ZeroconfBrowser()
 {
-    if (m_pSocket) {
+    if (m_pSocket != nullptr) {
         delete m_pSocket;
     }
 
-    if (m_DnsServiceRef) {
+    if (m_DnsServiceRef != nullptr) {
         DNSServiceRefDeallocate(m_DnsServiceRef);
         m_DnsServiceRef = 0;
     }
@@ -77,7 +77,7 @@ void ZeroconfBrowser::browseReply(DNSServiceRef, DNSServiceFlags flags,
     }
     else {
         ZeroconfRecord record(serviceName, regType, replyDomain);
-        if (flags & kDNSServiceFlagsAdd) {
+        if ((flags & kDNSServiceFlagsAdd) != 0) {
             if (!browser->m_Records.contains(record)) {
                 browser->m_Records.append(record);
             }
@@ -85,7 +85,7 @@ void ZeroconfBrowser::browseReply(DNSServiceRef, DNSServiceFlags flags,
         else {
             browser->m_Records.removeAll(record);
         }
-        if (!(flags & kDNSServiceFlagsMoreComing)) {
+        if ((flags & kDNSServiceFlagsMoreComing) == 0) {
             emit browser->currentRecordsChanged(browser->m_Records);
         }
     }

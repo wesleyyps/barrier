@@ -495,7 +495,7 @@ static io_connect_t getEventDriver(void)
     mach_port_t masterPort, service, iter;
     kern_return_t kr;
 
-    if (!sEventDrvrRef) {
+    if (sEventDrvrRef == 0) {
         // Get master device port
         kr = IOMasterPort(bootstrap_port, &masterPort);
         assert(KERN_SUCCESS == kr);
@@ -575,7 +575,7 @@ OSXKeyState::postHIDVirtualKey(const UInt8 virtualKeyCode,
         kern_return_t kr;
         event.key.keyCode = virtualKeyCode;
         kr = IOHIDPostEvent(getEventDriver(), NX_FLAGSCHANGED, loc,
-                &event, kNXEventDataVersion, modifiers, true);
+                &event, kNXEventDataVersion, modifiers, 1);
         assert(KERN_SUCCESS == kr);
         (void)kr;
         break;
@@ -587,7 +587,7 @@ OSXKeyState::postHIDVirtualKey(const UInt8 virtualKeyCode,
         event.key.origCharCode = event.key.charCode = 0;
         kr = IOHIDPostEvent(getEventDriver(),
                 postDown ? NX_KEYDOWN : NX_KEYUP,
-                loc, &event, kNXEventDataVersion, 0, false);
+                loc, &event, kNXEventDataVersion, 0, 0);
         assert(KERN_SUCCESS == kr);
         (void)kr;
         break;
@@ -866,7 +866,7 @@ OSXKeyState::getGroups(GroupList& groups) const
     CFStringRef keys[] = { kTISPropertyInputSourceCategory };
     CFStringRef values[] = { kTISCategoryKeyboardInputSource };
     CFDictionaryRef dict = CFDictionaryCreate(NULL, (const void **)keys, (const void **)values, 1, NULL, NULL);
-    CFArrayRef kbds = TISCreateInputSourceList(dict, false);
+    CFArrayRef kbds = TISCreateInputSourceList(dict, (Boolean)false);
     n = CFArrayGetCount(kbds);
     gotLayouts = (n != 0);
 

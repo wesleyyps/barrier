@@ -14,6 +14,8 @@ This document strictly tracks the remediation of structural and logical bugs ide
 | **OOB_ARRAY** | `clang-analyzer-security.ArrayBound` - Out of bound access to memory preceding or after the heap area (Buffer Overflow). | CRITICAL |
 | **INSECURE_API**| `clang-analyzer-security.insecureAPI.strcpy` - Call to function 'strcpy' is insecure as it does not provide bounding. | HIGH |
 | **MEM_LEAK** | `clang-analyzer-osx.cocoa.RetainCount` - Potential leak of a CoreFoundation/Objective-C object. | MEDIUM |
+| **NULL_API** | `clang-analyzer-nullability` - Passing or returning a null pointer to/from an API that requires non-null. | HIGH |
+| **DEAD_STORE**| `clang-analyzer-deadcode.DeadStores` - A value is assigned to a variable but is never read. | LOW |
 
 ---
 
@@ -25,9 +27,13 @@ When a bug category is addressed, it must be logged here with the files affected
 |---|---|---|---|---|---|
 | 2026-07-22 | VIRT_CALL | `Clipboard.cpp`, `ClientProxy1_0.cpp`, `ServerApp.cpp` | c4ec93c0 | Refactoring initialization to avoid virtual dispatches during object lifecycle transitions. | **COMMITTED** |
 | 2026-07-22 | EMPTY_GET | `Clipboard.cpp`, `Server.cpp` | c4ec93c0 | Suppressed false-positives where `empty()` actually empties the clipboard instead of checking it. | **COMMITTED** |
-| 2026-07-23 | NULL_DEREF | `OSXKeyState.cpp` | pending | Added null check before dereferencing mask pointer. | **PENDING COMMIT** |
-| 2026-07-23 | USE_AFTER_FREE | `ArchNetworkBSD.cpp` | pending | Added `[[noreturn]]` to `throwError` to fix false-positive analyzer paths. | **PENDING COMMIT** |
-| 2026-07-23 | OOB_ARRAY | `ArchNetworkBSD.cpp`, `ProtocolUtil.cpp` | pending | Fixed negative allocation bounds in `pollSocket`. Evaluated `ProtocolUtil.cpp` as false positive. | **PENDING COMMIT** |
-| 2026-07-23 | INSECURE_API | `IKeyState.cpp`, `Server.cpp` | pending | Replaced all instances of `strcpy` with safe `memcpy` using known bounds. | **PENDING COMMIT** |
-| 2026-07-23 | MEM_LEAK | `OSXKeyState.cpp`, `OSXDragSimulator.mm`, `OSXPasteboardPeeker.mm`, `OSXScreen.mm` | pending | Fixed missing `CFRelease` calls, autoreleases, and matched CoreFoundation 'Get' rule ownership. | **PENDING COMMIT** |
+| 2026-07-23 | NULL_DEREF | `OSXKeyState.cpp` | 6085d952 | Added null check before dereferencing mask pointer. | **COMMITTED** |
+| 2026-07-23 | USE_AFTER_FREE | `ArchNetworkBSD.cpp` | 6085d952 | Added `[[noreturn]]` to `throwError` to fix false-positive analyzer paths. | **COMMITTED** |
+| 2026-07-23 | OOB_ARRAY | `ArchNetworkBSD.cpp`, `ProtocolUtil.cpp` | 6085d952 | Fixed negative allocation bounds in `pollSocket`. Evaluated `ProtocolUtil.cpp` as false positive. | **COMMITTED** |
+| 2026-07-23 | INSECURE_API | `IKeyState.cpp`, `Server.cpp`, `OSXKeyState.cpp` | 6085d952 | Replaced `strcpy` and `bzero` with safe `memcpy` and `memset`. | **COMMITTED** |
+| 2026-07-23 | MEM_LEAK | `OSXKeyState.cpp`, `OSXDragSimulator.mm`, `OSXPasteboardPeeker.mm`, `OSXScreen.mm` | 6085d952 | Fixed missing `CFRelease` calls, autoreleases, and matched CoreFoundation 'Get' rule ownership. | **COMMITTED** |
+| 2026-07-24 | NULL_API | `OSXClipboard.cpp`, `OSXDragView.mm` | 54f9ddf4 | Fixed null violations in Pasteboard API integrations. | **COMMITTED** |
+| 2026-07-24 | DEAD_STORE | `OSXClipboard.cpp`, `ArchMultithreadPosix.cpp`, `ArchNetworkBSD.cpp`, `OSXKeyState.cpp` | 54f9ddf4 | Handled compiler warnings for unused status codes returned by APIs, particularly those stripped in Release mode by `assert`. | **COMMITTED** |
+| 2026-07-24 | USE_AFTER_FREE | `OSXKeyState.cpp` | 54f9ddf4 | Fixed EXC_BAD_ACCESS caused by improper memory management of `TISInputSourceRef`. | **COMMITTED** |
 
+| 2026-07-24 | IMPLICIT_BOOL | `OSXKeyState.cpp`, `VersionChecker.cpp`, `barriers.cpp`, `ZeroconfBrowser.cpp` | 84be6dab | Replaced implicit boolean conversions with explicit comparisons or correct types. | **COMMITTED** |
