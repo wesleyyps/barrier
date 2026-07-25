@@ -41,7 +41,7 @@ ClipboardChunk::start(
     ClipboardChunk* start = new ClipboardChunk(sizeLength + CLIPBOARD_CHUNK_META_SIZE);
     char* chunk = start->m_chunk;
 
-    chunk[0] = id;
+    chunk[0] = static_cast<char>(id);
     std::memcpy (&chunk[1], &sequence, 4);
     chunk[5] = kDataStart;
     memcpy(&chunk[6], size.c_str(), sizeLength);
@@ -60,7 +60,7 @@ ClipboardChunk::data(
     ClipboardChunk* chunk = new ClipboardChunk(dataSize + CLIPBOARD_CHUNK_META_SIZE);
     char* chunkData = chunk->m_chunk;
 
-    chunkData[0] = id;
+    chunkData[0] = static_cast<char>(id);
     std::memcpy (&chunkData[1], &sequence, 4);
     chunkData[5] = kDataChunk;
     memcpy(&chunkData[6], data.c_str(), dataSize);
@@ -147,6 +147,9 @@ ClipboardChunk::send(barrier::IStream* stream, void* data)
 
     case kDataEnd:
         LOG((CLOG_DEBUG2 "sending clipboard finished"));
+        break;
+
+    default:
         break;
     }
 

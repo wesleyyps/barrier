@@ -23,6 +23,7 @@
 // XSocketAddress
 //
 
+// NOLINTNEXTLINE(bugprone-exception-escape)
 XSocketAddress::XSocketAddress(EError error, const std::string& hostname, int port) noexcept :
     m_error(error),
     m_hostname(hostname),
@@ -36,6 +37,7 @@ XSocketAddress::EError XSocketAddress::getError() const noexcept
     return m_error;
 }
 
+// NOLINTNEXTLINE(bugprone-exception-escape)
 std::string XSocketAddress::getHostname() const noexcept
 {
     return m_hostname;

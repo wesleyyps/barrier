@@ -78,7 +78,7 @@ TCPSocket::~TCPSocket()
         close();
     }
     catch (...) {
-        // ignore
+        // NOLINT(bugprone-empty-catch)
     }
 }
 
@@ -208,7 +208,7 @@ TCPSocket::shutdownInput()
             ARCH->closeSocketForRead(m_socket);
         }
         catch (XArchNetwork&) {
-            // ignore
+            // NOLINT(bugprone-empty-catch)
         }
 
         // shutdown buffer for reading
@@ -235,7 +235,7 @@ TCPSocket::shutdownOutput()
             ARCH->closeSocketForWrite(m_socket);
         }
         catch (XArchNetwork&) {
-            // ignore
+            // NOLINT(bugprone-empty-catch)
         }
 
         // shutdown buffer for writing
@@ -321,7 +321,7 @@ TCPSocket::init()
             m_socket = NULL;
         }
         catch (XArchNetwork&) {
-            // ignore
+            // NOLINT(bugprone-empty-catch)
         }
         throw XSocketCreate(e.what());
     }
@@ -380,7 +380,7 @@ TCPSocket::doWrite()
 
     bufferSize = m_outputBuffer.getSize();
     const void* buffer = m_outputBuffer.peek(bufferSize);
-    bytesWrote = (UInt32)ARCH->writeSocket(m_socket, buffer, bufferSize);
+    bytesWrote = static_cast<int>(ARCH->writeSocket(m_socket, buffer, bufferSize));
 
     if (bytesWrote > 0) {
         discardWrittenData(bytesWrote);

@@ -226,7 +226,7 @@ SecureSocket::doWrite()
     if (do_write_retry_) {
         bufferSize = do_write_retry_size_;
     } else {
-        bufferSize = m_outputBuffer.getSize();
+        bufferSize = static_cast<int>(m_outputBuffer.getSize());
         if (bufferSize > do_write_retry_buffer_size_) {
             do_write_retry_buffer_.reset(new char[bufferSize]);
             do_write_retry_buffer_size_ = bufferSize;

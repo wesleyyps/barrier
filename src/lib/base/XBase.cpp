@@ -67,7 +67,7 @@ std::string XBase::format(const char* /*id*/, const char* fmt, ...) const noexce
         result = barrier::string::vformat(fmt, args);
     }
     catch (...) {
-        // ignore
+        // NOLINT(bugprone-empty-catch)
     }
     va_end(args);
 

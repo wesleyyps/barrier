@@ -333,7 +333,7 @@ ArchNetworkBSD::pollSocket(PollEntry pe[], int num, double timeout)
     if (n > 0 && unblockPipe != NULL && (pfd[num].revents & POLLIN) != 0) {
         // the unblock event was signalled.  flush the pipe.
         char dummy[100];
-        int ignore;
+        ssize_t ignore;
 
         do {
             ignore = read(unblockPipe[0], dummy, sizeof(dummy));
@@ -509,7 +509,7 @@ ArchNetworkBSD::unblockPollSocket(ArchThread thread)
     const int* unblockPipe = getUnblockPipeForThread(thread);
     if (unblockPipe != NULL) {
         char dummy = 0;
-        int ignore;
+        ssize_t ignore;
 
         ignore = write(unblockPipe[1], &dummy, 1);
         (void)ignore;

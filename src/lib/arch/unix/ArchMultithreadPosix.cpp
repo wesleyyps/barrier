@@ -695,7 +695,7 @@ ArchMultithreadPosix::doThreadFunc(ArchThread thread)
     }
 
     catch (XThreadCancel&) {
-        // client called cancel()
+        // NOLINT(bugprone-empty-catch): client called cancel()
     }
     catch (...) {
         // note -- don't catch (...) to avoid masking bugs

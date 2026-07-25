@@ -56,7 +56,7 @@ TCPListenSocket::~TCPListenSocket()
         }
     }
     catch (...) {
-        // ignore
+        // NOLINT(bugprone-empty-catch)
     }
     delete m_mutex;
 }

@@ -215,6 +215,7 @@ Server::Server(
 
 }
 
+// NOLINTNEXTLINE(bugprone-exception-escape)
 Server::~Server()
 {
 	if (m_mock) {

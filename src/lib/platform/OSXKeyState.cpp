@@ -562,6 +562,8 @@ OSXKeyState::postHIDVirtualKey(const UInt8 virtualKeyCode,
                 modifiersDelta = NX_ALPHASHIFTMASK;
                 m_capsPressed = postDown;
                 break;
+        default:
+                break;
         }
 
         // update the modifier bit
