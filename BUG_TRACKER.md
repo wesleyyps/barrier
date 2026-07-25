@@ -39,3 +39,6 @@ When a bug category is addressed, it must be logged here with the files affected
 | 2026-07-24 | IMPLICIT_BOOL | `OSXKeyState.cpp`, `VersionChecker.cpp`, `barriers.cpp`, `ZeroconfBrowser.cpp` | 84be6dab | Replaced implicit boolean conversions with explicit comparisons or correct types. | **COMMITTED** |
 | 2026-07-24 | USE_NULLPTR | `ZeroconfBrowser.cpp`, `IDataSocket.cpp`, `ClientProxy1_0.cpp`, `ArchTimeUnix.cpp`, `ClientTaskBarReceiver.cpp` | 90e3fb4e | Replaced legacy NULL macros and 0s with modern C++ nullptr. | **COMMITTED** |
 | 2026-07-24 | AVOID_C_ARRAYS | `ClientProxy1_0.cpp` | 90e3fb4e | Converted C-style array to std::array. | **COMMITTED** |
+| 2026-07-25 | BUGPRONE_EXCEPTIONS | `TCPSocket.cpp`, `XSocket.cpp`, `ArchMultithreadPosix.cpp`, etc. | 32786811 | Handled empty catch blocks and exception escapes. | **COMMITTED** |
+| 2026-07-25 | BUGPRONE_SWITCHES | `ProtocolUtil.cpp`, `ClipboardChunk.cpp`, `OSXKeyState.cpp`, etc. | 32786811 | Added missing default cases to integer switch statements. | **COMMITTED** |
+| 2026-07-25 | BUGPRONE_NARROWING | `ArchNetworkBSD.cpp`, `TCPSocket.cpp`, `ClipboardChunk.cpp` | 32786811 | Fixed implicit narrowing conversions causing potential data loss. | **COMMITTED** |
