@@ -140,9 +140,9 @@ protected:
         bool m_AutoStart;
         bool m_MinimizeToTray;
 
-        static const char m_BarriersName[];
-        static const char m_BarriercName[];
-        static const char m_BarrierLogDir[];
+        static const QString m_BarriersName;
+        static const QString m_BarriercName;
+        static const QString m_BarrierLogDir;
 };
 
 #endif

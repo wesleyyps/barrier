@@ -21,22 +21,23 @@
 
 #include <QtCore>
 #include <QtNetwork>
+#include <array>
 
 #ifdef Q_OS_WIN
-const char AppConfig::m_BarriersName[] = "barriers.exe";
-const char AppConfig::m_BarriercName[] = "barrierc.exe";
-const char AppConfig::m_BarrierLogDir[] = "log/";
+const QString AppConfig::m_BarriersName = "barriers.exe";
+const QString AppConfig::m_BarriercName = "barrierc.exe";
+const QString AppConfig::m_BarrierLogDir = "log/";
 #define DEFAULT_PROCESS_MODE Service
 #else
-const char AppConfig::m_BarriersName[] = "barriers";
-const char AppConfig::m_BarriercName[] = "barrierc";
-const char AppConfig::m_BarrierLogDir[] = "/var/log/";
+const QString AppConfig::m_BarriersName = "barriers";
+const QString AppConfig::m_BarriercName = "barrierc";
+const QString AppConfig::m_BarrierLogDir = "/var/log/";
 #define DEFAULT_PROCESS_MODE Desktop
 #endif
 
 const ElevateMode defaultElevateMode = ElevateAsNeeded;
 
-static const char* logLevelNames[] =
+static const std::array<const char*, 7> logLevelNames =
 {
     "ERROR",
     "WARNING",

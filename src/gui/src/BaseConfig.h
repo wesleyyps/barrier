@@ -23,6 +23,7 @@
 #include <QSettings>
 #include <QString>
 #include <QVariant>
+#include <array>
 
 class BaseConfig
 {
@@ -119,9 +120,9 @@ public:
         }
 
     private:
-        static const char* m_ModifierNames[];
-        static const char* m_FixNames[];
-        static const char* m_SwitchCornerNames[];
+        static const std::array<const char*, 6> m_ModifierNames;
+        static const std::array<const char*, 5> m_FixNames;
+        static const std::array<const char*, 4> m_SwitchCornerNames;
 };
 
 #endif

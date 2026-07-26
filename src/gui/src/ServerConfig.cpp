@@ -20,23 +20,25 @@
 #include "Hotkey.h"
 #include "MainWindow.h"
 #include "AddClientDialog.h"
+#include <array>
 
 #include <QtCore>
 #include <QMessageBox>
 #include <QAbstractButton>
 #include <QPushButton>
 
-static const struct
+struct NeighbourDir
 {
      int x;
      int y;
      const char* name;
-} neighbourDirs[] =
+};
+static const std::array<NeighbourDir, 4> neighbourDirs =
 {
-    {  1,  0, "right" },
-    { -1,  0, "left" },
-    {  0, -1, "up" },
-    {  0,  1, "down" },
+    NeighbourDir{  1,  0, "right" },
+    NeighbourDir{ -1,  0, "left" },
+    NeighbourDir{  0, -1, "up" },
+    NeighbourDir{  0,  1, "down" },
 
 };
 
