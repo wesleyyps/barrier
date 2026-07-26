@@ -24,6 +24,7 @@
 
 #include <QString>
 #include <QStringList>
+#include <array>
 #include <QList>
 
 class ActionDialog;
@@ -82,9 +83,9 @@ class Action
         bool m_ActiveOnRelease;
         bool m_HasScreens;
 
-        static const char* m_ActionTypeNames[];
-        static const char* m_SwitchDirectionNames[];
-        static const char* m_LockCursorModeNames[];
+        static const std::array<const char*, 10> m_ActionTypeNames;
+        static const std::array<const char*, 4> m_SwitchDirectionNames;
+        static const std::array<const char*, 3> m_LockCursorModeNames;
 };
 
 QTextStream& operator<<(QTextStream& outStream, const Action& action);

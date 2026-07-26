@@ -17,6 +17,7 @@
  */
 
 #include "ActionDialog.h"
+#include <array>
 
 #include "Hotkey.h"
 #include "Action.h"
@@ -39,9 +40,9 @@ ActionDialog::ActionDialog(QWidget* parent, ServerConfig& config, Hotkey& hotkey
 
     // work around Qt Designer's lack of a QButtonGroup; we need it to get
     // at the button id of the checked radio button
-    QRadioButton* const typeButtons[] = { m_pRadioPress, m_pRadioRelease, m_pRadioPressAndRelease, m_pRadioSwitchToScreen, m_pRadioToggleScreen, m_pRadioSwitchInDirection, m_pRadioLockCursorToScreen };
+    std::array<QRadioButton*, 7> typeButtons = { m_pRadioPress, m_pRadioRelease, m_pRadioPressAndRelease, m_pRadioSwitchToScreen, m_pRadioToggleScreen, m_pRadioSwitchInDirection, m_pRadioLockCursorToScreen };
 
-    for (unsigned int i = 0; i < sizeof(typeButtons) / sizeof(typeButtons[0]); i++)
+    for (size_t i = 0; i < typeButtons.size(); i++)
         m_pButtonGroupType->addButton(typeButtons[i], i);
 
     m_pKeySequenceWidgetHotkey->setText(m_Action.keySequence().toString());

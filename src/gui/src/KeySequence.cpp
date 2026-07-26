@@ -20,15 +20,17 @@
 
 #include <QtCore>
 #include <QtGui>
+#include <array>
 
 // this table originally comes from Qt sources (gui/kernel/qkeysequence.cpp)
 // and is heavily modified
-static const struct
+struct KeyNameStruct
 {
     int key;
     const char* name;
-} keyname[] =
-{
+};
+static const std::array<KeyNameStruct, 49> keyname =
+{{
     { Qt::Key_Space,        "Space" },
     { Qt::Key_Escape,       "Escape" },
     { Qt::Key_Tab,          "Tab" },
@@ -80,7 +82,7 @@ static const struct
     { Qt::Key_Select,       "Select" },
 
     { 0, nullptr }
-};
+}};
 
 KeySequence::KeySequence() :
     m_Sequence(),

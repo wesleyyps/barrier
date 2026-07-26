@@ -29,6 +29,7 @@
 #include <QtGui>
 #include <QSettings>
 #include <QMessageBox>
+#include <array>
 
 #ifdef Q_OS_MAC
 #include <Carbon/Carbon.h>
@@ -168,9 +169,9 @@ bool checkMacAssistiveDevices()
 		return true;
 	}
 
-	const void* keys[] = { kAXTrustedCheckOptionPrompt };
-	const void* trueValue[] = { kCFBooleanTrue };
-	CFDictionaryRef options = CFDictionaryCreate(nullptr, keys, trueValue, 1, nullptr, nullptr);
+	std::array<const void*, 1> keys = { kAXTrustedCheckOptionPrompt };
+	std::array<const void*, 1> trueValue = { kCFBooleanTrue };
+	CFDictionaryRef options = CFDictionaryCreate(nullptr, keys.data(), trueValue.data(), 1, nullptr, nullptr);
 
 	bool result = AXIsProcessTrustedWithOptions(options) != 0u;
 	CFRelease(options);
