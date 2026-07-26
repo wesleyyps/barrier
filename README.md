@@ -24,6 +24,11 @@ Master branch overall build status: [![Build Status](https://dev.azure.com/debau
 
 Our CI Builds are provided by Microsoft Azure Pipelines, Flathub, and Canonical.
 
+#### Static Analysis
+
+[![Coverity Scan Build Status](https://scan.coverity.com/projects/33186/badge.svg)](https://scan.coverity.com/projects/wesleyyps-barrier)
+
+
 ### What is it?
 
 Barrier is software that mimics the functionality of a KVM switch, which historically would allow you to use a single keyboard and mouse to control multiple computers by physically turning a dial on the box to switch the machine you're controlling at any given moment. Barrier does this in software, allowing you to tell it which machine to control by moving your mouse to the edge of the screen, or by using a keypress to switch focus to a different system.
