@@ -403,8 +403,11 @@ SecureSocket::initContext(bool server)
     auto* m = const_cast<SSL_METHOD*>(method);
     m_ssl->m_context = SSL_CTX_new(m);
 
-    // drop SSLv3 support
-    SSL_CTX_set_options(m_ssl->m_context, SSL_OP_NO_SSLv3);
+    // drop SSLv3, TLSv1.0, and TLSv1.1 support
+    SSL_CTX_set_options(m_ssl->m_context, SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1);
+
+    // Enforce modern, strong cipher suites
+    SSL_CTX_set_cipher_list(m_ssl->m_context, "HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH");
 
     if (m_ssl->m_context == nullptr) {
         showError("");

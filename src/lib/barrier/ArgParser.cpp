@@ -287,7 +287,7 @@ ArgParser::parseGenericArgs(int argc, const char* const* argv, int& i)
         LOG((CLOG_INFO "--enable-crypto is used by default. The option is deprecated."));
     }
     else if (isArg(i, argc, argv, nullptr, "--disable-crypto")) {
-        argsBase().m_enableCrypto = false;
+        LOG((CLOG_WARN "Plaintext connections are no longer supported. --disable-crypto will be ignored."));
     }
     else if (isArg(i, argc, argv, nullptr, "--profile-dir", 1)) {
         argsBase().m_profileDirectory = barrier::fs::u8path(argv[++i]);
