@@ -120,7 +120,7 @@ std::string format_ssl_fingerprint_columns(const std::vector<uint8_t>& fingerpri
 
 FingerprintData get_ssl_cert_fingerprint(X509* cert, FingerprintType type)
 {
-    if (cert == nullptr) {
+    if (!cert) {
         throw std::runtime_error("certificate is null");
     }
 
@@ -142,13 +142,13 @@ FingerprintData get_ssl_cert_fingerprint(X509* cert, FingerprintType type)
 FingerprintData get_pem_file_cert_fingerprint(const std::string& path, FingerprintType type)
 {
     auto fp = fopen_utf8_path(path, "r");
-    if (fp == nullptr) {
+    if (!fp) {
         throw std::runtime_error("Could not open certificate path");
     }
     auto file_close = finally([fp]() { std::fclose(fp); });
 
     X509* cert = PEM_read_X509(fp, nullptr, nullptr, nullptr);
-    if (cert == nullptr) {
+    if (!cert) {
         throw std::runtime_error("Certificate could not be parsed");
     }
     auto cert_free = finally([cert]() { X509_free(cert); });
@@ -161,7 +161,7 @@ void generate_pem_self_signed_cert(const std::string& path)
     auto expiration_days = 365;
 
     auto* private_key = EVP_PKEY_new();
-    if (private_key == nullptr) {
+    if (!private_key) {
         throw std::runtime_error("Could not allocate private key for certificate");
     }
     auto private_key_free = finally([private_key](){ EVP_PKEY_free(private_key); });
@@ -187,7 +187,7 @@ void generate_pem_self_signed_cert(const std::string& path)
     EVP_PKEY_assign_RSA(private_key, rsa);
 
     auto* cert = X509_new();
-    if (cert == nullptr) {
+    if (!cert) {
         throw std::runtime_error("Could not allocate certificate");
     }
     auto cert_free = finally([cert]() { X509_free(cert); });
@@ -204,8 +204,8 @@ void generate_pem_self_signed_cert(const std::string& path)
 
     X509_sign(cert, private_key, EVP_sha256());
 
-    auto fp = fopen_utf8_path(path.c_str(), "r");
-    if (fp == nullptr) {
+    auto fp = fopen_utf8_path(path.c_str(), "w");
+    if (!fp) {
         throw std::runtime_error("Could not open certificate output path");
     }
     auto file_close = finally([fp]() { std::fclose(fp); });

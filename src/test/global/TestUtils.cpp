@@ -23,12 +23,14 @@ namespace barrier {
 std::vector<std::uint8_t> generate_pseudo_random_bytes(std::size_t seed, std::size_t size)
 {
     std::mt19937_64 engine{seed};
-    std::uniform_int_distribution<int> dist{0, 255};
     std::vector<std::uint8_t> bytes;
 
     bytes.reserve(size);
     for (std::size_t i = 0; i < size; ++i) {
-        bytes.push_back(dist(engine));
+        // Use the raw engine output (low 8 bits) for fully portable, deterministic
+        // results — std::uniform_int_distribution is implementation-defined and
+        // produces different sequences across libstdc++ versions.
+        bytes.push_back(static_cast<std::uint8_t>(engine() & 0xFF));
     }
 
     return bytes;
