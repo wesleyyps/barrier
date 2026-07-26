@@ -102,7 +102,7 @@ TCPSocket::close()
     LOG((CLOG_DEBUG "Closing socket: %08X", m_socket));
 
     // remove ourself from the multiplexer
-    setJob(NULL);
+    setJob(nullptr);
 
     Lock lock(&m_mutex);
 
@@ -113,9 +113,9 @@ TCPSocket::close()
     onDisconnected();
 
     // close the socket
-    if (m_socket != NULL) {
+    if (m_socket != nullptr) {
         ArchSocket socket = m_socket;
-        m_socket = NULL;
+        m_socket = nullptr;
         try {
             ARCH->closeSocket(socket);
         }
@@ -141,7 +141,7 @@ TCPSocket::read(void* buffer, UInt32 n)
     if (n > size) {
         n = size;
     }
-    if (buffer != NULL && n != 0) {
+    if (buffer != nullptr && n != 0) {
         memcpy(buffer, m_inputBuffer.peek(n), n);
     }
     m_inputBuffer.pop(n);
@@ -279,7 +279,7 @@ TCPSocket::connect(const NetworkAddress& addr)
         Lock lock(&m_mutex);
 
         // fail on attempts to reconnect
-        if (m_socket == NULL || m_connected) {
+        if (m_socket == nullptr || m_connected) {
             sendConnectionFailedEvent("busy");
             return;
         }
@@ -318,7 +318,7 @@ TCPSocket::init()
     catch (XArchNetwork& e) {
         try {
             ARCH->closeSocket(m_socket);
-            m_socket = NULL;
+            m_socket = nullptr;
         }
         catch (XArchNetwork&) {
             // NOLINT(bugprone-empty-catch)
@@ -417,7 +417,7 @@ std::unique_ptr<ISocketMultiplexerJob> TCPSocket::newJob()
 {
     // note -- must have m_mutex locked on entry
 
-    if (m_socket == NULL) {
+    if (m_socket == nullptr) {
         return {};
     }
     if (!m_connected) {
@@ -453,7 +453,7 @@ TCPSocket::sendConnectionFailedEvent(const char* msg)
 void
 TCPSocket::sendEvent(Event::Type type)
 {
-    m_events->addEvent(Event(type, getEventTarget(), NULL));
+    m_events->addEvent(Event(type, getEventTarget(), nullptr));
 }
 
 void

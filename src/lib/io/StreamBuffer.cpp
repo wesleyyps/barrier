@@ -46,7 +46,7 @@ StreamBuffer::peek(UInt32 n)
     // if requesting no data then return NULL so we don't try to access
     // an empty list.
     if (n == 0) {
-        return NULL;
+        return nullptr;
     }
 
     // reserve space in first chunk

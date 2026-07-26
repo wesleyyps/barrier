@@ -275,7 +275,7 @@ Config::setBarrierAddress(const NetworkAddress& addr)
 bool Config::addOption(const std::string& name, OptionID option, OptionValue value)
 {
 	// find options
-	ScreenOptions* options = NULL;
+	ScreenOptions* options = nullptr;
 	if (name.empty()) {
 		options = &m_globalOptions;
 	}
@@ -285,7 +285,7 @@ bool Config::addOption(const std::string& name, OptionID option, OptionValue val
 			options = &index->second.m_options;
 		}
 	}
-	if (options == NULL) {
+	if (options == nullptr) {
 		return false;
 	}
 
@@ -297,7 +297,7 @@ bool Config::addOption(const std::string& name, OptionID option, OptionValue val
 bool Config::removeOption(const std::string& name, OptionID option)
 {
 	// find options
-	ScreenOptions* options = NULL;
+	ScreenOptions* options = nullptr;
 	if (name.empty()) {
 		options = &m_globalOptions;
 	}
@@ -307,7 +307,7 @@ bool Config::removeOption(const std::string& name, OptionID option)
 			options = &index->second.m_options;
 		}
 	}
-	if (options == NULL) {
+	if (options == nullptr) {
 		return false;
 	}
 
@@ -319,7 +319,7 @@ bool Config::removeOption(const std::string& name, OptionID option)
 bool Config::removeOptions(const std::string& name)
 {
 	// find options
-	ScreenOptions* options = NULL;
+	ScreenOptions* options = nullptr;
 	if (name.empty()) {
 		options = &m_globalOptions;
 	}
@@ -329,7 +329,7 @@ bool Config::removeOptions(const std::string& name)
 			options = &index->second.m_options;
 		}
 	}
-	if (options == NULL) {
+	if (options == nullptr) {
 		return false;
 	}
 
@@ -460,7 +460,7 @@ std::string Config::getNeighbor(const std::string& srcName, EDirection srcSide,
 		return "";
 	}
 			// compute position on neighbor
-		if (positionOut != NULL) {
+		if (positionOut != nullptr) {
 			*positionOut =
 				dstEdge->inverseTransform(srcEdge->transform(position));
 		}
@@ -512,7 +512,7 @@ Config::getBarrierAddress() const
 const Config::ScreenOptions* Config::getOptions(const std::string& name) const
 {
 	// find options
-	const ScreenOptions* options = NULL;
+	const ScreenOptions* options = nullptr;
 	if (name.empty()) {
 		options = &m_globalOptions;
 	}
@@ -1356,7 +1356,7 @@ Config::getOptionName(OptionID id)
 	if (id == kOptionClipboardSharing) {
 		return "clipboardSharing";
 	}
-	return NULL;
+	return nullptr;
 }
 
 std::string Config::getOptionValue(OptionID id, OptionValue value)
@@ -1748,11 +1748,11 @@ operator<<(std::ostream& s, const Config& config)
 								screen != config.end(); ++screen) {
         s << "\t" << screen->c_str() << ":\n";
 		const Config::ScreenOptions* options = config.getOptions(*screen);
-		if (options != NULL && options->size() > 0) {
+		if (options != nullptr && options->size() > 0) {
 			for (auto option : *options) {
 				const char* name = Config::getOptionName(option.first);
                 std::string value = Config::getOptionValue(option.first, option.second);
-				if (name != NULL && !value.empty()) {
+				if (name != nullptr && !value.empty()) {
                     s << "\t\t" << name << " = " << value << "\n";
 				}
 			}
@@ -1807,11 +1807,11 @@ operator<<(std::ostream& s, const Config& config)
 	// options section
     s << "section: options\n";
 	const Config::ScreenOptions* options = config.getOptions("");
-	if (options != NULL && options->size() > 0) {
+	if (options != nullptr && options->size() > 0) {
 		for (auto option : *options) {
 			const char* name = Config::getOptionName(option.first);
             std::string value = Config::getOptionValue(option.first, option.second);
-			if (name != NULL && !value.empty()) {
+			if (name != nullptr && !value.empty()) {
                 s << "\t" << name << " = " << value << "\n";
 			}
 		}

@@ -56,7 +56,7 @@ static const int        g_defaultMaxPriority = kINFO;
 // Log
 //
 
-Log*                 Log::s_log = NULL;
+Log*                 Log::s_log = nullptr;
 
 Log::Log()
 {
@@ -249,7 +249,7 @@ Log::pop_front(bool alwaysAtHead)
 bool
 Log::setFilter(const char* maxPriority)
 {
-    if (maxPriority != NULL) {
+    if (maxPriority != nullptr) {
         for (int i = 0; i < g_numPriority; ++i) {
             if (strcmp(maxPriority, g_priority[i]) == 0) {
                 setFilter(i);

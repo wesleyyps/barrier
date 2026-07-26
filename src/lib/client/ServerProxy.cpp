@@ -51,7 +51,7 @@ ServerProxy::ServerProxy(Client* client, barrier::IStream* stream, IEventQueue* 
     m_dyMouse(0),
     m_ignoreMouse(false),
     m_keepAliveAlarm(0.0),
-    m_keepAliveAlarmTimer(NULL),
+    m_keepAliveAlarmTimer(nullptr),
     m_parser(&ServerProxy::parseHandshakeMessage),
     m_events(events)
 {
@@ -88,14 +88,14 @@ ServerProxy::~ServerProxy()
 void
 ServerProxy::resetKeepAliveAlarm()
 {
-    if (m_keepAliveAlarmTimer != NULL) {
+    if (m_keepAliveAlarmTimer != nullptr) {
         m_events->removeHandler(Event::kTimer, m_keepAliveAlarmTimer);
         m_events->deleteTimer(m_keepAliveAlarmTimer);
-        m_keepAliveAlarmTimer = NULL;
+        m_keepAliveAlarmTimer = nullptr;
     }
     if (m_keepAliveAlarm > 0.0) {
         m_keepAliveAlarmTimer =
-            m_events->newOneShotTimer(m_keepAliveAlarm, NULL);
+            m_events->newOneShotTimer(m_keepAliveAlarm, nullptr);
         m_events->adoptHandler(Event::kTimer, m_keepAliveAlarmTimer,
                             new TMethodEventJob<ServerProxy>(this,
                                 &ServerProxy::handleKeepAliveAlarm));
@@ -191,7 +191,7 @@ ServerProxy::parseHandshakeMessage(const UInt8* code)
     else if (memcmp(code, kMsgCClose, 4) == 0) {
         // server wants us to hangup
         LOG((CLOG_DEBUG1 "recv close"));
-        m_client->disconnect(NULL);
+        m_client->disconnect(nullptr);
         return kDisconnect;
     }
 
@@ -319,7 +319,7 @@ ServerProxy::parseMessage(const UInt8* code)
     else if (memcmp(code, kMsgCClose, 4) == 0) {
         // server wants us to hangup
         LOG((CLOG_DEBUG1 "recv close"));
-        m_client->disconnect(NULL);
+        m_client->disconnect(nullptr);
         return kDisconnect;
     }
     else if (memcmp(code, kMsgEBad, 4) == 0) {

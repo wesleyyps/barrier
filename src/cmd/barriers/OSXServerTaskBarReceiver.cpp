@@ -57,7 +57,7 @@ OSXServerTaskBarReceiver::primaryAction()
 const IArchTaskBarReceiver::Icon
 OSXServerTaskBarReceiver::getIcon() const
 {
-    return NULL;
+    return nullptr;
 }
 
 IArchTaskBarReceiver*

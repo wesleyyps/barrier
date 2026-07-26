@@ -72,7 +72,7 @@ ArchThreadImpl::ArchThreadImpl() :
     m_cancel(false),
     m_cancelling(false),
     m_exited(false),
-    m_networkData(NULL)
+    m_networkData(nullptr)
 {
     // do nothing
 }
@@ -82,7 +82,7 @@ ArchThreadImpl::ArchThreadImpl() :
 // ArchMultithreadPosix
 //
 
-ArchMultithreadPosix*    ArchMultithreadPosix::s_instance = NULL;
+ArchMultithreadPosix*    ArchMultithreadPosix::s_instance = nullptr;
 
 ArchMultithreadPosix::ArchMultithreadPosix() :
     m_newThreadCalled(false),
@@ -94,8 +94,8 @@ ArchMultithreadPosix::ArchMultithreadPosix() :
 
     // no signal handlers
     for (size_t i = 0; i < kNUM_SIGNALS; ++i) {
-        m_signalFunc[i]     = NULL;
-        m_signalUserData[i] = NULL;
+        m_signalFunc[i]     = nullptr;
+        m_signalUserData[i] = nullptr;
     }
 
     // create thread for calling (main) thread and add it to our
@@ -117,24 +117,24 @@ ArchMultithreadPosix::ArchMultithreadPosix() :
     act.sa_flags   = 0;
 # endif
     act.sa_handler = &threadCancel;
-    sigaction(SIGWAKEUP, &act, NULL);
+    sigaction(SIGWAKEUP, &act, nullptr);
 
     // set desired signal dispositions.  let SIGWAKEUP through but
     // ignore SIGPIPE (we'll handle EPIPE).
     sigset_t sigset;
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGWAKEUP);
-    pthread_sigmask(SIG_UNBLOCK, &sigset, NULL);
+    pthread_sigmask(SIG_UNBLOCK, &sigset, nullptr);
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGPIPE);
-    pthread_sigmask(SIG_BLOCK, &sigset, NULL);
+    pthread_sigmask(SIG_BLOCK, &sigset, nullptr);
 }
 
 ArchMultithreadPosix::~ArchMultithreadPosix()
 {
     assert(s_instance != NULL);
 
-    s_instance = NULL;
+    s_instance = nullptr;
 }
 
 void
@@ -162,7 +162,7 @@ ArchCond
 ArchMultithreadPosix::newCondVar()
 {
     auto* cond = new ArchCondImpl;
-    int status = pthread_cond_init(&cond->m_cond, NULL);
+    int status = pthread_cond_init(&cond->m_cond, nullptr);
     (void)status;
     assert(status == 0);
     (void)status;
@@ -219,7 +219,7 @@ ArchMultithreadPosix::waitCondVar(ArchCond cond,
 
     // get final time
     struct timeval now;
-    gettimeofday(&now, NULL);
+    gettimeofday(&now, nullptr);
     struct timespec finalTime;
     finalTime.tv_sec   = now.tv_sec;
     finalTime.tv_nsec  = now.tv_usec * 1000;
@@ -356,7 +356,7 @@ ArchThread ArchMultithreadPosix::newThread(const std::function<void()>& func)
     if (status != 0) {
         // failed to start thread so clean up
         delete thread;
-        thread = NULL;
+        thread = nullptr;
     }
     else {
         // add thread to list
@@ -543,7 +543,7 @@ void
 ArchMultithreadPosix::raiseSignal(ESignal signal)
 {
     std::lock_guard<std::mutex> lock(m_threadMutex);
-    if (m_signalFunc[signal] != NULL) {
+    if (m_signalFunc[signal] != nullptr) {
         m_signalFunc[signal](signal, m_signalUserData[signal]);
         pthread_kill(m_mainThread->m_thread, SIGWAKEUP);
     }
@@ -570,13 +570,13 @@ ArchMultithreadPosix::startSignalHandler()
     if (status == 0) {
         status = pthread_create(&m_signalThread, &attr,
                             &ArchMultithreadPosix::threadSignalHandler,
-                            NULL);
+                            nullptr);
         pthread_attr_destroy(&attr);
     }
     if (status != 0) {
         // can't create thread to wait for signal so don't block
         // the signals.
-        pthread_sigmask(SIG_UNBLOCK, &oldsigset, NULL);
+        pthread_sigmask(SIG_UNBLOCK, &oldsigset, nullptr);
     }
 }
 
@@ -584,7 +584,7 @@ ArchThreadImpl*
 ArchMultithreadPosix::find(pthread_t thread)
 {
     ArchThreadImpl* impl = findNoRef(thread);
-    if (impl != NULL) {
+    if (impl != nullptr) {
         refThread(impl);
     }
     return impl;
@@ -600,7 +600,7 @@ ArchMultithreadPosix::findNoRef(pthread_t thread)
             return *index;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 void
@@ -669,14 +669,14 @@ ArchMultithreadPosix::threadFunc(void* vrep)
     auto* thread = static_cast<ArchThreadImpl*>(vrep);
 
     // setup pthreads
-    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, nullptr);
 
     // run thread
     s_instance->doThreadFunc(thread);
 
     // terminate the thread
-    return NULL;
+    return nullptr;
 }
 
 void
@@ -777,5 +777,5 @@ ArchMultithreadPosix::threadSignalHandler(void*)
         }
     }
 
-    return NULL;
+    return nullptr;
 }

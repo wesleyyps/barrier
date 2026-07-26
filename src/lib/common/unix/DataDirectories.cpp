@@ -26,7 +26,7 @@ namespace barrier {
 
 static std::string pw_dir(struct passwd* pwentp)
 {
-    if (pwentp != NULL && pwentp->pw_dir != NULL)
+    if (pwentp != nullptr && pwentp->pw_dir != nullptr)
         return pwentp->pw_dir;
     return "";
 }

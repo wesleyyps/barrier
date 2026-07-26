@@ -219,7 +219,7 @@ ArchNetworkBSD::acceptSocket(ArchSocket s, ArchNetAddress* addr)
 
     // if user passed NULL in addr then use scratch space
     ArchNetAddress dummy;
-    if (addr == NULL) {
+    if (addr == nullptr) {
         addr = &dummy;
     }
 
@@ -235,9 +235,9 @@ ArchNetworkBSD::acceptSocket(ArchSocket s, ArchNetAddress* addr)
         int err = errno;
         delete newSocket;
         delete *addr;
-        *addr = NULL;
+        *addr = nullptr;
         if (err == EAGAIN) {
-            return NULL;
+            return nullptr;
         }
         throwError(err);
     }
@@ -249,7 +249,7 @@ ArchNetworkBSD::acceptSocket(ArchSocket s, ArchNetAddress* addr)
         close(fd);
         delete newSocket;
         delete *addr;
-        *addr = NULL;
+        *addr = nullptr;
         throw;
     }
 
@@ -303,7 +303,7 @@ ArchNetworkBSD::pollSocket(PollEntry pe[], int num, double timeout)
 
     // translate query
     for (int i = 0; i < num; ++i) {
-        pfd[i].fd     = (pe[i].m_socket == NULL) ? -1 : pe[i].m_socket->m_fd;
+        pfd[i].fd     = (pe[i].m_socket == nullptr) ? -1 : pe[i].m_socket->m_fd;
         pfd[i].events = 0;
         if ((pe[i].m_events & kPOLLIN) != 0) {
             pfd[i].events |= POLLIN;
@@ -316,7 +316,7 @@ ArchNetworkBSD::pollSocket(PollEntry pe[], int num, double timeout)
 
     // add the unblock pipe
     const int* unblockPipe = getUnblockPipe();
-    if (unblockPipe != NULL) {
+    if (unblockPipe != nullptr) {
         pfd[n].fd     = unblockPipe[0];
         pfd[n].events = POLLIN;
         ++n;
@@ -329,7 +329,7 @@ ArchNetworkBSD::pollSocket(PollEntry pe[], int num, double timeout)
     n = poll(pfd, n, t);
 
     // reset the unblock pipe
-    if (n > 0 && unblockPipe != NULL && (pfd[num].revents & POLLIN) != 0) {
+    if (n > 0 && unblockPipe != nullptr && (pfd[num].revents & POLLIN) != 0) {
         // the unblock event was signalled.  flush the pipe.
         char dummy[100];
         ssize_t ignore;
@@ -506,7 +506,7 @@ void
 ArchNetworkBSD::unblockPollSocket(ArchThread thread)
 {
     const int* unblockPipe = getUnblockPipeForThread(thread);
-    if (unblockPipe != NULL) {
+    if (unblockPipe != nullptr) {
         char dummy = 0;
         ssize_t ignore;
 
@@ -699,7 +699,7 @@ ArchNetworkBSD::nameToAddr(const std::string& name)
     hints.ai_family = AF_UNSPEC;
 
     ARCH->lockMutex(m_mutex);
-    if ((ret = getaddrinfo(name.c_str(), NULL, &hints, &p)) != 0) {
+    if ((ret = getaddrinfo(name.c_str(), nullptr, &hints, &p)) != 0) {
         ARCH->unlockMutex(m_mutex);
         delete addr;
         throwNameError(ret);
@@ -888,7 +888,7 @@ ArchNetworkBSD::getUnblockPipeForThread(ArchThread thread)
 {
     ArchMultithreadPosix* mt = ArchMultithreadPosix::getInstance();
     int* unblockPipe          = static_cast<int*>(mt->getNetworkDataForThread(thread));
-    if (unblockPipe == NULL) {
+    if (unblockPipe == nullptr) {
         unblockPipe = new int[2];
         if (pipe(unblockPipe) != -1) {
             try {
@@ -897,12 +897,12 @@ ArchNetworkBSD::getUnblockPipeForThread(ArchThread thread)
             }
             catch (...) {
                 delete[] unblockPipe;
-                unblockPipe = NULL;
+                unblockPipe = nullptr;
             }
         }
         else {
             delete[] unblockPipe;
-            unblockPipe = NULL;
+            unblockPipe = nullptr;
         }
     }
     return unblockPipe;

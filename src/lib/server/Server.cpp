@@ -69,11 +69,11 @@ Server::Server(
 	m_yDelta2(0),
 	m_config(&config),
 	m_inputFilter(config.getInputFilter()),
-	m_activeSaver(NULL),
+	m_activeSaver(nullptr),
 	m_switchDir(kNoDirection),
-	m_switchScreen(NULL),
+	m_switchScreen(nullptr),
 	m_switchWaitDelay(0.0),
-	m_switchWaitTimer(NULL),
+	m_switchWaitTimer(nullptr),
 	m_switchTwoTapDelay(0.0),
 	m_switchTwoTapEngaged(false),
 	m_switchTwoTapArmed(false),
@@ -86,11 +86,11 @@ Server::Server(
 	m_lockedToScreen(false),
 	m_screen(screen),
 	m_events(events),
-	m_sendFileThread(NULL),
-	m_writeToDropDirThread(NULL),
+	m_sendFileThread(nullptr),
+	m_writeToDropDirThread(nullptr),
 	m_ignoreFileTransfer(false),
 	m_enableClipboard(true),
-	m_sendDragInfoThread(NULL),
+	m_sendDragInfoThread(nullptr),
 	m_waitDragInfoThread(true),
 	m_args(args)
 {
@@ -260,7 +260,7 @@ Server::~Server()
 	}
 
 	// remove input filter
-	m_inputFilter->setPrimaryClient(NULL);
+	m_inputFilter->setPrimaryClient(nullptr);
 
 	// disable and disconnect primary client
 	m_primaryClient->disable();
@@ -340,7 +340,7 @@ Server::adoptClient(BaseClientProxy* client)
 	sendOptions(client);
 
 	// activate screen saver on new client if active on the primary screen
-	if (m_activeSaver != NULL) {
+	if (m_activeSaver != nullptr) {
 		client->screensaver(true);
 	}
 
@@ -616,7 +616,7 @@ Server::getNeighbor(BaseClientProxy* src,
 		// connected neighbor we return NULL.
 		if (dstName.empty()) {
 			LOG((CLOG_DEBUG2 "no neighbor on %s of \"%s\"", Config::dirName(dir), srcName.c_str()));
-			return NULL;
+			return nullptr;
 		}
 
 		// look up neighbor cell.  if the screen is connected and
@@ -647,8 +647,8 @@ Server::mapToNeighbor(BaseClientProxy* src,
 
 	// get the first neighbor
 	BaseClientProxy* dst = getNeighbor(src, srcSide, x, y);
-	if (dst == NULL) {
-		return NULL;
+	if (dst == nullptr) {
+		return nullptr;
 	}
 
 	// get the source screen's size
@@ -664,7 +664,7 @@ Server::mapToNeighbor(BaseClientProxy* src,
 	switch (srcSide) {
 	case kLeft:
 		x -= dx;
-		while (dst != NULL) {
+		while (dst != nullptr) {
 			lastGoodScreen = dst;
 			lastGoodScreen->getShape(dx, dy, dw, dh);
 			x += dw;
@@ -680,7 +680,7 @@ Server::mapToNeighbor(BaseClientProxy* src,
 
 	case kRight:
 		x -= dx;
-		while (dst != NULL) {
+		while (dst != nullptr) {
 			x -= dw;
 			lastGoodScreen = dst;
 			lastGoodScreen->getShape(dx, dy, dw, dh);
@@ -696,7 +696,7 @@ Server::mapToNeighbor(BaseClientProxy* src,
 
 	case kTop:
 		y -= dy;
-		while (dst != NULL) {
+		while (dst != nullptr) {
 			lastGoodScreen = dst;
 			lastGoodScreen->getShape(dx, dy, dw, dh);
 			y += dh;
@@ -712,7 +712,7 @@ Server::mapToNeighbor(BaseClientProxy* src,
 
 	case kBottom:
 		y -= dy;
-		while (dst != NULL) {
+		while (dst != nullptr) {
 			y -= dh;
 			lastGoodScreen = dst;
 			lastGoodScreen->getShape(dx, dy, dw, dh);
@@ -728,7 +728,7 @@ Server::mapToNeighbor(BaseClientProxy* src,
 
 	case kNoDirection:
 		assert(0 && "bad direction");
-		return NULL;
+		return nullptr;
 	}
 
 	// save destination screen
@@ -764,25 +764,25 @@ Server::avoidJumpZone(BaseClientProxy* dst,
 	// don't need to move inwards because that side can't provoke a jump.
 	switch (dir) {
 	case kLeft:
-		if (!m_config->getNeighbor(dstName, kRight, t, NULL).empty() &&
+		if (!m_config->getNeighbor(dstName, kRight, t, nullptr).empty() &&
 			x > dx + dw - 1 - z)
 			x = dx + dw - 1 - z;
 		break;
 
 	case kRight:
-		if (!m_config->getNeighbor(dstName, kLeft, t, NULL).empty() &&
+		if (!m_config->getNeighbor(dstName, kLeft, t, nullptr).empty() &&
 			x < dx + z)
 			x = dx + z;
 		break;
 
 	case kTop:
-		if (!m_config->getNeighbor(dstName, kBottom, t, NULL).empty() &&
+		if (!m_config->getNeighbor(dstName, kBottom, t, nullptr).empty() &&
 			y > dy + dh - 1 - z)
 			y = dy + dh - 1 - z;
 		break;
 
 	case kBottom:
-		if (!m_config->getNeighbor(dstName, kTop, t, NULL).empty() &&
+		if (!m_config->getNeighbor(dstName, kTop, t, nullptr).empty() &&
 			y < dy + z)
 			y = dy + z;
 		break;
@@ -800,7 +800,7 @@ Server::isSwitchOkay(BaseClientProxy* newScreen,
 	LOG((CLOG_DEBUG1 "try to leave \"%s\" on %s", getName(m_active).c_str(), Config::dirName(dir)));
 
 	// is there a neighbor?
-	if (newScreen == NULL) {
+	if (newScreen == nullptr) {
 		// there's no neighbor.  we don't want to switch and we don't
 		// want to try to switch later.
 		LOG((CLOG_DEBUG1 "no neighbor %s", Config::dirName(dir)));
@@ -815,7 +815,7 @@ Server::isSwitchOkay(BaseClientProxy* newScreen,
 	// note if the switch direction has changed.  save the new
 	// direction and screen if so.
 	bool isNewDirection  = (dir != m_switchDir);
-	if (isNewDirection || m_switchScreen == NULL) {
+	if (isNewDirection || m_switchScreen == nullptr) {
 		m_switchDir    = dir;
 		m_switchScreen = newScreen;
 	}
@@ -847,10 +847,10 @@ Server::isSwitchOkay(BaseClientProxy* newScreen,
 	// and, if not, check the global options.
 	const Config::ScreenOptions* options =
 						m_config->getOptions(getName(m_active));
-	if (options == NULL || options->count(kOptionScreenSwitchCorners) == 0) {
+	if (options == nullptr || options->count(kOptionScreenSwitchCorners) == 0) {
 		options = m_config->getOptions("");
 	}
-	if (options != NULL && options->count(kOptionScreenSwitchCorners) > 0) {
+	if (options != nullptr && options->count(kOptionScreenSwitchCorners) > 0) {
 		// get corner mask and size
 		auto i =
 			options->find(kOptionScreenSwitchCorners);
@@ -903,8 +903,8 @@ Server::noSwitch(SInt32 x, SInt32 y)
 void
 Server::stopSwitch()
 {
-	if (m_switchScreen != NULL) {
-		m_switchScreen = NULL;
+	if (m_switchScreen != nullptr) {
+		m_switchScreen = nullptr;
 		m_switchDir    = kNoDirection;
 		stopSwitchTwoTap();
 		stopSwitchWait();
@@ -1002,16 +1002,16 @@ Server::startSwitchWait(SInt32 x, SInt32 y)
 void
 Server::stopSwitchWait()
 {
-	if (m_switchWaitTimer != NULL) {
+	if (m_switchWaitTimer != nullptr) {
 		m_events->deleteTimer(m_switchWaitTimer);
-		m_switchWaitTimer = NULL;
+		m_switchWaitTimer = nullptr;
 	}
 }
 
 bool
 Server::isSwitchWaitStarted() const
 {
-	return (m_switchWaitTimer != NULL);
+	return (m_switchWaitTimer != nullptr);
 }
 
 UInt32
@@ -1097,7 +1097,7 @@ Server::sendOptions(BaseClientProxy* client) const
 	// look up options for client
 	const Config::ScreenOptions* options =
 						m_config->getOptions(getName(client));
-	if (options != NULL) {
+	if (options != nullptr) {
 		// convert options to a more convenient form for sending
 		optionsList.reserve(2 * options->size());
 		for (auto option : *options) {
@@ -1108,7 +1108,7 @@ Server::sendOptions(BaseClientProxy* client) const
 
 	// look up global options
 	options = m_config->getOptions("");
-	if (options != NULL) {
+	if (options != nullptr) {
 		// convert options to a more convenient form for sending
 		optionsList.reserve(optionsList.size() + 2 * options->size());
 		for (auto option : *options) {
@@ -1126,7 +1126,7 @@ void
 Server::processOptions()
 {
 	const Config::ScreenOptions* options = m_config->getOptions("");
-	if (options == NULL) {
+	if (options == nullptr) {
 		return;
 	}
 
@@ -1429,7 +1429,7 @@ Server::handleSwitchInDirectionEvent(const Event& event, void*)
 	SInt32 x = m_x, y = m_y;
 	BaseClientProxy* newScreen =
 		getNeighbor(m_active, info->m_direction, x, y);
-	if (newScreen == NULL) {
+	if (newScreen == nullptr) {
 		LOG((CLOG_DEBUG1 "no neighbor %s", Config::dirName(info->m_direction)));
 	}
 	else {
@@ -1586,7 +1586,7 @@ Server::onScreensaver(bool activated)
 		// jump back to previous screen and position.  we must check
 		// that the position is still valid since the screen may have
 		// changed resolutions while the screen saver was running.
-		if (m_activeSaver != NULL && m_activeSaver != m_primaryClient) {
+		if (m_activeSaver != nullptr && m_activeSaver != m_primaryClient) {
 			// check position
 			BaseClientProxy* screen = m_activeSaver;
 			SInt32 x, y, w, h;
@@ -1610,7 +1610,7 @@ Server::onScreensaver(bool activated)
 		}
 
 		// reset state
-		m_activeSaver = NULL;
+		m_activeSaver = nullptr;
 	}
 
 	// send message to all clients
@@ -1815,7 +1815,7 @@ Server::onMouseMovePrimary(SInt32 x, SInt32 y)
 				&& m_screen->isDraggingStarted()
 				&& m_active != newScreen
 				&& m_waitDragInfoThread) {
-				if (m_sendDragInfoThread == NULL) {
+				if (m_sendDragInfoThread == nullptr) {
                     m_sendDragInfoThread = new Thread([this, newScreen]()
                                                       { send_drag_info_thread(newScreen); });
 				}
@@ -1857,7 +1857,7 @@ void Server::send_drag_info_thread(BaseClientProxy* newScreen)
 		m_dragFileList.clear();
 	}
 	m_waitDragInfoThread = false;
-	m_sendDragInfoThread = NULL;
+	m_sendDragInfoThread = nullptr;
 }
 
 void
@@ -1867,7 +1867,7 @@ Server::sendDragInfo(BaseClientProxy* newScreen)
 	UInt32 fileCount = DragInformation::setupDragInfo(m_dragFileList, infoString);
 
 	if (fileCount > 0) {
-		char* info = NULL;
+		char* info = nullptr;
 		size_t size = infoString.size();
 		info = new char[size];
 		memcpy(info, infoString.c_str(), size);
@@ -1963,7 +1963,7 @@ Server::onMouseMoveSecondary(SInt32 dx, SInt32 dy)
 			// if waiting and mouse is not on the border we're waiting
 			// on then stop waiting.  also if it's not on the border
 			// then arm the double tap.
-			if (m_switchScreen != NULL) {
+			if (m_switchScreen != nullptr) {
 				bool clearWait;
 				SInt32 zoneSize = m_primaryClient->getJumpZoneSize();
 				switch (m_switchDir) {
@@ -2008,9 +2008,9 @@ Server::onMouseMoveSecondary(SInt32 dx, SInt32 dy)
 	} while (false);
 
 	if (jump) {
-		if (m_sendFileThread != NULL) {
+		if (m_sendFileThread != nullptr) {
 			StreamChunker::interruptFile();
-			m_sendFileThread = NULL;
+			m_sendFileThread = nullptr;
 		}
 
 		SInt32 newX = m_x;
@@ -2173,7 +2173,7 @@ Server::closeClient(BaseClientProxy* client, const char* msg)
 
 	// install timer.  wait timeout seconds for client to close.
 	double timeout = 5.0;
-	EventQueueTimer* timer = m_events->newOneShotTimer(timeout, NULL);
+	EventQueueTimer* timer = m_events->newOneShotTimer(timeout, nullptr);
 	m_events->adoptHandler(Event::kTimer, timer,
 							new TMethodEventJob<Server>(this,
 								&Server::handleClientCloseTimeout, client));
@@ -2241,7 +2241,7 @@ void
 Server::forceLeaveClient(BaseClientProxy* client)
 {
 	BaseClientProxy* active =
-		(m_activeSaver != NULL) ? m_activeSaver : m_active;
+		(m_activeSaver != nullptr) ? m_activeSaver : m_active;
 	if (active == client) {
 		// record new position (center of primary screen)
 		m_primaryClient->getCursorCenter(m_x, m_y);
@@ -2260,7 +2260,7 @@ Server::forceLeaveClient(BaseClientProxy* client)
 
 		// enter new screen (unless we already have because of the
 		// screen saver)
-		if (m_activeSaver == NULL) {
+		if (m_activeSaver == nullptr) {
 			m_primaryClient->enter(m_x, m_y, m_seqNum,
 								m_primaryClient->getToggleMask(), false);
 		}
@@ -2274,7 +2274,7 @@ Server::forceLeaveClient(BaseClientProxy* client)
 	// then we can't switch back to it when the screen saver
 	// deactivates.
 	if (m_activeSaver == client) {
-		m_activeSaver = NULL;
+		m_activeSaver = nullptr;
 	}
 
 	// tell primary client about the active sides
@@ -2372,7 +2372,7 @@ Server::isReceivedFileSizeValid()
 void
 Server::sendFileToClient(const char* filename)
 {
-	if (m_sendFileThread != NULL) {
+	if (m_sendFileThread != nullptr) {
 		StreamChunker::interruptFile();
 	}
 
@@ -2389,7 +2389,7 @@ void Server::send_file_thread(const char* filename)
 		LOG((CLOG_ERR "failed sending file chunks, error: %s", error.what()));
 	}
 
-	m_sendFileThread = NULL;
+	m_sendFileThread = nullptr;
 }
 
 void

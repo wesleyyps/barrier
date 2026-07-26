@@ -72,7 +72,7 @@ PacketStreamFilter::read(void* buffer, UInt32 n)
     }
 
     // read it
-    if (buffer != NULL) {
+    if (buffer != nullptr) {
         memcpy(buffer, m_buffer.peek(n), n);
     }
     m_buffer.pop(n);
@@ -84,7 +84,7 @@ PacketStreamFilter::read(void* buffer, UInt32 n)
 
     if (m_inputShutdown && m_size == 0) {
         m_events->addEvent(Event(m_events->forIStream().inputShutdown(),
-                        getEventTarget(), NULL));
+                        getEventTarget(), nullptr));
     }
 
     return n;

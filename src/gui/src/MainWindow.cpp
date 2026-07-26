@@ -99,25 +99,25 @@ static const char* barrierLargeIcon = ":/res/icons/256x256/barrier.ico";
 MainWindow::MainWindow(QSettings& settings, AppConfig& appConfig) :
     m_Settings(settings),
     m_AppConfig(&appConfig),
-    m_pBarrier(NULL),
+    m_pBarrier(nullptr),
     m_BarrierState(barrierDisconnected),
     m_ServerConfig(&m_Settings, 5, 3, m_AppConfig->screenName(), this),
-    m_pTempConfigFile(NULL),
-    m_pTrayIcon(NULL),
-    m_pTrayIconMenu(NULL),
+    m_pTempConfigFile(nullptr),
+    m_pTrayIcon(nullptr),
+    m_pTrayIconMenu(nullptr),
     m_AlreadyHidden(false),
-    m_pMenuBar(NULL),
-    m_pMenuBarrier(NULL),
-    m_pMenuHelp(NULL),
-    m_pZeroconfService(NULL),
-    m_pDataDownloader(NULL),
-    m_DownloadMessageBox(NULL),
-    m_pCancelButton(NULL),
+    m_pMenuBar(nullptr),
+    m_pMenuBarrier(nullptr),
+    m_pMenuHelp(nullptr),
+    m_pZeroconfService(nullptr),
+    m_pDataDownloader(nullptr),
+    m_DownloadMessageBox(nullptr),
+    m_pCancelButton(nullptr),
     m_SuppressAutoConfigWarning(false),
-    m_BonjourInstall(NULL),
+    m_BonjourInstall(nullptr),
     m_SuppressEmptyServerWarning(false),
     m_ExpectedRunningState(kStopped),
-    m_pSslCertificate(NULL),
+    m_pSslCertificate(nullptr),
     m_pLogWindow(new LogWindow(nullptr))
 {
     // explicitly unset DeleteOnClose so the window can be show and hidden
@@ -763,7 +763,7 @@ void MainWindow::stopBarrier()
 #if !defined(Q_OS_WIN)
     delete m_pTempConfigFile;
 #endif
-    m_pTempConfigFile = NULL;
+    m_pTempConfigFile = nullptr;
 
     // reset so that new connects cause auto-hide.
     m_AlreadyHidden = false;
@@ -792,7 +792,7 @@ void MainWindow::stopDesktop()
     }
 
     delete barrierProcess();
-    setBarrierProcess(NULL);
+    setBarrierProcess(nullptr);
 }
 
 void MainWindow::barrierFinished(int exitCode, QProcess::ExitStatus)
@@ -937,7 +937,7 @@ QString MainWindow::getScreenName()
 
 void MainWindow::changeEvent(QEvent* event)
 {
-    if (event != 0)
+    if (event != nullptr)
     {
         switch (event->type())
         {
@@ -981,7 +981,7 @@ void MainWindow::updateZeroconfService()
         if (!m_AppConfig->wizardShouldRun()) {
             if (m_pZeroconfService) {
                 delete m_pZeroconfService;
-                m_pZeroconfService = NULL;
+                m_pZeroconfService = nullptr;
             }
 
             if (m_AppConfig->autoConfig() || barrier_type() == BarrierType::Server) {

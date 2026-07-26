@@ -172,7 +172,7 @@ Screen::setClipboard(ClipboardID id, const IClipboard* clipboard)
 void
 Screen::grabClipboard(ClipboardID id)
 {
-    m_screen->setClipboard(id, NULL);
+    m_screen->setClipboard(id, nullptr);
 }
 
 void

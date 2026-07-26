@@ -243,7 +243,7 @@ OSXKeyState::mapKeyFromEvent(KeyIDs& ids,
     ids.clear();
 
     // map modifier key
-    if (maskOut != NULL) {
+    if (maskOut != nullptr) {
         KeyModifierMask activeMask = getActiveModifiers();
         activeMask &= ~KeyModifierAltGr;
         *maskOut    = activeMask;
@@ -273,7 +273,7 @@ OSXKeyState::mapKeyFromEvent(KeyIDs& ids,
     // get keyboard info
     TISInputSourceRef currentKeyboardLayout = TISCopyCurrentKeyboardLayoutInputSource();
 
-    if (currentKeyboardLayout == NULL) {
+    if (currentKeyboardLayout == nullptr) {
         return kKeyNone;
     }
 
@@ -309,7 +309,7 @@ OSXKeyState::mapKeyFromEvent(KeyIDs& ids,
     auto ref = static_cast<CFDataRef>(TISGetInputSourceProperty(currentKeyboardLayout,
                                 kTISPropertyUnicodeKeyLayoutData));
     const auto* layout = reinterpret_cast<const UCKeyboardLayout*>(CFDataGetBytePtr(ref));
-    const bool layoutValid = (layout != NULL);
+    const bool layoutValid = (layout != nullptr);
 
     if (layoutValid) {
         // translate key
@@ -471,7 +471,7 @@ OSXKeyState::getKeyMap(barrier::KeyMap& keyMap)
         auto resourceRef = static_cast<CFDataRef>(TISGetInputSourceProperty(
             m_groups[g], kTISPropertyUnicodeKeyLayoutData));
 
-        layoutValid = resourceRef != NULL;
+        layoutValid = resourceRef != nullptr;
         if (layoutValid)
             resource = CFDataGetBytePtr(resourceRef);
 
@@ -863,7 +863,7 @@ OSXKeyState::getGroups(GroupList& groups) const
     // get number of layouts
     CFStringRef keys[] = { kTISPropertyInputSourceCategory };
     CFStringRef values[] = { kTISCategoryKeyboardInputSource };
-    CFDictionaryRef dict = CFDictionaryCreate(NULL, reinterpret_cast<const void **>(keys), reinterpret_cast<const void **>(values), 1, NULL, NULL);
+    CFDictionaryRef dict = CFDictionaryCreate(nullptr, reinterpret_cast<const void **>(keys), reinterpret_cast<const void **>(values), 1, nullptr, nullptr);
     CFArrayRef kbds = TISCreateInputSourceList(dict, static_cast<Boolean>(false));
     n = CFArrayGetCount(kbds);
     gotLayouts = (n != 0);

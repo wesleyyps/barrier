@@ -395,7 +395,7 @@ KeyState::KeyState(IEventQueue* events) :
 
 KeyState::KeyState(IEventQueue* events, barrier::KeyMap& keyMap) :
     IKeyState(events),
-    m_keyMapPtr(0),
+    m_keyMapPtr(nullptr),
     m_keyMap(keyMap),
     m_mask(0),
     m_events(events)
@@ -569,7 +569,7 @@ KeyState::fakeKeyDown(KeyID id, KeyModifierMask mask, KeyButton serverID)
     const barrier::KeyMap::KeyItem* keyItem =
         m_keyMap.mapKey(keys, id, pollActiveGroup(), m_activeModifiers,
                                 getActiveModifiersRValue(), mask, false);
-    if (keyItem == NULL) {
+    if (keyItem == nullptr) {
         // a media key won't be mapped on mac, so we need to fake it in a
         // special way
         if (id == kKeyAudioDown || id == kKeyAudioUp ||
@@ -617,7 +617,7 @@ KeyState::fakeKeyRepeat(
     const barrier::KeyMap::KeyItem* keyItem =
         m_keyMap.mapKey(keys, id, pollActiveGroup(), m_activeModifiers,
                                 getActiveModifiersRValue(), mask, true);
-    if (keyItem == NULL) {
+    if (keyItem == nullptr) {
         return false;
     }
     auto localID = static_cast<KeyButton>(keyItem->m_button & kButtonMask);
@@ -770,7 +770,7 @@ KeyState::getButton(KeyID id, SInt32 group) const
 {
     const barrier::KeyMap::KeyItemList* items =
         m_keyMap.findCompatibleKey(id, group, 0, 0);
-    if (items == NULL) {
+    if (items == nullptr) {
         return 0;
     }
             return items->back().m_button;

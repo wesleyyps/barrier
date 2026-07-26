@@ -48,13 +48,13 @@ public:
 
 SocketMultiplexer::SocketMultiplexer() :
     m_mutex(new Mutex),
-    m_thread(NULL),
+    m_thread(nullptr),
     m_update(false),
     m_jobsReady(new CondVar<bool>(m_mutex, false)),
     m_jobListLock(new CondVar<bool>(m_mutex, false)),
     m_jobListLockLocked(new CondVar<bool>(m_mutex, false)),
-    m_jobListLocker(NULL),
-    m_jobListLockLocker(NULL)
+    m_jobListLocker(nullptr),
+    m_jobListLockLocker(nullptr)
 {
     // start thread
     m_thread = new Thread([this](){ service_thread(); });
@@ -204,7 +204,7 @@ void SocketMultiplexer::service_thread()
             auto cursor    = newCursor();
             auto jobCursor = nextCursor(cursor);
             while (i < pfds.size() && jobCursor != m_socketJobs.end()) {
-                if (*jobCursor != NULL) {
+                if (*jobCursor != nullptr) {
                     // get poll state
                     unsigned short revents = pfds[i].m_revents;
                     bool read  = ((revents & IArchNetwork::kPOLLIN) != 0);
@@ -236,7 +236,7 @@ void SocketMultiplexer::service_thread()
         // delete any removed socket jobs
         for (auto i = m_socketJobMap.begin();
                             i != m_socketJobMap.end();) {
-            if (*(i->second) == NULL) {
+            if (*(i->second) == nullptr) {
                 m_socketJobs.erase(i->second);
                 m_socketJobMap.erase(i++);
                 m_update = true;
@@ -315,7 +315,7 @@ SocketMultiplexer::lockJobList()
     // take ownership of the lock
     *m_jobListLock      = true;
     m_jobListLocker     = m_jobListLockLocker;
-    m_jobListLockLocker = NULL;
+    m_jobListLockLocker = nullptr;
 
     // release the lock on the lock
     *m_jobListLockLocked = false;
@@ -332,7 +332,7 @@ SocketMultiplexer::unlockJobList()
 
     // release the lock
     delete m_jobListLocker;
-    m_jobListLocker = NULL;
+    m_jobListLocker = nullptr;
     *m_jobListLock  = false;
     m_jobListLock->signal();
 

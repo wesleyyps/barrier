@@ -39,7 +39,7 @@ static const size_t g_chunkSize = 32 * 1024; //32kb
 
 bool StreamChunker::s_isChunkingFile = false;
 bool StreamChunker::s_interruptFile = false;
-Mutex* StreamChunker::s_interruptMutex = NULL;
+Mutex* StreamChunker::s_interruptMutex = nullptr;
 
 void
 StreamChunker::sendFile(const char* filename,

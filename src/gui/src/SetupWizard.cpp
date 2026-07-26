@@ -80,7 +80,7 @@ bool SetupWizard::validateCurrentPage()
 
 void SetupWizard::changeEvent(QEvent* event)
 {
-    if (event != 0)
+    if (event != nullptr)
     {
         switch (event->type())
         {

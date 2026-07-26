@@ -38,7 +38,7 @@ ClientListener::ClientListener(const NetworkAddress& address,
                 IEventQueue* events,
                                ConnectionSecurityLevel security_level) :
     m_socketFactory(socketFactory),
-    m_server(NULL),
+    m_server(nullptr),
     m_events(events),
     security_level_{security_level}
 {
@@ -88,7 +88,7 @@ ClientListener::~ClientListener()
 
     // discard waiting clients
     ClientProxy* client = getNextClient();
-    while (client != NULL) {
+    while (client != nullptr) {
         delete client;
         client = getNextClient();
     }
@@ -109,7 +109,7 @@ ClientListener::setServer(Server* server)
 ClientProxy*
 ClientListener::getNextClient()
 {
-    ClientProxy* client = NULL;
+    ClientProxy* client = nullptr;
     if (!m_waitingClients.empty()) {
         client = m_waitingClients.front();
         m_waitingClients.pop_front();
@@ -124,7 +124,7 @@ ClientListener::handleClientConnecting(const Event&, void*)
     // accept client connection
     IDataSocket* socket = m_listen->accept();
 
-    if (socket == NULL) {
+    if (socket == nullptr) {
         return;
     }
 
@@ -181,7 +181,7 @@ ClientListener::handleUnknownClient(const Event&, void* vclient)
 
     // get the real client proxy and install it
     ClientProxy* client = unknownClient->orphanClientProxy();
-    if (client != NULL) {
+    if (client != nullptr) {
         // handshake was successful
         m_waitingClients.push_back(client);
         m_events->addEvent(Event(m_events->forClientListener().connected(),

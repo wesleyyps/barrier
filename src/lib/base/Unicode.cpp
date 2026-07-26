@@ -74,7 +74,7 @@ static
 void
 resetError(bool* errors)
 {
-    if (errors != NULL) {
+    if (errors != nullptr) {
         *errors = false;
     }
 }
@@ -84,7 +84,7 @@ static
 void
 setError(bool* errors)
 {
-    if (errors != NULL) {
+    if (errors != nullptr) {
         *errors = true;
     }
 }
@@ -239,7 +239,7 @@ Unicode::UTF8ToText(const std::string& src, bool* errors)
     wchar_t* tmp = UTF8ToWideChar(src, size, errors);
 
     // convert string to multibyte
-    int len   = ARCH->convStringWCToMB(NULL, tmp, size, errors);
+    int len   = ARCH->convStringWCToMB(nullptr, tmp, size, errors);
     char* mbs = new char[len + 1];
     ARCH->convStringWCToMB(mbs, tmp, size, errors);
     std::string text(mbs, len);
@@ -303,7 +303,7 @@ Unicode::textToUTF8(const std::string& src, bool* errors)
 
     // convert string to wide characters
     auto n     = static_cast<UInt32>(src.size());
-    int len      = ARCH->convStringMBToWC(NULL, src.c_str(), n, errors);
+    int len      = ARCH->convStringMBToWC(nullptr, src.c_str(), n, errors);
     auto* wcs = new wchar_t[len + 1];
     ARCH->convStringMBToWC(wcs, src.c_str(), n, errors);
 
@@ -485,7 +485,7 @@ Unicode::doUTF16ToUTF8(const UInt8* data, UInt32 n, bool* errors)
         else if (n == 1) {
             // error -- missing second word
             setError(errors);
-            toUTF8(dst, s_replacement, NULL);
+            toUTF8(dst, s_replacement, nullptr);
         }
         else if (c >= 0x0000d800 && c <= 0x0000dbff) {
             UInt32 c2 = decode16(data, byteSwapped);
@@ -494,7 +494,7 @@ Unicode::doUTF16ToUTF8(const UInt8* data, UInt32 n, bool* errors)
             if (c2 < 0x0000dc00 || c2 > 0x0000dfff) {
                 // error -- [d800,dbff] not followed by [dc00,dfff]
                 setError(errors);
-                toUTF8(dst, s_replacement, NULL);
+                toUTF8(dst, s_replacement, nullptr);
             }
             else {
                 c = (((c - 0x0000d800) << 10) | (c2 - 0x0000dc00)) + 0x00010000;
@@ -504,7 +504,7 @@ Unicode::doUTF16ToUTF8(const UInt8* data, UInt32 n, bool* errors)
         else {
             // error -- [dc00,dfff] without leading [d800,dbff]
             setError(errors);
-            toUTF8(dst, s_replacement, NULL);
+            toUTF8(dst, s_replacement, nullptr);
         }
     }
 

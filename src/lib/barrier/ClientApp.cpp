@@ -60,9 +60,9 @@
 
 ClientApp::ClientApp(IEventQueue* events, CreateTaskBarReceiverFunc createTaskBarReceiver) :
     App(events, createTaskBarReceiver, new ClientArgs()),
-    m_client(NULL),
-    m_clientScreen(NULL),
-    m_serverAddress(NULL)
+    m_client(nullptr),
+    m_clientScreen(nullptr),
+    m_serverAddress(nullptr)
 {
 }
 
@@ -247,7 +247,7 @@ ClientApp::openClientScreen()
 void
 ClientApp::closeClientScreen(barrier::Screen* screen)
 {
-    if (screen != NULL) {
+    if (screen != nullptr) {
         m_events->removeHandler(m_events->forIScreen().error(),
             screen->getEventTarget());
         delete screen;
@@ -273,7 +273,7 @@ ClientApp::scheduleClientRestart(double retryTime)
 {
     // install a timer and handler to retry later
     LOG((CLOG_DEBUG "retry in %.0f seconds", retryTime));
-    EventQueueTimer* timer = m_events->newOneShotTimer(retryTime, NULL);
+    EventQueueTimer* timer = m_events->newOneShotTimer(retryTime, nullptr);
     m_events->adoptHandler(Event::kTimer, timer,
         new TMethodEventJob<ClientApp>(this, &ClientApp::handleClientRestart, timer));
 }
@@ -364,7 +364,7 @@ ClientApp::openClient(const String& name, const NetworkAddress& address,
 void
 ClientApp::closeClient(Client* client)
 {
-    if (client == NULL) {
+    if (client == nullptr) {
         return;
     }
 
@@ -387,9 +387,9 @@ bool
 ClientApp::startClient()
 {
     double retryTime;
-    barrier::Screen* clientScreen = NULL;
+    barrier::Screen* clientScreen = nullptr;
     try {
-        if (m_clientScreen == NULL) {
+        if (m_clientScreen == nullptr) {
             clientScreen = openClientScreen();
             m_client     = openClient(args().m_name,
                 *m_serverAddress, clientScreen);
@@ -434,8 +434,8 @@ ClientApp::stopClient()
 {
     closeClient(m_client);
     closeClientScreen(m_clientScreen);
-    m_client       = NULL;
-    m_clientScreen = NULL;
+    m_client       = nullptr;
+    m_clientScreen = nullptr;
 }
 
 
@@ -517,7 +517,7 @@ ClientApp::runInner(int argc, char** argv, ILogOutputter* outputter, StartupFunc
     argsBase().m_exename = ArgParser::parse_exename(argv[0]);
 
     // install caller's output filter
-    if (outputter != NULL) {
+    if (outputter != nullptr) {
         CLOG->insert(outputter);
     }
 

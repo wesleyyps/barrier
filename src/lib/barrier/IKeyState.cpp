@@ -43,7 +43,7 @@ IKeyState::KeyInfo::alloc(KeyID id,
     info->m_mask             = mask;
     info->m_button           = button;
     info->m_count            = count;
-    info->m_screens          = NULL;
+    info->m_screens          = nullptr;
     info->m_screensBuffer[0] = '\0';
     return info;
 }
@@ -75,7 +75,7 @@ IKeyState::KeyInfo::alloc(const KeyInfo& x)
     info->m_mask    = x.m_mask;
     info->m_button  = x.m_button;
     info->m_count   = x.m_count;
-    info->m_screens = x.m_screens ? info->m_screensBuffer : NULL;
+    info->m_screens = x.m_screens ? info->m_screensBuffer : nullptr;
     memcpy(info->m_screensBuffer, x.m_screensBuffer, strlen(x.m_screensBuffer) + 1);
     return info;
 }
@@ -83,7 +83,7 @@ IKeyState::KeyInfo::alloc(const KeyInfo& x)
 bool
 IKeyState::KeyInfo::isDefault(const char* screens)
 {
-    return (screens == NULL || screens[0] == '\0');
+    return (screens == nullptr || screens[0] == '\0');
 }
 
 bool
@@ -103,7 +103,7 @@ IKeyState::KeyInfo::contains(const char* screens, const String& name)
     match += ":";
     match += name;
     match += ":";
-    return (strstr(screens, match.c_str()) != NULL);
+    return (strstr(screens, match.c_str()) != nullptr);
 }
 
 bool

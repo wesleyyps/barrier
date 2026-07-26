@@ -127,7 +127,7 @@ IOSXKeyResource::getKeyID(UInt8 c)
         // sometimes CFStringCreate...() returns NULL (e.g. Apple Korean
         // encoding with char value 214).  if it did then make no key,
         // otherwise CFStringCreateMutableCopy() will crash.
-        if (cfString == NULL) {
+        if (cfString == nullptr) {
             return kKeyNone;
         }
 

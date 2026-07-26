@@ -460,7 +460,7 @@ ProtocolUtil::writef_void(void* buffer, const char* fmt, va_list args)
             case 's': {
                 assert(len == 0);
                 const String* src = va_arg(args, String*);
-                const UInt32 len = (src != NULL) ? static_cast<UInt32>(src->size()) : 0;
+                const UInt32 len = (src != nullptr) ? static_cast<UInt32>(src->size()) : 0;
                 *dst++ = static_cast<UInt8>((len >> 24) & 0xff);
                 *dst++ = static_cast<UInt8>((len >> 16) & 0xff);
                 *dst++ = static_cast<UInt8>((len >>  8) & 0xff);

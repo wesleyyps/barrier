@@ -26,10 +26,10 @@
 
 namespace barrier {
 
-KeyMap::NameToKeyMap*            KeyMap::s_nameToKeyMap      = NULL;
-KeyMap::NameToModifierMap*        KeyMap::s_nameToModifierMap = NULL;
-KeyMap::KeyToNameMap*            KeyMap::s_keyToNameMap      = NULL;
-KeyMap::ModifierToNameMap*        KeyMap::s_modifierToNameMap = NULL;
+KeyMap::NameToKeyMap*            KeyMap::s_nameToKeyMap      = nullptr;
+KeyMap::NameToModifierMap*        KeyMap::s_nameToModifierMap = nullptr;
+KeyMap::KeyToNameMap*            KeyMap::s_keyToNameMap      = nullptr;
+KeyMap::ModifierToNameMap*        KeyMap::s_modifierToNameMap = nullptr;
 
 KeyMap::KeyMap() :
     m_numGroups(0),
@@ -118,7 +118,7 @@ KeyMap::addKeyAliasEntry(KeyID targetID, SInt32 group,
 {
     // if we can already generate the target as desired then we're done.
     if (findCompatibleKey(targetID, group, targetRequired,
-                                targetSensitive) != NULL) {
+                                targetSensitive) != nullptr) {
         return;
     }
 
@@ -128,7 +128,7 @@ KeyMap::addKeyAliasEntry(KeyID targetID, SInt32 group,
         const KeyItemList* sourceEntry =
             findCompatibleKey(sourceID, eg,
                                 sourceRequired, sourceSensitive);
-        if (sourceEntry != NULL && sourceEntry->size() == 1) {
+        if (sourceEntry != nullptr && sourceEntry->size() == 1) {
             KeyMap::KeyItem targetItem = sourceEntry->back();
             targetItem.m_id    = targetID;
             targetItem.m_group = eg;
@@ -266,11 +266,11 @@ KeyMap::mapKey(Keystrokes& keys, KeyID id, SInt32 group,
     // handle group change
     if (id == kKeyNextGroup) {
         keys.push_back(Keystroke(1, false, false));
-        return NULL;
+        return nullptr;
     }
     if (id == kKeyPrevGroup) {
         keys.push_back(Keystroke(-1, false, false));
-        return NULL;
+        return nullptr;
     }
 
     const KeyItem* item;
@@ -297,7 +297,7 @@ KeyMap::mapKey(Keystrokes& keys, KeyID id, SInt32 group,
         if (!keysForModifierState(0, group, activeModifiers, currentState,
                                 desiredMask, desiredMask, 0, keys)) {
             LOG((CLOG_DEBUG1 "unable to set modifiers %04x", desiredMask));
-            return NULL;
+            return nullptr;
         }
         return &m_modifierKeyItem;
 
@@ -306,7 +306,7 @@ KeyMap::mapKey(Keystrokes& keys, KeyID id, SInt32 group,
                                 currentState & ~desiredMask,
                                 desiredMask, 0, keys)) {
             LOG((CLOG_DEBUG1 "unable to clear modifiers %04x", desiredMask));
-            return NULL;
+            return nullptr;
         }
         return &m_modifierKeyItem;
 
@@ -322,7 +322,7 @@ KeyMap::mapKey(Keystrokes& keys, KeyID id, SInt32 group,
         break;
     }
 
-    if (item != NULL) {
+    if (item != nullptr) {
         LOG((CLOG_DEBUG1 "mapped to %03x, new state %04x", item->m_button, currentState));
     }
     return item;
@@ -348,7 +348,7 @@ KeyMap::findCompatibleKey(KeyID id, SInt32 group,
 
     auto i = m_keyIDMap.find(id);
     if (i == m_keyIDMap.end()) {
-        return NULL;
+        return nullptr;
     }
 
     const KeyEntryList& entries = i->second[group];
@@ -360,7 +360,7 @@ KeyMap::findCompatibleKey(KeyID id, SInt32 group,
         }
     }
 
-    return NULL;
+    return nullptr;
 }
 
 bool
@@ -514,12 +514,12 @@ KeyMap::mapCommandKey(Keystrokes& keys, KeyID id, SInt32 group,
     if (i == m_keyIDMap.end()) {
         // unknown key
         LOG((CLOG_DEBUG1 "key %04x is not on keyboard", id));
-        return NULL;
+        return nullptr;
     }
     const KeyGroupTable& keyGroupTable = i->second;
 
     // find the first key that generates this KeyID
-    const KeyItem* keyItem = NULL;
+    const KeyItem* keyItem = nullptr;
     SInt32 numGroups       = getNumGroups();
     for (SInt32 groupOffset = 0; groupOffset < numGroups; ++groupOffset) {
         SInt32 effectiveGroup = getEffectiveGroup(group, groupOffset);
@@ -545,14 +545,14 @@ KeyMap::mapCommandKey(Keystrokes& keys, KeyID id, SInt32 group,
                 break;
             }
         }
-        if (keyItem != NULL) {
+        if (keyItem != nullptr) {
             break;
         }
     }
-    if (keyItem == NULL) {
+    if (keyItem == nullptr) {
         // no mapping for this keysym
         LOG((CLOG_DEBUG1 "no mapping for key %04x", id));
-        return NULL;
+        return nullptr;
     }
 
     // make working copy of modifiers
@@ -570,7 +570,7 @@ KeyMap::mapCommandKey(Keystrokes& keys, KeyID id, SInt32 group,
                             s_overrideModifiers, isAutoRepeat, keys)) {
         LOG((CLOG_DEBUG1 "can't map key"));
         keys.clear();
-        return NULL;
+        return nullptr;
     }
 
     // add keystrokes to restore modifier keys
@@ -578,7 +578,7 @@ KeyMap::mapCommandKey(Keystrokes& keys, KeyID id, SInt32 group,
                                 activeModifiers, keys)) {
         LOG((CLOG_DEBUG1 "failed to restore modifiers"));
         keys.clear();
-        return NULL;
+        return nullptr;
     }
 
     // add keystrokes to restore group
@@ -605,7 +605,7 @@ KeyMap::mapCharacterKey(Keystrokes& keys, KeyID id, SInt32 group,
     if (i == m_keyIDMap.end()) {
         // unknown key
         LOG((CLOG_DEBUG1 "key %04x is not on keyboard", id));
-        return NULL;
+        return nullptr;
     }
     const KeyGroupTable& keyGroupTable = i->second;
 
@@ -626,14 +626,14 @@ KeyMap::mapCharacterKey(Keystrokes& keys, KeyID id, SInt32 group,
     if (keyIndex == -1) {
         // no mapping for this keysym
         LOG((CLOG_DEBUG1 "no mapping for key %04x", id));
-        return NULL;
+        return nullptr;
     }
 
     // get keys to press for key
     SInt32 effectiveGroup = getEffectiveGroup(group, groupOffset);
     const KeyItemList& itemList = keyGroupTable[effectiveGroup][keyIndex];
     if (itemList.empty()) {
-        return NULL;
+        return nullptr;
     }
     const KeyItem& keyItem = itemList.back();
 
@@ -649,7 +649,7 @@ KeyMap::mapCharacterKey(Keystrokes& keys, KeyID id, SInt32 group,
                             0, isAutoRepeat, keys)) {
             LOG((CLOG_DEBUG1 "can't map key"));
             keys.clear();
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -658,7 +658,7 @@ KeyMap::mapCharacterKey(Keystrokes& keys, KeyID id, SInt32 group,
                                 activeModifiers, keys)) {
         LOG((CLOG_DEBUG1 "failed to restore modifiers"));
         keys.clear();
-        return NULL;
+        return nullptr;
     }
 
     // add keystrokes to restore group
@@ -740,7 +740,7 @@ KeyMap::keyForModifier(KeyButton button, SInt32 group,
             return item;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 bool
@@ -901,7 +901,7 @@ KeyMap::keysForModifierState(KeyButton button, SInt32 group,
 
         // get the KeyItem for the modifier in the group
         const KeyItem* keyItem = keyForModifier(button, group, bit);
-        if (keyItem == NULL) {
+        if (keyItem == nullptr) {
             if ((mask & notRequiredMask) == 0) {
                 LOG((CLOG_DEBUG1 "no key for modifier %04x", mask));
                 return false;
@@ -1273,19 +1273,19 @@ void
 KeyMap::initKeyNameMaps()
 {
     // initialize tables
-    if (s_nameToKeyMap == NULL) {
+    if (s_nameToKeyMap == nullptr) {
         s_nameToKeyMap = new NameToKeyMap;
         s_keyToNameMap = new KeyToNameMap;
-        for (const KeyNameMapEntry* i = kKeyNameMap; i->m_name != NULL; ++i) {
+        for (const KeyNameMapEntry* i = kKeyNameMap; i->m_name != nullptr; ++i) {
             (*s_nameToKeyMap)[i->m_name] = i->m_id;
             (*s_keyToNameMap)[i->m_id]   = i->m_name;
         }
     }
-    if (s_nameToModifierMap == NULL) {
+    if (s_nameToModifierMap == nullptr) {
         s_nameToModifierMap = new NameToModifierMap;
         s_modifierToNameMap = new ModifierToNameMap;
         for (const KeyModifierNameMapEntry* i = kModifierNameMap;
-                                i->m_name != NULL; ++i) {
+                                i->m_name != nullptr; ++i) {
             (*s_nameToModifierMap)[i->m_name] = i->m_mask;
             (*s_modifierToNameMap)[i->m_mask] = i->m_name;
         }
