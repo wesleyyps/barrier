@@ -20,6 +20,8 @@
 #include "io/IStream.h"
 #include "base/Log.h"
 #include "barrier/protocol_types.h"
+#include "base/XBase.h"
+#include <array>
 #include "barrier/XBarrier.h"
 #include "common/stdvector.h"
 #include "base/String.h"
@@ -81,18 +83,16 @@ ProtocolUtil::vwritef(barrier::IStream* stream,
     }
 
     // fill buffer
-    auto* buffer = new UInt8[size];
-    writef_void(buffer, fmt, args);
+    std::vector<UInt8> buffer(size);
+    writef_void(buffer.data(), fmt, args);
 
     try {
         // write buffer
-        stream->write(buffer, size);
+        stream->write(buffer.data(), size);
         LOG((CLOG_DEBUG2 "wrote %d bytes", size));
-
-        delete[] buffer;
     }
     catch (XBase&) {
-        delete[] buffer;
+        throw;
         throw;
     }
 }
@@ -115,8 +115,8 @@ ProtocolUtil::vreadf(barrier::IStream* stream, const char* fmt, va_list args)
                 assert(len == 1 || len == 2 || len == 4);
 
                 // read the data
-                UInt8 buffer[4];
-                read(stream, buffer, len);
+                std::array<UInt8, 4> buffer;
+                read(stream, buffer.data(), len);
 
                 // convert it
                 void* v = va_arg(args, void*);
@@ -157,8 +157,8 @@ ProtocolUtil::vreadf(barrier::IStream* stream, const char* fmt, va_list args)
                 assert(len == 1 || len == 2 || len == 4);
 
                 // read the vector length
-                UInt8 buffer[4];
-                read(stream, buffer, 4);
+                std::array<UInt8, 4> buffer;
+                read(stream, buffer.data(), 4);
                 UInt32 n = (static_cast<UInt32>(buffer[0]) << 24) |
                            (static_cast<UInt32>(buffer[1]) << 16) |
                            (static_cast<UInt32>(buffer[2]) <<  8) |
@@ -174,7 +174,7 @@ ProtocolUtil::vreadf(barrier::IStream* stream, const char* fmt, va_list args)
                 case 1:
                     // 1 byte integer
                     for (UInt32 i = 0; i < n; ++i) {
-                        read(stream, buffer, 1);
+                        read(stream, buffer.data(), 1);
                         static_cast<std::vector<UInt8>*>(v)->push_back(
                             buffer[0]);
                         LOG((CLOG_DEBUG2 "readf: read %d byte integer[%d]: %d (0x%x)", len, i, static_cast<std::vector<UInt8>*>(v)->back(), static_cast<std::vector<UInt8>*>(v)->back()));
@@ -184,7 +184,7 @@ ProtocolUtil::vreadf(barrier::IStream* stream, const char* fmt, va_list args)
                 case 2:
                     // 2 byte integer
                     for (UInt32 i = 0; i < n; ++i) {
-                        read(stream, buffer, 2);
+                        read(stream, buffer.data(), 2);
                         static_cast<std::vector<UInt16>*>(v)->push_back(
                             static_cast<UInt16>(
                             (static_cast<UInt16>(buffer[0]) << 8) |
@@ -196,7 +196,7 @@ ProtocolUtil::vreadf(barrier::IStream* stream, const char* fmt, va_list args)
                 case 4:
                     // 4 byte integer
                     for (UInt32 i = 0; i < n; ++i) {
-                        read(stream, buffer, 4);
+                        read(stream, buffer.data(), 4);
                         static_cast<std::vector<UInt32>*>(v)->push_back(
                             (static_cast<UInt32>(buffer[0]) << 24) |
                             (static_cast<UInt32>(buffer[1]) << 16) |
@@ -216,8 +216,8 @@ ProtocolUtil::vreadf(barrier::IStream* stream, const char* fmt, va_list args)
                 assert(len == 0);
 
                 // read the string length
-                UInt8 buffer[128];
-                read(stream, buffer, 4);
+                std::array<UInt8, 128> buffer;
+                read(stream, buffer.data(), 4);
                 UInt32 len = (static_cast<UInt32>(buffer[0]) << 24) |
                              (static_cast<UInt32>(buffer[1]) << 16) |
                              (static_cast<UInt32>(buffer[2]) <<  8) |
@@ -231,7 +231,7 @@ ProtocolUtil::vreadf(barrier::IStream* stream, const char* fmt, va_list args)
                 const bool useFixed = (len <= sizeof(buffer));
 
                 // allocate a buffer to read the data
-                UInt8* sBuffer = buffer;
+                UInt8* sBuffer = buffer.data();
                 if (!useFixed) {
                     sBuffer = new UInt8[len];
                 }
@@ -273,8 +273,8 @@ ProtocolUtil::vreadf(barrier::IStream* stream, const char* fmt, va_list args)
         }
         else {
             // read next character
-            char buffer[1];
-            read(stream, buffer, 1);
+            std::array<char, 1> buffer;
+            read(stream, buffer.data(), 1);
 
             // verify match
             if (buffer[0] != *fmt) {
@@ -367,6 +367,7 @@ ProtocolUtil::writef_void(void* buffer, const char* fmt, va_list args)
             // format specifier.  determine argument size.
             ++fmt;
             UInt32 len = eatLength(&fmt);
+            // NOLINTBEGIN(clang-analyzer-security.ArrayBound)
             switch (*fmt) {
             case 'i': {
                 const UInt32 v = va_arg(args, UInt32);
@@ -493,6 +494,7 @@ ProtocolUtil::writef_void(void* buffer, const char* fmt, va_list args)
             default:
                 assert(0 && "invalid format specifier");
             }
+            // NOLINTEND(clang-analyzer-security.ArrayBound)
 
             // next format character
             ++fmt;

@@ -17,6 +17,7 @@
  */
 
 #include "server/InputFilter.h"
+#include <array>
 #include "server/Server.h"
 #include "server/PrimaryClient.h"
 #include "barrier/KeyMap.h"
@@ -297,7 +298,7 @@ InputFilter::LockCursorToScreenAction::clone() const
 
 std::string InputFilter::LockCursorToScreenAction::format() const
 {
-    static const char* s_mode[] = { "off", "on", "toggle" };
+    static const std::array<const char*, 3> s_mode = {{ "off", "on", "toggle" }};
 
     return barrier::string::sprintf("lockCursorToScreen(%s)", s_mode[m_mode]);
 }
@@ -305,11 +306,11 @@ std::string InputFilter::LockCursorToScreenAction::format() const
 void
 InputFilter::LockCursorToScreenAction::perform(const Event& event)
 {
-    static const Server::LockCursorToScreenInfo::State s_state[] = {
+    static const std::array<Server::LockCursorToScreenInfo::State, 3> s_state = {{
         Server::LockCursorToScreenInfo::kOff,
         Server::LockCursorToScreenInfo::kOn,
         Server::LockCursorToScreenInfo::kToggle
-    };
+    }};
 
     // send event
     Server::LockCursorToScreenInfo* info =
@@ -411,13 +412,13 @@ InputFilter::SwitchInDirectionAction::clone() const
 
 std::string InputFilter::SwitchInDirectionAction::format() const
 {
-    static const char* s_names[] = {
+    static const std::array<const char*, 5> s_names = {{
         "",
         "left",
         "right",
         "up",
         "down"
-    };
+    }};
 
     return barrier::string::sprintf("switchInDirection(%s)", s_names[m_direction]);
 }
@@ -470,7 +471,7 @@ InputFilter::KeyboardBroadcastAction::clone() const
 
 std::string InputFilter::KeyboardBroadcastAction::format() const
 {
-    static const char* s_mode[] = { "off", "on", "toggle" };
+    static const std::array<const char*, 3> s_mode = {{ "off", "on", "toggle" }};
     static const char* s_name = "keyboardBroadcast";
 
     if (m_screens.empty() || m_screens[0] == '*') {
@@ -485,11 +486,11 @@ std::string InputFilter::KeyboardBroadcastAction::format() const
 void
 InputFilter::KeyboardBroadcastAction::perform(const Event& event)
 {
-    static const Server::KeyboardBroadcastInfo::State s_state[] = {
+    static const std::array<Server::KeyboardBroadcastInfo::State, 3> s_state = {{
         Server::KeyboardBroadcastInfo::kOff,
         Server::KeyboardBroadcastInfo::kOn,
         Server::KeyboardBroadcastInfo::kToggle
-    };
+    }};
 
     // send event
     Server::KeyboardBroadcastInfo* info =

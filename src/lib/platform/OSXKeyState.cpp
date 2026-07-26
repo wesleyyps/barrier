@@ -17,6 +17,7 @@
  */
 
 #include "platform/OSXKeyState.h"
+#include <array>
 #include "platform/OSXUchrKeyResource.h"
 #include "platform/OSXMediaKeySupport.h"
 #include "arch/Arch.h"
@@ -51,7 +52,7 @@ public:
     KeyID                m_keyID;
     UInt32                m_virtualKey;
 };
-static const KeyEntry    s_controlKeys[] = {
+static const std::array<KeyEntry, 64> s_controlKeys = {{
     // cursor keys.  if we don't do this we'll may still get these from
     // the keyboard resource but they may not correspond to the arrow
     // keys.
@@ -133,7 +134,7 @@ static const KeyEntry    s_controlKeys[] = {
     { kKeyMuhenkan, s_int5VK },
     { kKeyHenkan, s_int4VK },
     { kKeyZenkaku, kVK_ANSI_Grave }
-};
+}};
 
 static void clearGroupList(std::vector<TISInputSourceRef>& groups) {
     for (auto & group : groups) {
@@ -314,13 +315,13 @@ OSXKeyState::mapKeyFromEvent(KeyIDs& ids,
     if (layoutValid) {
         // translate key
         UniCharCount count;
-        UniChar chars[2];
+        std::array<UniChar, 2> chars;
         LOG((CLOG_DEBUG2 "modifiers: %08x", modifiers & 0xffU));
         OSStatus status = UCKeyTranslate(layout,
                             vkCode & 0xffU, action,
                             (modifiers >> 8) & 0xffU,
                             LMGetKbdType(), 0, &m_deadKeyState,
-                            sizeof(chars) / sizeof(chars[0]), &count, chars);
+                            chars.size(), &count, chars.data());
 
         // get the characters
         if (status == 0) {
@@ -863,9 +864,9 @@ OSXKeyState::getGroups(GroupList& groups) const
     bool gotLayouts = false;
 
     // get number of layouts
-    CFStringRef keys[] = { kTISPropertyInputSourceCategory };
-    CFStringRef values[] = { kTISCategoryKeyboardInputSource };
-    CFDictionaryRef dict = CFDictionaryCreate(nullptr, reinterpret_cast<const void **>(keys), reinterpret_cast<const void **>(values), 1, nullptr, nullptr);
+    std::array<CFStringRef, 1> keys = {{ kTISPropertyInputSourceCategory }};
+    std::array<CFStringRef, 1> values = {{ kTISCategoryKeyboardInputSource }};
+    CFDictionaryRef dict = CFDictionaryCreate(nullptr, reinterpret_cast<const void **>(keys.data()), reinterpret_cast<const void **>(values.data()), 1, nullptr, nullptr);
     CFArrayRef kbds = TISCreateInputSourceList(dict, static_cast<Boolean>(false));
     n = CFArrayGetCount(kbds);
     gotLayouts = (n != 0);

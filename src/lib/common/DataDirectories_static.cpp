@@ -16,6 +16,7 @@
 */
 
 #include "DataDirectories.h"
+#include <array>
 
 namespace barrier {
 
@@ -23,10 +24,10 @@ fs::path DataDirectories::_profile;
 fs::path DataDirectories::_global;
 fs::path DataDirectories::_systemconfig;
 
-static const char kFingerprintsDirName[] = "SSL/Fingerprints";
-static const char kFingerprintsLocalFilename[] = "Local.txt";
-static const char kFingerprintsTrustedServersFilename[] = "TrustedServers.txt";
-static const char kFingerprintsTrustedClientsFilename[] = "TrustedClients.txt";
+static const char* kFingerprintsDirName = "SSL/Fingerprints";
+static const char* kFingerprintsLocalFilename = "Local.txt";
+static const char* kFingerprintsTrustedServersFilename = "TrustedServers.txt";
+static const char* kFingerprintsTrustedClientsFilename = "TrustedClients.txt";
 
 fs::path DataDirectories::ssl_fingerprints_path()
 {
