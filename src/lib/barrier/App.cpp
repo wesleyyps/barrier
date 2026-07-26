@@ -43,7 +43,7 @@
 #include <ApplicationServices/ApplicationServices.h>
 #endif
 
-#if defined(__APPLE__)
+#ifdef __APPLE__
 #include "platform/OSXDragSimulator.h"
 #endif
 
@@ -232,7 +232,7 @@ void App::run_events_loop()
 {
     m_events->loop();
 
-#if defined(MAC_OS_X_VERSION_10_7)
+#ifdef MAC_OS_X_VERSION_10_7
 
     stopCocoaLoop();
 

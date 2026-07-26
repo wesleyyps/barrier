@@ -113,7 +113,7 @@ OSXScreen::OSXScreen(IEventQueue* events, bool isPrimary, bool autoShowHideCurso
 		// only needed when running as a server.
 		if (m_isPrimary) {
 
-#if defined(MAC_OS_X_VERSION_10_9)
+#ifdef MAC_OS_X_VERSION_10_9
 			// we can't pass options to show the dialog, this must be done by the gui.
 			if (!AXIsProcessTrusted()) {
 				throw XArch("assistive devices does not trust this process, allow it in system settings.");
@@ -151,7 +151,7 @@ OSXScreen::OSXScreen(IEventQueue* events, bool isPrimary, bool autoShowHideCurso
 
 		// create thread for monitoring system power state.
 		*m_pmThreadReady = false;
-#if defined(MAC_OS_X_VERSION_10_7)
+#ifdef MAC_OS_X_VERSION_10_7
 		m_carbonLoopMutex = new Mutex();
 		m_carbonLoopReady = new CondVar<bool>(m_carbonLoopMutex, false);
 #endif
@@ -216,7 +216,7 @@ OSXScreen::~OSXScreen()
 	delete m_keyState;
 	delete m_screensaver;
 
-#if defined(MAC_OS_X_VERSION_10_7)
+#ifdef MAC_OS_X_VERSION_10_7
 	delete m_carbonLoopMutex;
 	delete m_carbonLoopReady;
 #endif
@@ -318,7 +318,8 @@ UInt32
 OSXScreen::registerHotKey(KeyID key, KeyModifierMask mask)
 {
 	// get mac virtual key and modifier mask matching barrier key and mask
-	UInt32 macKey, macMask;
+	UInt32 macKey;
+	UInt32 macMask;
 	if (!m_keyState->mapBarrierHotKeyToMac(key, mask, macKey, macMask)) {
 		LOG((CLOG_DEBUG "could not map hotkey id=%04x mask=%04x", key, mask));
 		return 0;
@@ -516,7 +517,8 @@ OSXScreen::fakeMouseButton(ButtonID id, bool press)
 
 	CGPoint pos;
 	if (!m_cursorPosValid) {
-		SInt32 x, y;
+		SInt32 x;
+		SInt32 y;
 		getCursorPos(x, y);
 	}
 	pos.x = m_xCursor;
@@ -585,7 +587,7 @@ OSXScreen::fakeMouseButton(ButtonID id, bool press)
 
 void OSXScreen::get_drop_target_thread()
 {
-#if defined(MAC_OS_X_VERSION_10_7)
+#ifdef MAC_OS_X_VERSION_10_7
 	char* cstr = nullptr;
 
 	// wait for 5 secs for the drop destinaiton string to be filled.
@@ -1290,7 +1292,7 @@ OSXScreen::onKey(CGEventRef event)
 		return true;
 	}
 
-	HotKeyToIDMap::const_iterator i = m_hotKeyToIDMap.find(HotKeyItem(virtualKey, m_keyState->mapModifiersToCarbon(macMask) & 0xff00u));
+	HotKeyToIDMap::const_iterator i = m_hotKeyToIDMap.find(HotKeyItem(virtualKey, m_keyState->mapModifiersToCarbon(macMask) & 0xff00U));
 	if (i != m_hotKeyToIDMap.end()) {
 		UInt32 id = i->second;
 		// determine event type
@@ -1672,7 +1674,7 @@ void OSXScreen::watchSystemPowerThread()
 	LOG((CLOG_DEBUG "waiting for event loop"));
 	m_events->waitForReady();
 
-#if defined(MAC_OS_X_VERSION_10_7)
+#ifdef MAC_OS_X_VERSION_10_7
 	{
 		Lock lockCarbon(m_carbonLoopMutex);
 		if (*m_carbonLoopReady == false) {
@@ -1959,9 +1961,9 @@ OSXScreen::handleCGInputEvent(CGEventTapProxy proxy,
 			break;
 		case kCGEventScrollWheel:
 			screen->onMouseWheel(screen->mapScrollWheelToBarrier(
-								 CGEventGetIntegerValueField(event, kCGScrollWheelEventFixedPtDeltaAxis2) / 65536.0f),
+								 CGEventGetIntegerValueField(event, kCGScrollWheelEventFixedPtDeltaAxis2) / 65536.0F),
 								 screen->mapScrollWheelToBarrier(
-								 CGEventGetIntegerValueField(event, kCGScrollWheelEventFixedPtDeltaAxis1) / 65536.0f));
+								 CGEventGetIntegerValueField(event, kCGScrollWheelEventFixedPtDeltaAxis1) / 65536.0F));
 			break;
 		case kCGEventKeyDown:
 		case kCGEventKeyUp:
@@ -2072,7 +2074,7 @@ OSXScreen::fakeDraggingFiles(DragFileList fileList)
 			fileList.at(0).getFilename());
 	}
 
-#if defined(MAC_OS_X_VERSION_10_7)
+#ifdef MAC_OS_X_VERSION_10_7
 	fakeDragging(fileExt.c_str(), m_xCursor, m_yCursor);
 #else
 	LOG((CLOG_WARN "drag drop not supported"));
@@ -2107,7 +2109,7 @@ OSXScreen::getDraggingFilename()
 void
 OSXScreen::waitForCarbonLoop() const
 {
-#if defined(MAC_OS_X_VERSION_10_7)
+#ifdef MAC_OS_X_VERSION_10_7
 	if (*m_carbonLoopReady) {
 		LOG((CLOG_DEBUG "carbon loop already ready"));
 		return;

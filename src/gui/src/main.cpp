@@ -30,7 +30,7 @@
 #include <QSettings>
 #include <QMessageBox>
 
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
 #include <Carbon/Carbon.h>
 #endif
 
@@ -49,7 +49,7 @@ public:
 
 int waitForTray();
 
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
 bool checkMacAssistiveDevices();
 #endif
 
@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
 
 	QBarrierApplication app(argc, argv);
 
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
 	if (app.applicationDirPath().startsWith("/Volumes/")) {
         // macOS preferences track applications allowed assistive access by path
         // Unfortunately, there's no user-friendly way to allow assistive access
@@ -153,7 +153,7 @@ int waitForTray()
 	return true;
 }
 
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
 bool checkMacAssistiveDevices()
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090 // mavericks

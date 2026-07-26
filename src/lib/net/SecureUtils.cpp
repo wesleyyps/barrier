@@ -245,7 +245,8 @@ std::string create_fingerprint_randomart(const std::vector<std::uint8_t>& dgst_r
     std::uint8_t field[FLDSIZE_X][FLDSIZE_Y];
     std::size_t i;
     std::uint32_t b;
-    int	 x, y;
+    int	 x;
+    int	 y;
     std::size_t len = strlen(augmentation_string) - 1;
 
     std::vector<char> retval;

@@ -75,7 +75,7 @@ OSXUchrKeyResource::OSXUchrKeyResource(const void* resource,
     // find the space key, but only if it can combine with dead keys.
     // a dead key followed by a space yields the non-dead version of
     // the dead key.
-    m_spaceOutput = 0xffffu;
+    m_spaceOutput = 0xffffU;
     UInt32 table  = getTableForModifier(0);
     for (UInt32 button = 0, n = getNumButtons(); button < n; ++button) {
         KeyID id = getKey(table, button);
@@ -182,7 +182,7 @@ OSXUchrKeyResource::getDeadKey(
     }
 
     // no dead keys if we couldn't find the space key
-    if (m_spaceOutput == 0xffffu) {
+    if (m_spaceOutput == 0xffffU) {
         return false;
     }
 

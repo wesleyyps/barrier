@@ -48,7 +48,7 @@
 #include "platform/OSXScreen.h"
 #endif
 
-#if defined(__APPLE__)
+#ifdef __APPLE__
 #include "platform/OSXDragSimulator.h"
 #endif
 
@@ -460,7 +460,7 @@ ClientApp::mainLoop()
     // that.
     DAEMON_RUNNING(true);
 
-#if defined(MAC_OS_X_VERSION_10_7)
+#ifdef MAC_OS_X_VERSION_10_7
 
     Thread thread([this](){ run_events_loop(); });
 

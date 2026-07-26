@@ -47,17 +47,17 @@
 #include <QDesktopServices>
 #include <QDesktopWidget>
 
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
 #include <ApplicationServices/ApplicationServices.h>
 #endif
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #endif
 
 static const QString allFilesFilter(QObject::tr("All files (*.*)"));
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
 static const char barrierConfigName[] = "barrier.sgc";
 static const QString barrierConfigFilter(QObject::tr("Barrier Configurations (*.sgc)"));
 static QString bonjourBaseUrl = "http://binaries.symless.com/bonjour/";
@@ -73,7 +73,7 @@ static const QString barrierConfigSaveFilter(barrierConfigFilter);
 
 static const char* barrierIconFiles[] =
 {
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
     ":/res/icons/32x32/barrier-disconnected-mask.png",
     ":/res/icons/32x32/barrier-disconnected-mask.png",
     ":/res/icons/32x32/barrier-connected-mask.png",
@@ -136,7 +136,7 @@ MainWindow::MainWindow(QSettings& settings, AppConfig& appConfig) :
     m_pLabelScreenName->setText(getScreenName());
     m_pLabelIpAddresses->setText(getIPAddresses());
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     // ipc must always be enabled, so that we can disable command when switching to desktop mode.
     connect(&m_IpcClient, SIGNAL(readLogLine(const QString&)), this, SLOT(appendLogRaw(const QString&)));
     connect(&m_IpcClient, SIGNAL(errorMessage(const QString&)), this, SLOT(appendLogError(const QString&)));
@@ -145,7 +145,7 @@ MainWindow::MainWindow(QSettings& settings, AppConfig& appConfig) :
 #endif
 
     // change default size based on os
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
     resize(720, 550);
     setMinimumSize(720, 0);
 #elif defined(Q_OS_LINUX)
@@ -324,7 +324,7 @@ void MainWindow::setIcon(qBarrierState state)
 {
     if (m_pTrayIcon) {
         QIcon icon = QIcon::fromTheme(barrierIconNames[state], QIcon(barrierIconFiles[state]));
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
         icon.setIsMask(true);
 #endif
         m_pTrayIcon->setIcon(icon);
@@ -524,7 +524,7 @@ void MainWindow::startBarrier()
         // tell client/server to talk to daemon through ipc.
         args << "--ipc";
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
         // tell the client/server to shut down when a ms windows desk
         // is switched; this is because we may need to elevate or not
         // based on which desk the user is in (login always needs
@@ -552,7 +552,7 @@ void MainWindow::startBarrier()
         args << "--disable-crypto";
     }
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     // on windows, the profile directory changes depending on the user that
     // launched the process (e.g. when launched with elevation). setting the
     // profile dir on launch ensures it uses the same profile dir is used
@@ -618,7 +618,7 @@ bool MainWindow::clientArgs(QStringList& args, QString& app)
         return false;
     }
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     // wrap in quotes so a malicious user can't start \Program.exe as admin.
     app = QString("\"%1\"").arg(app);
 #endif
@@ -715,7 +715,7 @@ bool MainWindow::serverArgs(QStringList& args, QString& app)
         return false;
     }
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     // wrap in quotes so a malicious user can't start \Program.exe as admin.
     app = QString("\"%1\"").arg(app);
 #endif
@@ -732,7 +732,7 @@ bool MainWindow::serverArgs(QStringList& args, QString& app)
     }
 
     QString configFilename = this->configFilename();
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     // wrap in quotes in case username contains spaces.
     configFilename = QString("\"%1\"").arg(configFilename);
 #endif
@@ -760,7 +760,7 @@ void MainWindow::stopBarrier()
 
     // HACK: deleting the object deletes the physical file, which is
     // bad, since it could be in use by the Windows service!
-#if !defined(Q_OS_WIN)
+#ifndef Q_OS_WIN
     delete m_pTempConfigFile;
 #endif
     m_pTempConfigFile = nullptr;
@@ -1152,7 +1152,7 @@ void MainWindow::on_m_pButtonReload_clicked()
     restartBarrier();
 }
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
 bool MainWindow::isServiceRunning(QString name)
 {
     SC_HANDLE hSCManager;
@@ -1191,7 +1191,7 @@ bool MainWindow::isBonjourRunning()
 {
     bool result = false;
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     result = isServiceRunning("Bonjour Service");
 #else
     result = true;
@@ -1202,7 +1202,7 @@ bool MainWindow::isBonjourRunning()
 
 void MainWindow::downloadBonjour()
 {
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     QUrl url;
     int arch = getProcessorArch();
     if (arch == kProcessorArchWin32) {
@@ -1247,7 +1247,7 @@ void MainWindow::downloadBonjour()
 
 void MainWindow::installBonjour()
 {
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
 #if QT_VERSION >= 0x050000
     QString tempLocation = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
 #else

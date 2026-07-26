@@ -52,8 +52,8 @@ static
 void
 toLE(UInt8*& dst, UInt16 src)
 {
-    dst[0] = static_cast<UInt8>(src & 0xffu);
-    dst[1] = static_cast<UInt8>((src >> 8) & 0xffu);
+    dst[0] = static_cast<UInt8>(src & 0xffU);
+    dst[1] = static_cast<UInt8>((src >> 8) & 0xffU);
     dst += 2;
 }
 
@@ -61,10 +61,10 @@ static
 void
 toLE(UInt8*& dst, UInt32 src)
 {
-    dst[0] = static_cast<UInt8>(src & 0xffu);
-    dst[1] = static_cast<UInt8>((src >> 8) & 0xffu);
-    dst[2] = static_cast<UInt8>((src >> 16) & 0xffu);
-    dst[3] = static_cast<UInt8>((src >> 24) & 0xffu);
+    dst[0] = static_cast<UInt8>(src & 0xffU);
+    dst[1] = static_cast<UInt8>((src >> 8) & 0xffU);
+    dst[2] = static_cast<UInt8>((src >> 16) & 0xffU);
+    dst[3] = static_cast<UInt8>((src >> 24) & 0xffU);
     dst += 4;
 }
 

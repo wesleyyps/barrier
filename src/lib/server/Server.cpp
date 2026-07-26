@@ -530,7 +530,8 @@ Server::jumpToScreen(BaseClientProxy* newScreen)
 	m_active->setJumpCursorPos(m_x, m_y);
 
 	// get the last cursor position on the target screen
-	SInt32 x, y;
+	SInt32 x;
+	SInt32 y;
 	newScreen->getJumpCursorPos(x, y);
 
 	switchScreen(newScreen, x, y, false);
@@ -540,29 +541,35 @@ float
 Server::mapToFraction(BaseClientProxy* client,
 				EDirection dir, SInt32 x, SInt32 y) const
 {
-	SInt32 sx, sy, sw, sh;
+	SInt32 sx;
+	SInt32 sy;
+	SInt32 sw;
+	SInt32 sh;
 	client->getShape(sx, sy, sw, sh);
 	switch (dir) {
 	case kLeft:
 	case kRight:
-		return static_cast<float>(y - sy + 0.5f) / static_cast<float>(sh);
+		return static_cast<float>(y - sy + 0.5F) / static_cast<float>(sh);
 
 	case kTop:
 	case kBottom:
-		return static_cast<float>(x - sx + 0.5f) / static_cast<float>(sw);
+		return static_cast<float>(x - sx + 0.5F) / static_cast<float>(sw);
 
 	case kNoDirection:
 		assert(0 && "bad direction");
 		break;
 	}
-	return 0.0f;
+	return 0.0F;
 }
 
 void
 Server::mapToPixel(BaseClientProxy* client,
 				EDirection dir, float f, SInt32& x, SInt32& y) const
 {
-	SInt32 sx, sy, sw, sh;
+	SInt32 sx;
+	SInt32 sy;
+	SInt32 sw;
+	SInt32 sh;
 	client->getShape(sx, sy, sw, sh);
 	switch (dir) {
 	case kLeft:
@@ -652,7 +659,10 @@ Server::mapToNeighbor(BaseClientProxy* src,
 	}
 
 	// get the source screen's size
-	SInt32 dx, dy, dw, dh;
+	SInt32 dx;
+	SInt32 dy;
+	SInt32 dw;
+	SInt32 dh;
 	BaseClientProxy* lastGoodScreen = src;
 	lastGoodScreen->getShape(dx, dy, dw, dh);
 
@@ -754,7 +764,10 @@ Server::avoidJumpZone(BaseClientProxy* dst,
 	}
 
     const std::string dstName(getName(dst));
-	SInt32 dx, dy, dw, dh;
+	SInt32 dx;
+	SInt32 dy;
+	SInt32 dw;
+	SInt32 dh;
 	dst->getShape(dx, dy, dw, dh);
 	float t = mapToFraction(dst, dir, x, y);
 	SInt32 z = getJumpZoneSize(dst);
@@ -931,7 +944,10 @@ Server::armSwitchTwoTap(SInt32 x, SInt32 y)
 		else if (!m_switchTwoTapArmed) {
 			// still time for a double tap.  see if we left the tap
 			// zone and, if so, arm the two tap.
-			SInt32 ax, ay, aw, ah;
+			SInt32 ax;
+			SInt32 ay;
+			SInt32 aw;
+			SInt32 ah;
 			m_active->getShape(ax, ay, aw, ah);
 			SInt32 tapZone = m_primaryClient->getJumpZoneSize();
 			if (tapZone < m_switchTwoTapZone) {
@@ -1021,7 +1037,10 @@ Server::getCorner(BaseClientProxy* client,
 	assert(client != NULL);
 
 	// get client screen shape
-	SInt32 ax, ay, aw, ah;
+	SInt32 ax;
+	SInt32 ay;
+	SInt32 aw;
+	SInt32 ah;
 	client->getShape(ax, ay, aw, ah);
 
 	// check for x,y on the left or right
@@ -1076,7 +1095,10 @@ Server::stopRelativeMoves()
 {
 	if (m_relativeMoves && m_active != m_primaryClient) {
 		// warp to the center of the active client so we know where we are
-		SInt32 ax, ay, aw, ah;
+		SInt32 ax;
+		SInt32 ay;
+		SInt32 aw;
+		SInt32 ah;
 		m_active->getShape(ax, ay, aw, ah);
 		m_x       = ax + (aw >> 1);
 		m_y       = ay + (ah >> 1);
@@ -1190,7 +1212,8 @@ Server::handleShapeChanged(const Event&, void* vclient)
 	LOG((CLOG_DEBUG "screen \"%s\" shape changed", getName(client).c_str()));
 
 	// update jump coordinate
-	SInt32 x, y;
+	SInt32 x;
+	SInt32 y;
 	client->getCursorPos(x, y);
 	client->setJumpCursorPos(x, y);
 
@@ -1426,7 +1449,8 @@ Server::handleSwitchInDirectionEvent(const Event& event, void*)
 		static_cast<SwitchInDirectionInfo*>(event.getData());
 
 	// jump to screen in chosen direction from center of this screen
-	SInt32 x = m_x, y = m_y;
+	SInt32 x = m_x;
+	SInt32 y = m_y;
 	BaseClientProxy* newScreen =
 		getNeighbor(m_active, info->m_direction, x, y);
 	if (newScreen == nullptr) {
@@ -1589,7 +1613,10 @@ Server::onScreensaver(bool activated)
 		if (m_activeSaver != nullptr && m_activeSaver != m_primaryClient) {
 			// check position
 			BaseClientProxy* screen = m_activeSaver;
-			SInt32 x, y, w, h;
+			SInt32 x;
+			SInt32 y;
+			SInt32 w;
+			SInt32 h;
 			screen->getShape(x, y, w, h);
 			SInt32 zoneSize = getJumpZoneSize(screen);
 			if (m_xSaver < x + zoneSize) {
@@ -1750,12 +1777,16 @@ Server::onMouseMovePrimary(SInt32 x, SInt32 y)
 	m_y       = y;
 
 	// get screen shape
-	SInt32 ax, ay, aw, ah;
+	SInt32 ax;
+	SInt32 ay;
+	SInt32 aw;
+	SInt32 ah;
 	m_active->getShape(ax, ay, aw, ah);
 	SInt32 zoneSize = getJumpZoneSize(m_active);
 
 	// clamp position to screen
-	SInt32 xc = x, yc = y;
+	SInt32 xc = x;
+	SInt32 yc = y;
 	if (xc < ax + zoneSize) {
 		xc = ax;
 	}
@@ -1772,8 +1803,10 @@ Server::onMouseMovePrimary(SInt32 x, SInt32 y)
 	// see if we should change screens
 	// when the cursor is in a corner, there may be a screen either
 	// horizontally or vertically.  check both directions.
-	EDirection dirh = kNoDirection, dirv = kNoDirection;
-	SInt32 xh = x, yv = y;
+	EDirection dirh = kNoDirection;
+	EDirection dirv = kNoDirection;
+	SInt32 xh = x;
+	SInt32 yv = y;
 	if (x < ax + zoneSize) {
 		xh  -= zoneSize;
 		dirh = kLeft;
@@ -1798,7 +1831,8 @@ Server::onMouseMovePrimary(SInt32 x, SInt32 y)
 
 	// check both horizontally and vertically
 	EDirection dirs[] = {dirh, dirv};
-	SInt32 xs[] = {xh, x}, ys[] = {y, yv};
+	SInt32 xs[] = {xh, x};
+	SInt32 ys[] = {y, yv};
 	for (int i = 0; i < 2; ++i) {
 		EDirection dir = dirs[i];
 		if (dir == kNoDirection) {
@@ -1843,7 +1877,7 @@ void Server::send_drag_info_thread(BaseClientProxy* newScreen)
 		m_dragFileList.push_back(di);
 	}
 
-#if defined(__APPLE__)
+#ifdef __APPLE__
 	// on mac it seems that after faking a LMB up, system would signal back
 	// to barrier a mouse up event, which doesn't happen on windows. as a
 	// result, barrier would send dragging file to client twice. This variable
@@ -1920,7 +1954,10 @@ Server::onMouseMoveSecondary(SInt32 dx, SInt32 dy)
 	m_y      += dy;
 
 	// get screen shape
-	SInt32 ax, ay, aw, ah;
+	SInt32 ax;
+	SInt32 ay;
+	SInt32 aw;
+	SInt32 ah;
 	m_active->getShape(ax, ay, aw, ah);
 
 	// find direction of neighbor and get the neighbor
@@ -1928,7 +1965,8 @@ Server::onMouseMoveSecondary(SInt32 dx, SInt32 dy)
 	BaseClientProxy* newScreen;
 	do {
 		// clamp position to screen
-		SInt32 xc = m_x, yc = m_y;
+		SInt32 xc = m_x;
+		SInt32 yc = m_y;
 		if (xc < ax) {
 			xc = ax;
 		}
@@ -2117,7 +2155,8 @@ Server::addClient(BaseClientProxy* client)
 	m_clients.insert(std::make_pair(name, client));
 
 	// initialize client data
-	SInt32 x, y;
+	SInt32 x;
+	SInt32 y;
 	client->getCursorPos(x, y);
 	client->setJumpCursorPos(x, y);
 

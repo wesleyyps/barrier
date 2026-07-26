@@ -63,7 +63,7 @@ AddClientDialog::AddClientDialog(const QString& clientName, QWidget* parent) :
     m_pLabelCenter->setPixmap(QPixmap(":res/icons/64x64/video-display.png"));
     gridLayout->addWidget(m_pLabelCenter, 2, 1, 1, 1, Qt::AlignCenter);
 
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
     m_pDialogButtonBox->setLayoutDirection(Qt::RightToLeft);
 #endif
 

@@ -22,7 +22,7 @@
 #include <QtCore>
 #include <QtNetwork>
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
 const char AppConfig::m_BarriersName[] = "barriers.exe";
 const char AppConfig::m_BarriercName[] = "barrierc.exe";
 const char AppConfig::m_BarrierLogDir[] = "log/";
@@ -87,7 +87,7 @@ const QString &AppConfig::logFilename() const { return m_LogFilename; }
 
 QString AppConfig::barrierLogDir() const
 {
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     // on windows, we want to log to program files
     return barrierProgramDir() + "log/";
 #else
@@ -116,7 +116,7 @@ void AppConfig::persistLogDir()
 const QString AppConfig::logFilenameCmd() const
 {
     QString filename = m_LogFilename;
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     // wrap in quotes in case username contains spaces.
     filename = QString("\"%1\"").arg(filename);
 #endif

@@ -53,7 +53,7 @@ SettingsDialog::SettingsDialog(QWidget* parent, AppConfig& config) :
     m_pCheckBoxEnableCrypto->setChecked(m_appConfig.getCryptoEnabled());
     checkbox_require_client_certificate->setChecked(m_appConfig.getRequireClientCertificate());
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     m_pComboElevate->setCurrentIndex(static_cast<int>(appConfig().elevateMode()));
 #else
     // elevate checkbox is only useful on ms windows.

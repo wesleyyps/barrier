@@ -111,7 +111,7 @@ ArchMultithreadPosix::ArchMultithreadPosix() :
     // to install it now.
     struct sigaction act;
     sigemptyset(&act.sa_mask);
-# if defined(SA_INTERRUPT)
+# ifdef SA_INTERRUPT
     act.sa_flags   = SA_INTERRUPT;
 # else
     act.sa_flags   = 0;
@@ -557,7 +557,8 @@ ArchMultithreadPosix::startSignalHandler()
 {
     // set signal mask.  the main thread blocks these signals and
     // the signal handler thread will listen for them.
-    sigset_t sigset, oldsigset;
+    sigset_t sigset;
+    sigset_t oldsigset;
     setSignalSet(&sigset);
     pthread_sigmask(SIG_BLOCK, &sigset, &oldsigset);
 

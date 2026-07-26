@@ -36,7 +36,7 @@ static std::string pw_dir(struct passwd* pwentp)
 static fs::path unix_home()
 {
     long size = -1;
-#if defined(_SC_GETPW_R_SIZE_MAX)
+#ifdef _SC_GETPW_R_SIZE_MAX
     size = sysconf(_SC_GETPW_R_SIZE_MAX);
 #endif
     if (size == -1)

@@ -47,3 +47,4 @@ When a bug category is addressed, it must be logged here with the files affected
 | 2026-07-26 | MODERNIZE_C_CASTS | Across codebase (66 files) | 3494eb86 | Replaced legacy C-style casts with static_cast/const_cast/reinterpret_cast. | **COMMITTED** |
 | 2026-07-26 | MODERNIZE_USE_AUTO | Across codebase (66 files) | 3494eb86 | Replaced explicit types (like iterators) with `auto` where types are obvious from RHS. | **COMMITTED** |
 | 2026-07-26 | MODERNIZE_LOOP_CONVERT | Across codebase (66 files) | 3494eb86 | Converted index-based or iterator-based `for` loops to modern C++11 range-based loops. | **COMMITTED** |
+| 2026-07-26 | MODERNIZE_USE_NULLPTR | Across codebase (82 files) | e354b4ba | Completely eliminated nearly 600 legacy `NULL` and `0` assignments, replacing them with C++11 `nullptr`. | **COMMITTED** |

@@ -37,7 +37,7 @@ ArchSystemUnix::~ArchSystemUnix()
 std::string
 ArchSystemUnix::getOSName() const
 {
-#if defined(HAVE_SYS_UTSNAME_H)
+#ifdef HAVE_SYS_UTSNAME_H
     struct utsname info;
     if (uname(&info) == 0) {
         std::string msg;
@@ -53,7 +53,7 @@ ArchSystemUnix::getOSName() const
 std::string
 ArchSystemUnix::getPlatformName() const
 {
-#if defined(HAVE_SYS_UTSNAME_H)
+#ifdef HAVE_SYS_UTSNAME_H
     struct utsname info;
     if (uname(&info) == 0) {
         return std::string(info.machine);

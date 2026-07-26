@@ -454,7 +454,8 @@ std::string Config::getNeighbor(const std::string& srcName, EDirection srcSide,
 	}
 
 	// find edge
-	const CellEdge* srcEdge, *dstEdge;
+	const CellEdge * srcEdge;
+	const CellEdge *dstEdge;
 	if (!index->second.getLink(srcSide, position, srcEdge, dstEdge)) {
 		// no neighbor
 		return "";
@@ -472,7 +473,7 @@ std::string Config::getNeighbor(const std::string& srcName, EDirection srcSide,
 
 bool Config::hasNeighbor(const std::string& srcName, EDirection srcSide) const
 {
-	return hasNeighbor(srcName, srcSide, 0.0f, 1.0f);
+	return hasNeighbor(srcName, srcSide, 0.0F, 1.0F);
 }
 
 bool Config::hasNeighbor(const std::string& srcName, EDirection srcSide,
@@ -617,11 +618,11 @@ Config::getInputFilter()
 
 std::string Config::formatInterval(const Interval& x)
 {
-	if (x.first == 0.0f && x.second == 1.0f) {
+	if (x.first == 0.0F && x.second == 1.0F) {
 		return "";
 	}
-	return barrier::string::sprintf("(%d,%d)", static_cast<int>(x.first * 100.0f + 0.5f),
-										static_cast<int>(x.second * 100.0f + 0.5f));
+	return barrier::string::sprintf("(%d,%d)", static_cast<int>(x.first * 100.0F + 0.5F),
+										static_cast<int>(x.second * 100.0F + 0.5F));
 }
 
 void
@@ -688,8 +689,10 @@ Config::readSectionOptions(ConfigReadContext& s)
 		//   values       := valueAndArgs[,valueAndArgs]...
 		//   valueAndArgs := <value>[(arg[,...])]
         std::string::size_type i = 0;
-        std::string name, value;
-		ConfigReadContext::ArgList nameArgs, valueArgs;
+        std::string name;
+        std::string value;
+		ConfigReadContext::ArgList nameArgs;
+		ConfigReadContext::ArgList valueArgs;
 		s.parseNameWithArgs("name", line, "=", i, name, nameArgs);
 		++i;
 		s.parseNameWithArgs("value", line, ",;\n", i, value, valueArgs);
@@ -938,8 +941,12 @@ Config::readSectionLinks(ConfigReadContext& s)
 			// in the range [0,100] and start < end.  if not given the
 			// interval is taken to be (0,100).
             std::string::size_type i = 0;
-            std::string side, dstScreen, srcArgString, dstArgString;
-			ConfigReadContext::ArgList srcArgs, dstArgs;
+            std::string side;
+            std::string dstScreen;
+            std::string srcArgString;
+            std::string dstArgString;
+			ConfigReadContext::ArgList srcArgs;
+			ConfigReadContext::ArgList dstArgs;
 			s.parseNameWithArgs("link", line, "=", i, side, srcArgs);
 			++i;
 			s.parseNameWithArgs("screen", line, "", i, dstScreen, dstArgs);
@@ -2036,7 +2043,7 @@ Config::Interval
 ConfigReadContext::parseInterval(const ArgList& args) const
 {
 	if (args.size() == 0) {
-		return Config::Interval(0.0f, 1.0f);
+		return Config::Interval(0.0F, 1.0F);
 	}
 	if (args.size() != 2 || args[0].empty() || args[1].empty()) {
 		throw XConfigRead(*this, "invalid interval \"%{1}\"", concatArgs(args));
@@ -2058,7 +2065,7 @@ ConfigReadContext::parseInterval(const ArgList& args) const
 		throw XConfigRead(*this, "invalid interval \"%{1}\"", concatArgs(args));
 	}
 
-	return Config::Interval(startValue / 100.0f, endValue / 100.0f);
+	return Config::Interval(startValue / 100.0F, endValue / 100.0F);
 }
 
 void ConfigReadContext::parseNameWithArgs(const std::string& type, const std::string& line,

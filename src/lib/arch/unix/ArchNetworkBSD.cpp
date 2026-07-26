@@ -27,7 +27,7 @@
 #endif
 #include <netinet/in.h>
 #include <netdb.h>
-#if !defined(TCP_NODELAY)
+#ifndef TCP_NODELAY
 #    include <netinet/tcp.h>
 #endif
 #include <arpa/inet.h>
@@ -926,7 +926,7 @@ ArchNetworkBSD::throwError(int err)
     case ENOBUFS:
     case ENOMEM:
     case ENETDOWN:
-#if defined(ENOSR)
+#ifdef ENOSR
     case ENOSR:
 #endif
         throw XArchNetworkResource(new XArchEvalUnix(err));
@@ -940,7 +940,7 @@ ArchNetworkBSD::throwError(int err)
     case ENOPROTOOPT:
     case EOPNOTSUPP:
     case ESHUTDOWN:
-#if defined(ENOPKG)
+#ifdef ENOPKG
     case ENOPKG:
 #endif
         throw XArchNetworkSupport(new XArchEvalUnix(err));

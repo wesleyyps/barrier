@@ -427,7 +427,13 @@ bool
 ClientProxy1_0::recvInfo()
 {
     // parse the message
-    SInt16 x, y, w, h, dummy1, mx, my;
+    SInt16 x;
+    SInt16 y;
+    SInt16 w;
+    SInt16 h;
+    SInt16 dummy1;
+    SInt16 mx;
+    SInt16 my;
     if (!ProtocolUtil::readf(getStream(), kMsgDInfo + 4,
                             &x, &y, &w, &h, &dummy1, &mx, &my)) {
         return false;

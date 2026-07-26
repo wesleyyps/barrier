@@ -196,7 +196,8 @@ ServerProxy::parseHandshakeMessage(const UInt8* code)
     }
 
     else if (memcmp(code, kMsgEIncompatible, 4) == 0) {
-        SInt32 major, minor;
+        SInt32 major;
+        SInt32 minor;
         ProtocolUtil::readf(m_stream,
                         kMsgEIncompatible + 4, &major, &minor);
         LOG((CLOG_ERR "server has incompatible version %d.%d", major, minor));
@@ -526,7 +527,8 @@ void
 ServerProxy::enter()
 {
     // parse
-    SInt16 x, y;
+    SInt16 x;
+    SInt16 y;
     UInt16 mask;
     UInt32 seqNum;
     ProtocolUtil::readf(m_stream, kMsgCEnter + 4, &x, &y, &seqNum, &mask);
@@ -607,7 +609,9 @@ ServerProxy::keyDown()
     flushCompressedMouse();
 
     // parse
-    UInt16 id, mask, button;
+    UInt16 id;
+    UInt16 mask;
+    UInt16 button;
     ProtocolUtil::readf(m_stream, kMsgDKeyDown + 4, &id, &mask, &button);
     LOG((CLOG_DEBUG1 "recv key down id=0x%08x, mask=0x%04x, button=0x%04x", id, mask, button));
 
@@ -630,7 +634,10 @@ ServerProxy::keyRepeat()
     flushCompressedMouse();
 
     // parse
-    UInt16 id, mask, count, button;
+    UInt16 id;
+    UInt16 mask;
+    UInt16 count;
+    UInt16 button;
     ProtocolUtil::readf(m_stream, kMsgDKeyRepeat + 4,
                                 &id, &mask, &count, &button);
     LOG((CLOG_DEBUG1 "recv key repeat id=0x%08x, mask=0x%04x, count=%d, button=0x%04x", id, mask, count, button));
@@ -654,7 +661,9 @@ ServerProxy::keyUp()
     flushCompressedMouse();
 
     // parse
-    UInt16 id, mask, button;
+    UInt16 id;
+    UInt16 mask;
+    UInt16 button;
     ProtocolUtil::readf(m_stream, kMsgDKeyUp + 4, &id, &mask, &button);
     LOG((CLOG_DEBUG1 "recv key up id=0x%08x, mask=0x%04x, button=0x%04x", id, mask, button));
 
@@ -705,7 +714,8 @@ ServerProxy::mouseMove()
 {
     // parse
     bool ignore;
-    SInt16 x, y;
+    SInt16 x;
+    SInt16 y;
     ProtocolUtil::readf(m_stream, kMsgDMouseMove + 4, &x, &y);
 
     // note if we should ignore the move
@@ -738,7 +748,8 @@ ServerProxy::mouseRelativeMove()
 {
     // parse
     bool ignore;
-    SInt16 dx, dy;
+    SInt16 dx;
+    SInt16 dy;
     ProtocolUtil::readf(m_stream, kMsgDMouseRelMove + 4, &dx, &dy);
 
     // note if we should ignore the move
@@ -770,7 +781,8 @@ ServerProxy::mouseWheel()
     flushCompressedMouse();
 
     // parse
-    SInt16 xDelta, yDelta;
+    SInt16 xDelta;
+    SInt16 yDelta;
     ProtocolUtil::readf(m_stream, kMsgDMouseWheel + 4, &xDelta, &yDelta);
     LOG((CLOG_DEBUG2 "recv mouse wheel %+d,%+d", xDelta, yDelta));
 

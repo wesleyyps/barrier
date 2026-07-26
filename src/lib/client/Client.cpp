@@ -685,7 +685,8 @@ Client::handleClipboardGrabbed(const Event& event, void*)
 void
 Client::handleHello(const Event&, void*)
 {
-    SInt16 major, minor;
+    SInt16 major;
+    SInt16 minor;
     if (!ProtocolUtil::readf(m_stream, kMsgHello, &major, &minor)) {
         sendConnectionFailedEvent("Protocol error from server, check encryption settings");
         cleanupTimer();

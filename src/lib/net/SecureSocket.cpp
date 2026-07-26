@@ -44,7 +44,7 @@
 #define MAX_ERROR_SIZE 65535
 
 static const std::size_t MAX_INPUT_BUFFER_SIZE = 1024 * 1024;
-static const float s_retryDelay = 0.01f;
+static const float s_retryDelay = 0.01F;
 
 enum {
     kMsgSize = 128
@@ -702,7 +702,8 @@ bool SecureSocket::verify_cert_fingerprint(const barrier::fs::path& fingerprint_
     // ssl_mutex_ is assumed to be acquired
 
     // calculate received certificate fingerprint
-    barrier::FingerprintData fingerprint_sha1, fingerprint_sha256;
+    barrier::FingerprintData fingerprint_sha1;
+    barrier::FingerprintData fingerprint_sha256;
     try {
         auto* cert = SSL_get_peer_certificate(m_ssl->m_ssl);
         fingerprint_sha1 = barrier::get_ssl_cert_fingerprint(cert,

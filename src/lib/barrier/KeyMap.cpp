@@ -490,7 +490,7 @@ KeyMap::setModifierKeys()
                 // add key to each indicated modifier in this group
                 for (SInt32 b = 0; b < kKeyModifierNumBits; ++b) {
                     // skip if item doesn't generate bit b
-                    if (((1u << b) & item.m_generates) != 0) {
+                    if (((1U << b) & item.m_generates) != 0) {
                         SInt32 mIndex = static_cast<SInt32>(g) * kKeyModifierNumBits + b;
                         m_modifierKeys[mIndex].push_back(&item);
                     }
@@ -507,7 +507,7 @@ KeyMap::mapCommandKey(Keystrokes& keys, KeyID id, SInt32 group,
                 KeyModifierMask desiredMask,
                 bool isAutoRepeat) const
 {
-    static const KeyModifierMask s_overrideModifiers = 0xffffu;
+    static const KeyModifierMask s_overrideModifiers = 0xffffU;
 
     // find KeySym in table
     auto i = m_keyIDMap.find(id);
@@ -804,7 +804,7 @@ KeyMap::keysForKeyItem(const KeyItem& keyItem, SInt32& group,
                                 desiredState,
                                 ~(sensitive | keyItem.m_generates),
                                 s_notRequiredMask, keystrokes)) {
-            LOG((CLOG_DEBUG1 "unable to match desired modifier state (%04x,%04x) for key %d", desiredState, ~keyItem.m_sensitive & 0xffffu, keyItem.m_button));
+            LOG((CLOG_DEBUG1 "unable to match desired modifier state (%04x,%04x) for key %d", desiredState, ~keyItem.m_sensitive & 0xffffU, keyItem.m_button));
             return false;
         }
 
@@ -828,7 +828,8 @@ KeyMap::keysToRestoreModifiers(const KeyItem& keyItem, SInt32,
     ModifierToKeys oldModifiers = activeModifiers;
 
     // get the pressed modifier buttons before and after
-    ButtonToKeyMap oldKeys, newKeys;
+    ButtonToKeyMap oldKeys;
+    ButtonToKeyMap newKeys;
     collectButtons(oldModifiers, oldKeys);
     collectButtons(desiredModifiers, newKeys);
 
@@ -878,7 +879,7 @@ KeyMap::keysForModifierState(KeyButton button, SInt32 group,
     // to work if the key itself is a modifier (the numlock toggle can
     // interfere) so we don't try to match at all.
     flipMask &= ~notRequiredMask;
-    LOG((CLOG_DEBUG1 "flip: %04x (%04x vs %04x in %04x - %04x)", flipMask, currentState, requiredState, sensitiveMask & 0xffffu, notRequiredMask & 0xffffu));
+    LOG((CLOG_DEBUG1 "flip: %04x (%04x vs %04x in %04x - %04x)", flipMask, currentState, requiredState, sensitiveMask & 0xffffU, notRequiredMask & 0xffffU));
     if (flipMask == 0) {
         return true;
     }
@@ -890,7 +891,7 @@ KeyMap::keysForModifierState(KeyButton button, SInt32 group,
     // with lower bits.  there's not much basis for that assumption except
     // that we're pretty sure shift isn't changed by other modifiers.
     for (SInt32 bit = kKeyModifierNumBits; bit-- > 0; ) {
-        KeyModifierMask mask = (1u << bit);
+        KeyModifierMask mask = (1U << bit);
         if ((flipMask & mask) == 0) {
             // modifier is already correct
             continue;
@@ -1097,7 +1098,7 @@ KeyMap::getDeadKey(KeyID key)
         return kKeyDeadGrave;
 
     case '\'':
-    case 0xb4u:
+    case 0xb4U:
         return kKeyDeadAcute;
 
     case '^':
@@ -1105,36 +1106,36 @@ KeyMap::getDeadKey(KeyID key)
         return kKeyDeadCircumflex;
 
     case '~':
-    case 0x2dcu:
+    case 0x2dcU:
         return kKeyDeadTilde;
 
-    case 0xafu:
+    case 0xafU:
         return kKeyDeadMacron;
 
-    case 0x2d8u:
+    case 0x2d8U:
         return kKeyDeadBreve;
 
-    case 0x2d9u:
+    case 0x2d9U:
         return kKeyDeadAbovedot;
 
-    case 0xa8u:
+    case 0xa8U:
         return kKeyDeadDiaeresis;
 
-    case 0xb0u:
-    case 0x2dau:
+    case 0xb0U:
+    case 0x2daU:
         return kKeyDeadAbovering;
 
     case '\"':
-    case 0x2ddu:
+    case 0x2ddU:
         return kKeyDeadDoubleacute;
 
-    case 0x2c7u:
+    case 0x2c7U:
         return kKeyDeadCaron;
 
-    case 0xb8u:
+    case 0xb8U:
         return kKeyDeadCedilla;
 
-    case 0x2dbu:
+    case 0x2dbU:
         return kKeyDeadOgonek;
 
     default:
@@ -1151,7 +1152,7 @@ KeyMap::formatKey(KeyID key, KeyModifierMask mask)
 
     String x;
     for (SInt32 i = 0; i < kKeyModifierNumBits; ++i) {
-        KeyModifierMask mod = (1u << i);
+        KeyModifierMask mod = (1U << i);
         if ((mask & mod) != 0 && s_modifierToNameMap->count(mod) > 0) {
             x += s_modifierToNameMap->find(mod)->second;
             x += "+";

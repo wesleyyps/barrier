@@ -1048,7 +1048,8 @@ InputFilter::operator==(const InputFilter& x) const
 
     // compare rule lists.  the easiest way to do that is to format each
     // rule into a string, sort the strings, then compare the results.
-    std::vector<std::string> aList, bList;
+    std::vector<std::string> aList;
+    std::vector<std::string> bList;
     for (const auto & i : m_ruleList) {
         aList.push_back(i.format());
     }

@@ -879,7 +879,8 @@ KeyState::updateModifierKeyState(KeyButton button,
                 const ModifierToKeys& newModifiers)
 {
     // get the pressed modifier buttons before and after
-    barrier::KeyMap::ButtonToKeyMap oldKeys, newKeys;
+    barrier::KeyMap::ButtonToKeyMap oldKeys;
+    barrier::KeyMap::ButtonToKeyMap newKeys;
     for (const auto & oldModifier : oldModifiers) {
         oldKeys.insert(std::make_pair(oldModifier.second.m_button, &oldModifier.second));
     }
@@ -888,7 +889,8 @@ KeyState::updateModifierKeyState(KeyButton button,
     }
 
     // get the modifier buttons that were pressed or released
-    barrier::KeyMap::ButtonToKeyMap pressed, released;
+    barrier::KeyMap::ButtonToKeyMap pressed;
+    barrier::KeyMap::ButtonToKeyMap released;
     std::set_difference(oldKeys.begin(), oldKeys.end(),
                         newKeys.begin(), newKeys.end(),
                         std::inserter(released, released.end()),
