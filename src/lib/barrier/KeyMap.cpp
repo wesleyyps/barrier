@@ -1277,7 +1277,7 @@ KeyMap::initKeyNameMaps()
     if (s_nameToKeyMap == nullptr) {
         s_nameToKeyMap = new NameToKeyMap;
         s_keyToNameMap = new KeyToNameMap;
-        for (const KeyNameMapEntry* i = kKeyNameMap; i->m_name != nullptr; ++i) {
+        for (const KeyNameMapEntry* i = kKeyNameMap.data(); i->m_name != nullptr; ++i) {
             (*s_nameToKeyMap)[i->m_name] = i->m_id;
             (*s_keyToNameMap)[i->m_id]   = i->m_name;
         }
@@ -1285,7 +1285,7 @@ KeyMap::initKeyNameMaps()
     if (s_nameToModifierMap == nullptr) {
         s_nameToModifierMap = new NameToModifierMap;
         s_modifierToNameMap = new ModifierToNameMap;
-        for (const KeyModifierNameMapEntry* i = kModifierNameMap;
+        for (const KeyModifierNameMapEntry* i = kModifierNameMap.data();
                                 i->m_name != nullptr; ++i) {
             (*s_nameToModifierMap)[i->m_name] = i->m_mask;
             (*s_modifierToNameMap)[i->m_mask] = i->m_name;

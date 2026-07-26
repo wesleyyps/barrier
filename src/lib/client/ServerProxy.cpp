@@ -18,6 +18,8 @@
 
 #include "client/ServerProxy.h"
 
+#include "common/Version.h"
+#include <array>
 #include "client/Client.h"
 #include "barrier/FileChunk.h"
 #include "barrier/ClipboardChunk.h"
@@ -113,8 +115,8 @@ void
 ServerProxy::handleData(const Event&, void*)
 {
     // handle messages until there are no more.  first read message code.
-    UInt8 code[4];
-    UInt32 n = m_stream->read(code, 4);
+    std::array<UInt8, 4> code;
+    UInt32 n = m_stream->read(code.data(), 4);
     while (n != 0) {
         // verify we got an entire code
         if (n != 4) {
@@ -126,7 +128,7 @@ ServerProxy::handleData(const Event&, void*)
         // parse message
         LOG((CLOG_DEBUG2 "msg from server: %c%c%c%c", code[0], code[1], code[2], code[3]));
         try {
-            switch ((this->*m_parser)(code)) {
+            switch ((this->*m_parser)(code.data())) {
             case kOkay:
                 break;
 
@@ -149,7 +151,7 @@ ServerProxy::handleData(const Event&, void*)
         }
 
         // next message
-        n = m_stream->read(code, 4);
+        n = m_stream->read(code.data(), 4);
     }
 
     flushCompressedMouse();
@@ -407,15 +409,15 @@ ServerProxy::sendInfo(const ClientInfo& info)
 KeyID
 ServerProxy::translateKey(KeyID id) const
 {
-    static const KeyID s_translationTable[kKeyModifierIDLast][2] = {
-        { kKeyNone,      kKeyNone },
-        { kKeyShift_L,   kKeyShift_R },
-        { kKeyControl_L, kKeyControl_R },
-        { kKeyAlt_L,     kKeyAlt_R },
-        { kKeyMeta_L,    kKeyMeta_R },
-        { kKeySuper_L,   kKeySuper_R },
-        { kKeyAltGr,     kKeyAltGr}
-    };
+    static const std::array<std::array<KeyID, 2>, kKeyModifierIDLast> s_translationTable = {{
+        {{ kKeyNone,      kKeyNone }},
+        {{ kKeyShift_L,   kKeyShift_R }},
+        {{ kKeyControl_L, kKeyControl_R }},
+        {{ kKeyAlt_L,     kKeyAlt_R }},
+        {{ kKeyMeta_L,    kKeyMeta_R }},
+        {{ kKeySuper_L,   kKeySuper_R }},
+        {{ kKeyAltGr,     kKeyAltGr }}
+    }};
 
     KeyModifierID id2 = kKeyModifierIDNull;
     UInt32 side      = 0;
@@ -486,7 +488,7 @@ ServerProxy::translateKey(KeyID id) const
 KeyModifierMask
 ServerProxy::translateModifierMask(KeyModifierMask mask) const
 {
-    static const KeyModifierMask s_masks[kKeyModifierIDLast] = {
+    static const std::array<KeyModifierMask, kKeyModifierIDLast> s_masks = {{
         0x0000,
         KeyModifierShift,
         KeyModifierControl,
@@ -494,7 +496,7 @@ ServerProxy::translateModifierMask(KeyModifierMask mask) const
         KeyModifierMeta,
         KeyModifierSuper,
         KeyModifierAltGr
-    };
+    }};
 
     KeyModifierMask newMask = mask & ~(KeyModifierShift |
                                         KeyModifierControl |

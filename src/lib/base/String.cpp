@@ -22,6 +22,7 @@
 
 #include <cctype>
 #include <cstdio>
+#include <array>
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
@@ -163,9 +164,9 @@ vformat(const char* fmt, va_list args)
 std::string
 sprintf(const char* fmt, ...)
 {
-    char tmp[1024];
-    char* buffer = tmp;
-    int len      = static_cast<int>(sizeof(tmp) / sizeof(tmp[0]));
+    std::array<char, 1024> tmp;
+    char* buffer = tmp.data();
+    int len      = static_cast<int>(tmp.size());
     std::string result;
     while (buffer != nullptr) {
         // try printing into the buffer
@@ -176,7 +177,7 @@ sprintf(const char* fmt, ...)
 
         // if the buffer wasn't big enough then make it bigger and try again
         if (n < 0 || n > len) {
-            if (buffer != tmp) {
+            if (buffer != tmp.data()) {
                 delete[] buffer;
             }
             len   *= 2;
@@ -186,7 +187,7 @@ sprintf(const char* fmt, ...)
         // if it was big enough then save the string and don't try again
         else {
             result = buffer;
-            if (buffer != tmp) {
+            if (buffer != tmp.data()) {
                 delete[] buffer;
             }
             buffer = nullptr;

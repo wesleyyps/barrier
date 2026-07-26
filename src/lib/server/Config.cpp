@@ -27,6 +27,7 @@
 #include "common/stdostream.h"
 
 #include <cstdlib>
+#include <array>
 
 using namespace barrier::string;
 
@@ -603,7 +604,7 @@ Config::read(ConfigReadContext& context)
 const char*
 Config::dirName(EDirection dir)
 {
-	static const char* s_name[] = { "left", "right", "up", "down" };
+	static const std::array<const char*, 4> s_name = { "left", "right", "up", "down" };
 
 	assert(dir >= kFirstDirection && dir <= kLastDirection);
 
@@ -628,11 +629,11 @@ std::string Config::formatInterval(const Interval& x)
 void
 Config::readSection(ConfigReadContext& s)
 {
-	static const char s_section[] = "section:";
-	static const char s_options[] = "options";
-	static const char s_screens[] = "screens";
-	static const char s_links[]   = "links";
-	static const char s_aliases[] = "aliases";
+	static const std::string s_section = "section:";
+	static const std::string s_options = "options";
+	static const std::string s_screens = "screens";
+	static const std::string s_links   = "links";
+	static const std::string s_aliases = "aliases";
 
     std::string line;
 	if (!s.readLine(line)) {
@@ -646,7 +647,7 @@ Config::readSection(ConfigReadContext& s)
 	}
 
 	// get section name
-    std::string::size_type i = line.find_first_not_of(" \t", sizeof(s_section) - 1);
+    std::string::size_type i = line.find_first_not_of(" \t", s_section.length());
     if (i == std::string::npos) {
 		throw XConfigRead(s, "section name is missing");
 	}

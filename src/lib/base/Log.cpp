@@ -26,9 +26,10 @@
 #include <cstring>
 #include <iostream>
 #include <ctime>
+#include <array>
 
 // names of priorities
-static const char*        g_priority[] = {
+static const std::array<const char*, 11> g_priority = {{
     "FATAL",
     "ERROR",
     "WARNING",
@@ -40,10 +41,10 @@ static const char*        g_priority[] = {
     "DEBUG3",
     "DEBUG4",
     "DEBUG5"
-};
+}};
 
 // number of priorities
-static const int g_numPriority = static_cast<int>(sizeof(g_priority) / sizeof(g_priority[0]));
+static const int g_numPriority = static_cast<int>(g_priority.size());
 
 // the default priority
 #ifndef NDEBUG
@@ -130,15 +131,15 @@ Log::print(const char* file, int line, const char* fmt, ...)
     }
 
     // compute prefix padding length
-    char stack[1024];
+    std::array<char, 1024> stack;
 
     // compute suffix padding length
     int sPad = m_maxNewlineLength;
 
     // print to buffer, leaving space for a newline at the end and prefix
     // at the beginning.
-    char* buffer = stack;
-    int len            = static_cast<int>(sizeof(stack) / sizeof(stack[0]));
+    char* buffer = stack.data();
+    int len            = static_cast<int>(stack.size());
     while (true) {
         // try printing into the buffer
         va_list args;
@@ -148,7 +149,7 @@ Log::print(const char* file, int line, const char* fmt, ...)
 
         // if the buffer wasn't big enough then make it bigger and try again
         if (n < 0 || n > len) {
-            if (buffer != stack) {
+            if (buffer != stack.data()) {
                 delete[] buffer;
             }
             len     *= 2;
@@ -166,15 +167,15 @@ Log::print(const char* file, int line, const char* fmt, ...)
     if (priority != kPRINT) {
 
         struct tm *tm;
-        char timestamp[50];
+        std::array<char, 50> timestamp;
         time_t t;
         time(&t);
         tm = localtime(&t);
-        snprintf(timestamp, sizeof(timestamp), "%04i-%02i-%02iT%02i:%02i:%02i", tm->tm_year + 1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
+        snprintf(timestamp.data(), timestamp.size(), "%04i-%02i-%02iT%02i:%02i:%02i", tm->tm_year + 1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
 
         // square brackets, spaces, comma and null terminator take about 10
         size_t size = 10;
-        size += strlen(timestamp);
+        size += strlen(timestamp.data());
         size += strlen(g_priority[priority]);
         size += strlen(buffer);
 #ifndef NDEBUG
@@ -197,7 +198,7 @@ Log::print(const char* file, int line, const char* fmt, ...)
     }
 
     // clean up
-    if (buffer != stack) {
+    if (buffer != stack.data()) {
         delete[] buffer;
     }
 }
