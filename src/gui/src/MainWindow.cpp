@@ -58,20 +58,20 @@
 
 static const QString allFilesFilter(QObject::tr("All files (*.*)"));
 #ifdef Q_OS_WIN
-static const char barrierConfigName[] = "barrier.sgc";
+static const QString barrierConfigName = "barrier.sgc";
 static const QString barrierConfigFilter(QObject::tr("Barrier Configurations (*.sgc)"));
 static QString bonjourBaseUrl = "http://binaries.symless.com/bonjour/";
-static const char bonjourFilename32[] = "Bonjour.msi";
-static const char bonjourFilename64[] = "Bonjour64.msi";
-static const char bonjourTargetFilename[] = "Bonjour.msi";
+static const QString bonjourFilename32 = "Bonjour.msi";
+static const QString bonjourFilename64 = "Bonjour64.msi";
+static const QString bonjourTargetFilename = "Bonjour.msi";
 #else
-static const char barrierConfigName[] = "barrier.conf";
+static const QString barrierConfigName = "barrier.conf";
 static const QString barrierConfigFilter(QObject::tr("Barrier Configurations (*.conf)"));
 #endif
 static const QString barrierConfigOpenFilter(barrierConfigFilter + ";;" + allFilesFilter);
 static const QString barrierConfigSaveFilter(barrierConfigFilter);
 
-static const char* barrierIconFiles[] =
+static const std::array<const char*, 4> barrierIconFiles =
 {
 #ifdef Q_OS_MAC
     ":/res/icons/32x32/barrier-disconnected-mask.png",
@@ -86,7 +86,7 @@ static const char* barrierIconFiles[] =
 #endif
 };
 
-static const char* barrierIconNames[] =
+static const std::array<const char*, 4> barrierIconNames =
 {
     "barrier-disconnected",
     "barrier-disconnected",

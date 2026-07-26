@@ -24,6 +24,8 @@
 #include "Ipc.h"
 #include <QMutex>
 #include <QByteArray>
+#include <QHostAddress>
+#include <array>
 
 #ifdef BARRIER_IPC_VERBOSE
 #include <iostream>
@@ -58,17 +60,17 @@ void IpcReader::read()
     while (m_Socket->bytesAvailable() != 0) {
         IPC_LOG(std::cout << "bytes available" << std::endl);
 
-        char codeBuf[5];
-        readStream(codeBuf, 4);
+        std::array<char, 5> codeBuf;
+        readStream(codeBuf.data(), 4);
         codeBuf[4] = 0;
-        IPC_LOG(std::cout << "ipc read: " << codeBuf << std::endl);
+        IPC_LOG(std::cout << "ipc read: " << codeBuf.data() << std::endl);
 
-        if (memcmp(codeBuf, kIpcMsgLogLine, 4) == 0) {
+        if (memcmp(codeBuf.data(), kIpcMsgLogLine, 4) == 0) {
             IPC_LOG(std::cout << "reading log line" << std::endl);
 
-            char lenBuf[4];
-            readStream(lenBuf, 4);
-            int len = bytesToInt(lenBuf, 4);
+            std::array<char, 4> lenBuf;
+            readStream(lenBuf.data(), 4);
+            int len = bytesToInt(lenBuf.data(), 4);
 
             char* data = new char[len];
             readStream(data, len);
