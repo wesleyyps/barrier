@@ -341,7 +341,7 @@ TCPSocket::doRead()
 
         // slurp up as much as possible
         do {
-            m_inputBuffer.write(buffer, (UInt32)bytesRead);
+            m_inputBuffer.write(buffer, static_cast<UInt32>(bytesRead));
 
             if (m_inputBuffer.getSize() > MAX_INPUT_BUFFER_SIZE) {
                 break;
@@ -445,7 +445,7 @@ std::unique_ptr<ISocketMultiplexerJob> TCPSocket::newJob()
 void
 TCPSocket::sendConnectionFailedEvent(const char* msg)
 {
-    ConnectionFailedInfo* info = new ConnectionFailedInfo(msg);
+    auto* info = new ConnectionFailedInfo(msg);
     m_events->addEvent(Event(m_events->forIDataSocket().connectionFailed(),
                             getEventTarget(), info, Event::kDontFreeData));
 }

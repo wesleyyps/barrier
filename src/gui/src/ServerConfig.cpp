@@ -235,11 +235,11 @@ QTextStream& operator<<(QTextStream& outStream, const ServerConfig& config)
         {
             outStream << "\t" << config.screens()[i].name() << ":" << endl;
 
-            for (unsigned int j = 0; j < sizeof(neighbourDirs) / sizeof(neighbourDirs[0]); j++)
+            for (auto neighbourDir : neighbourDirs)
             {
-                int idx = config.adjacentScreenIndex(i, neighbourDirs[j].x, neighbourDirs[j].y);
+                int idx = config.adjacentScreenIndex(i, neighbourDir.x, neighbourDir.y);
                 if (idx != -1 && !config.screens()[idx].isNull())
-                    outStream << "\t\t" << neighbourDirs[j].name << " = " << config.screens()[idx].name() << endl;
+                    outStream << "\t\t" << neighbourDir.name << " = " << config.screens()[idx].name() << endl;
             }
         }
 

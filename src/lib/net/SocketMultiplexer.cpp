@@ -89,12 +89,12 @@ void SocketMultiplexer::addSocket(ISocket* socket, std::unique_ptr<ISocketMultip
     lockJobList();
 
     // insert/replace job
-    SocketJobMap::iterator i = m_socketJobMap.find(socket);
+    auto i = m_socketJobMap.find(socket);
     if (i == m_socketJobMap.end()) {
         // we *must* put the job at the end so the order of jobs in
         // the list continue to match the order of jobs in pfds in
         // service_thread().
-        JobCursor j = m_socketJobs.insert(m_socketJobs.end(), std::move(job));
+        auto j = m_socketJobs.insert(m_socketJobs.end(), std::move(job));
         m_update     = true;
         m_socketJobMap.insert(std::make_pair(socket, j));
     }
@@ -124,7 +124,7 @@ SocketMultiplexer::removeSocket(ISocket* socket)
     // remove job.  rather than removing it from the map we put NULL
     // in the list instead so the order of jobs in the list continues
     // to match the order of jobs in pfds in service_thread().
-    SocketJobMap::iterator i = m_socketJobMap.find(socket);
+    auto i = m_socketJobMap.find(socket);
     if (i != m_socketJobMap.end()) {
         if (*(i->second)) {
             i->second->reset();
@@ -163,8 +163,8 @@ void SocketMultiplexer::service_thread()
             pfds.clear();
             pfds.reserve(m_socketJobMap.size());
 
-            JobCursor cursor    = newCursor();
-            JobCursor jobCursor = nextCursor(cursor);
+            auto cursor    = newCursor();
+            auto jobCursor = nextCursor(cursor);
             while (jobCursor != m_socketJobs.end()) {
                 if (*jobCursor) {
                     pfd.m_socket = (*jobCursor)->getSocket();
@@ -186,7 +186,7 @@ void SocketMultiplexer::service_thread()
         try {
             // check for status
             if (!pfds.empty()) {
-                status = ARCH->pollSocket(&pfds[0], (int)pfds.size(), -1);
+                status = ARCH->pollSocket(&pfds[0], static_cast<int>(pfds.size()), -1);
             }
             else {
                 status = 0;
@@ -201,8 +201,8 @@ void SocketMultiplexer::service_thread()
             // iterate over socket jobs, invoking each and saving the
             // new job.
             UInt32 i             = 0;
-            JobCursor cursor    = newCursor();
-            JobCursor jobCursor = nextCursor(cursor);
+            auto cursor    = newCursor();
+            auto jobCursor = nextCursor(cursor);
             while (i < pfds.size() && jobCursor != m_socketJobs.end()) {
                 if (*jobCursor != NULL) {
                     // get poll state
@@ -234,7 +234,7 @@ void SocketMultiplexer::service_thread()
         }
 
         // delete any removed socket jobs
-        for (SocketJobMap::iterator i = m_socketJobMap.begin();
+        for (auto i = m_socketJobMap.begin();
                             i != m_socketJobMap.end();) {
             if (*(i->second) == NULL) {
                 m_socketJobs.erase(i->second);
@@ -262,8 +262,8 @@ SocketMultiplexer::JobCursor
 SocketMultiplexer::nextCursor(JobCursor cursor)
 {
     Lock lock(m_mutex);
-    JobCursor j = m_socketJobs.end();
-    JobCursor i = cursor;
+    auto j = m_socketJobs.end();
+    auto i = cursor;
     while (++i != m_socketJobs.end()) {
         if (*i && !(*i)->isCursor()) {
             // found a real job (as opposed to a cursor)

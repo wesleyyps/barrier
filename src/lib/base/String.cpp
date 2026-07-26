@@ -165,7 +165,7 @@ sprintf(const char* fmt, ...)
 {
     char tmp[1024];
     char* buffer = tmp;
-    int len      = (int)(sizeof(tmp) / sizeof(tmp[0]));
+    int len      = static_cast<int>(sizeof(tmp) / sizeof(tmp[0]));
     std::string result;
     while (buffer != NULL) {
         // try printing into the buffer
@@ -225,8 +225,8 @@ std::string to_hex(const std::vector<std::uint8_t>& subject, int width, const ch
 {
     std::stringstream ss;
     ss << std::hex;
-    for (unsigned int i = 0; i < subject.size(); i++) {
-        ss << std::setw(width) << std::setfill(fill) << static_cast<int>(subject[i]);
+    for (unsigned char i : subject) {
+        ss << std::setw(width) << std::setfill(fill) << static_cast<int>(i);
     }
 
     return ss.str();

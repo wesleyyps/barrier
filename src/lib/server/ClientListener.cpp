@@ -76,9 +76,7 @@ ClientListener::~ClientListener()
     LOG((CLOG_DEBUG1 "stop listening for clients"));
 
     // discard already connected clients
-    for (NewClients::iterator index = m_newClients.begin();
-                                index != m_newClients.end(); ++index) {
-        ClientProxyUnknown* client = *index;
+    for (auto client : m_newClients) {
         m_events->removeHandler(
                             m_events->forClientProxyUnknown().success(), client);
         m_events->removeHandler(
@@ -150,14 +148,14 @@ ClientListener::handleClientAccepted(const Event&, void* vsocket)
 {
     LOG((CLOG_NOTE "accepted client connection"));
 
-    IDataSocket* socket = static_cast<IDataSocket*>(vsocket);
+    auto* socket = static_cast<IDataSocket*>(vsocket);
 
     // filter socket messages, including a packetizing filter
     barrier::IStream* stream = new PacketStreamFilter(m_events, socket, false);
     assert(m_server != NULL);
 
     // create proxy for unknown client
-    ClientProxyUnknown* client = new ClientProxyUnknown(stream, 30.0, m_server, m_events);
+    auto* client = new ClientProxyUnknown(stream, 30.0, m_server, m_events);
 
     m_newClients.insert(client);
 
@@ -175,7 +173,7 @@ ClientListener::handleClientAccepted(const Event&, void* vsocket)
 void
 ClientListener::handleUnknownClient(const Event&, void* vclient)
 {
-    ClientProxyUnknown* unknownClient =
+    auto* unknownClient =
         static_cast<ClientProxyUnknown*>(vclient);
 
     // we should have the client in our new client list
@@ -212,10 +210,10 @@ ClientListener::handleUnknownClient(const Event&, void* vclient)
 void
 ClientListener::handleClientDisconnected(const Event&, void* vclient)
 {
-    ClientProxy* client = static_cast<ClientProxy*>(vclient);
+    auto* client = static_cast<ClientProxy*>(vclient);
 
     // find client in waiting clients queue
-    for (WaitingClients::iterator i = m_waitingClients.begin(),
+    for (auto i = m_waitingClients.begin(),
                             n = m_waitingClients.end(); i != n; ++i) {
         if (*i == client) {
             m_waitingClients.erase(i);
@@ -224,7 +222,7 @@ ClientListener::handleClientDisconnected(const Event&, void* vclient)
 
             // pull out the socket before deleting the client so
             // we know which socket we no longer need
-            IDataSocket* socket = static_cast<IDataSocket*>(client->getStream());
+            auto* socket = static_cast<IDataSocket*>(client->getStream());
             delete client;
             m_clientSockets.erase(socket);
             delete socket;

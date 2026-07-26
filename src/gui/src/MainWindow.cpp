@@ -495,7 +495,7 @@ void MainWindow::proofreadInfo()
 {
     int oldState = m_BarrierState;
     m_BarrierState = barrierDisconnected;
-    setBarrierState((qBarrierState)oldState);
+    setBarrierState(static_cast<qBarrierState>(oldState));
 }
 
 void MainWindow::startBarrier()
@@ -898,11 +898,11 @@ QString MainWindow::getIPAddresses()
 
     bool hinted = false;
     QString result;
-    for (int i = 0; i < addresses.size(); i++) {
-        if (addresses[i].protocol() == QAbstractSocket::IPv4Protocol &&
-            addresses[i] != QHostAddress(QHostAddress::LocalHost)) {
+    for (const auto & addresse : addresses) {
+        if (addresse.protocol() == QAbstractSocket::IPv4Protocol &&
+            addresse != QHostAddress(QHostAddress::LocalHost)) {
 
-            QString address = addresses[i].toString();
+            QString address = addresse.toString();
             QString format = "%1, ";
 
             // usually 192.168.x.x is a useful ip for the user, so indicate

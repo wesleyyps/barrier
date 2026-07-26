@@ -190,7 +190,7 @@ App::initApp(int argc, const char** argv)
 
         // create a log buffer so we can show the latest message
         // as a tray icon tooltip
-        BufferedLogOutputter* logBuffer = new BufferedLogOutputter(1000);
+        auto* logBuffer = new BufferedLogOutputter(1000);
         CLOG->insert(logBuffer, true);
 
         // make the task bar receiver.  the user can control this app
@@ -221,7 +221,7 @@ App::cleanupIpcClient()
 void
 App::handleIpcMessage(const Event& e, void*)
 {
-    IpcMessage* m = static_cast<IpcMessage*>(e.getDataObject());
+    auto* m = static_cast<IpcMessage*>(e.getDataObject());
     if (m->type() == kIpcShutdown) {
         LOG((CLOG_INFO "got ipc shutdown message"));
         m_events->addEvent(Event(Event::kQuit));

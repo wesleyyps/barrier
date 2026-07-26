@@ -105,7 +105,7 @@ void IpcClient::sendCommand(const QString& command, ElevateMode const elevate)
 
     std::string stdStringCommand = command.toStdString();
     const char* charCommand = stdStringCommand.c_str();
-    int length = (int)strlen(charCommand);
+    int length = static_cast<int>(strlen(charCommand));
 
     char lenBuf[4];
     intToBytes(length, lenBuf, 4);

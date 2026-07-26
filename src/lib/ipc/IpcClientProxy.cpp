@@ -140,7 +140,7 @@ IpcClientProxy::send(const IpcMessage& message)
 
     switch (message.type()) {
     case kIpcLogLine: {
-        const IpcLogLineMessage& llm = static_cast<const IpcLogLineMessage&>(message);
+        const auto& llm = static_cast<const IpcLogLineMessage&>(message);
         const std::string logLine = llm.logLine();
         ProtocolUtil::writef(&m_stream, kIpcMsgLogLine, &logLine);
         break;

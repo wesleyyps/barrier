@@ -56,7 +56,7 @@ OSXUchrKeyResource::OSXUchrKeyResource(const void* resource,
     }
 
     // get tables for keyboard type
-    const UInt8* const base = reinterpret_cast<const UInt8*>(m_resource);
+    const auto* const base = reinterpret_cast<const UInt8*>(m_resource);
     m_m   = reinterpret_cast<const UCKeyModifiersToTableNum*>(base +
                                 th->keyModifiersToTableNumOffset);
     m_cti = reinterpret_cast<const UCKeyToCharTableIndex*>(base +
@@ -133,8 +133,8 @@ OSXUchrKeyResource::getKey(UInt32 table, UInt32 button) const
     assert(table < getNumTables());
     assert(button < getNumButtons());
 
-    const UInt8* const base   = reinterpret_cast<const UInt8*>(m_resource);
-    const UCKeyOutput* cPtr = reinterpret_cast<const UCKeyOutput*>(base +
+    const auto* const base   = reinterpret_cast<const UInt8*>(m_resource);
+    const auto* cPtr = reinterpret_cast<const UCKeyOutput*>(base +
                                 m_cti->keyToCharTableOffsets[table]);
 
   const UCKeyOutput c = cPtr[button];
@@ -199,8 +199,8 @@ OSXUchrKeyResource::getDeadKey(
     }
 
     // convert keys to their dead counterparts
-    for (KeySequence::iterator i = keys.begin(); i != keys.end(); ++i) {
-        *i = barrier::KeyMap::getDeadKey(*i);
+    for (unsigned int & key : keys) {
+        key = barrier::KeyMap::getDeadKey(key);
     }
 
     return true;
@@ -210,11 +210,11 @@ bool
 OSXUchrKeyResource::getKeyRecord(
     KeySequence& keys, UInt16 index, UInt16& state) const
 {
-    const UInt8* const base = reinterpret_cast<const UInt8*>(m_resource);
-    const UCKeyStateRecord* sr =
+    const auto* const base = reinterpret_cast<const UInt8*>(m_resource);
+    const auto* sr =
         reinterpret_cast<const UCKeyStateRecord*>(base +
                                 m_sri->keyStateRecordOffsets[index]);
-    const UCKeyStateEntryTerminal* kset =
+    const auto* kset =
         reinterpret_cast<const UCKeyStateEntryTerminal*>(sr->stateEntryData);
 
     UInt16 nextState = 0;

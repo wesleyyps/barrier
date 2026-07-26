@@ -35,7 +35,7 @@ FileChunk*
 FileChunk::start(const String& size)
 {
     size_t sizeLength = size.size();
-    FileChunk* start = new FileChunk(sizeLength + FILE_CHUNK_META_SIZE);
+    auto* start = new FileChunk(sizeLength + FILE_CHUNK_META_SIZE);
     char* chunk = start->m_chunk;
     chunk[0] = kDataStart;
     memcpy(&chunk[1], size.c_str(), sizeLength);
@@ -47,7 +47,7 @@ FileChunk::start(const String& size)
 FileChunk*
 FileChunk::data(UInt8* data, size_t dataSize)
 {
-    FileChunk* chunk = new FileChunk(dataSize + FILE_CHUNK_META_SIZE);
+    auto* chunk = new FileChunk(dataSize + FILE_CHUNK_META_SIZE);
     char* chunkData = chunk->m_chunk;
     chunkData[0] = kDataChunk;
     memcpy(&chunkData[1], data, dataSize);
@@ -59,7 +59,7 @@ FileChunk::data(UInt8* data, size_t dataSize)
 FileChunk*
 FileChunk::end()
 {
-    FileChunk* end = new FileChunk(FILE_CHUNK_META_SIZE);
+    auto* end = new FileChunk(FILE_CHUNK_META_SIZE);
     char* chunk = end->m_chunk;
     chunk[0] = kDataEnd;
     chunk[1] = '\0';

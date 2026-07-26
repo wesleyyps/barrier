@@ -89,7 +89,7 @@ ClientProxy1_6::recvClipboard()
         m_clipboard[id].m_sequenceNumber = seq;
 
         // notify
-        ClipboardInfo* info = new ClipboardInfo;
+        auto* info = new ClipboardInfo;
         info->m_id = id;
         info->m_sequenceNumber = seq;
         m_events->addEvent(Event(m_events->forClipboard().clipboardChanged(),

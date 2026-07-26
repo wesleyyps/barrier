@@ -44,7 +44,7 @@ IDataSocket* TCPSocketFactory::create(IArchNetwork::EAddressFamily family,
                                       ConnectionSecurityLevel security_level) const
 {
     if (security_level != ConnectionSecurityLevel::PLAINTEXT) {
-        SecureSocket* secureSocket = new SecureSocket(m_events, m_socketMultiplexer, family,
+        auto* secureSocket = new SecureSocket(m_events, m_socketMultiplexer, family,
                                                       security_level);
         secureSocket->initSsl (false);
         return secureSocket;

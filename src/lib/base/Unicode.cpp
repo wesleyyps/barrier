@@ -101,8 +101,8 @@ bool
 Unicode::isUTF8(const std::string& src)
 {
     // convert and test each character
-    const UInt8* data = reinterpret_cast<const UInt8*>(src.c_str());
-    for (UInt32 n = (UInt32)src.size(); n > 0; ) {
+    const auto* data = reinterpret_cast<const UInt8*>(src.c_str());
+    for (auto n = static_cast<UInt32>(src.size()); n > 0; ) {
         if (fromUTF8(data, n) == s_invalid) {
             return false;
         }
@@ -116,12 +116,12 @@ std::string Unicode::UTF8ToUCS2(const std::string& src, bool* errors)
     resetError(errors);
 
     // get size of input string and reserve some space in output
-    UInt32 n = (UInt32)src.size();
+    auto n = static_cast<UInt32>(src.size());
     std::string dst;
     dst.reserve(2 * n);
 
     // convert each character
-    const UInt8* data = reinterpret_cast<const UInt8*>(src.c_str());
+    const auto* data = reinterpret_cast<const UInt8*>(src.c_str());
     while (n > 0) {
         UInt32 c = fromUTF8(data, n);
         if (c == s_invalid) {
@@ -131,7 +131,7 @@ std::string Unicode::UTF8ToUCS2(const std::string& src, bool* errors)
             setError(errors);
             c = s_replacement;
         }
-        UInt16 ucs2 = static_cast<UInt16>(c);
+        auto ucs2 = static_cast<UInt16>(c);
         dst.append(reinterpret_cast<const char*>(&ucs2), 2);
     }
 
@@ -145,12 +145,12 @@ Unicode::UTF8ToUCS4(const std::string& src, bool* errors)
     resetError(errors);
 
     // get size of input string and reserve some space in output
-    UInt32 n = (UInt32)src.size();
+    auto n = static_cast<UInt32>(src.size());
     std::string dst;
     dst.reserve(4 * n);
 
     // convert each character
-    const UInt8* data = reinterpret_cast<const UInt8*>(src.c_str());
+    const auto* data = reinterpret_cast<const UInt8*>(src.c_str());
     while (n > 0) {
         UInt32 c = fromUTF8(data, n);
         if (c == s_invalid) {
@@ -169,12 +169,12 @@ Unicode::UTF8ToUTF16(const std::string& src, bool* errors)
     resetError(errors);
 
     // get size of input string and reserve some space in output
-    UInt32 n = (UInt32)src.size();
+    auto n = static_cast<UInt32>(src.size());
     std::string dst;
     dst.reserve(2 * n);
 
     // convert each character
-    const UInt8* data = reinterpret_cast<const UInt8*>(src.c_str());
+    const auto* data = reinterpret_cast<const UInt8*>(src.c_str());
     while (n > 0) {
         UInt32 c = fromUTF8(data, n);
         if (c == s_invalid) {
@@ -185,13 +185,13 @@ Unicode::UTF8ToUTF16(const std::string& src, bool* errors)
             c = s_replacement;
         }
         if (c < 0x00010000) {
-            UInt16 ucs2 = static_cast<UInt16>(c);
+            auto ucs2 = static_cast<UInt16>(c);
             dst.append(reinterpret_cast<const char*>(&ucs2), 2);
         }
         else {
             c -= 0x00010000;
-            UInt16 utf16h = static_cast<UInt16>((c >> 10) + 0xd800);
-            UInt16 utf16l = static_cast<UInt16>((c & 0x03ff) + 0xdc00);
+            auto utf16h = static_cast<UInt16>((c >> 10) + 0xd800);
+            auto utf16l = static_cast<UInt16>((c & 0x03ff) + 0xdc00);
             dst.append(reinterpret_cast<const char*>(&utf16h), 2);
             dst.append(reinterpret_cast<const char*>(&utf16l), 2);
         }
@@ -207,12 +207,12 @@ Unicode::UTF8ToUTF32(const std::string& src, bool* errors)
     resetError(errors);
 
     // get size of input string and reserve some space in output
-    UInt32 n = (UInt32)src.size();
+    auto n = static_cast<UInt32>(src.size());
     std::string dst;
     dst.reserve(4 * n);
 
     // convert each character
-    const UInt8* data = reinterpret_cast<const UInt8*>(src.c_str());
+    const auto* data = reinterpret_cast<const UInt8*>(src.c_str());
     while (n > 0) {
         UInt32 c = fromUTF8(data, n);
         if (c == s_invalid) {
@@ -258,7 +258,7 @@ Unicode::UCS2ToUTF8(const std::string& src, bool* errors)
     resetError(errors);
 
     // convert
-    UInt32 n = (UInt32)src.size() >> 1;
+    UInt32 n = static_cast<UInt32>(src.size()) >> 1;
     return doUCS2ToUTF8(reinterpret_cast<const UInt8*>(src.data()), n, errors);
 }
 
@@ -269,7 +269,7 @@ Unicode::UCS4ToUTF8(const std::string& src, bool* errors)
     resetError(errors);
 
     // convert
-    UInt32 n = (UInt32)src.size() >> 2;
+    UInt32 n = static_cast<UInt32>(src.size()) >> 2;
     return doUCS4ToUTF8(reinterpret_cast<const UInt8*>(src.data()), n, errors);
 }
 
@@ -280,7 +280,7 @@ Unicode::UTF16ToUTF8(const std::string& src, bool* errors)
     resetError(errors);
 
     // convert
-    UInt32 n = (UInt32)src.size() >> 1;
+    UInt32 n = static_cast<UInt32>(src.size()) >> 1;
     return doUTF16ToUTF8(reinterpret_cast<const UInt8*>(src.data()), n, errors);
 }
 
@@ -291,7 +291,7 @@ Unicode::UTF32ToUTF8(const std::string& src, bool* errors)
     resetError(errors);
 
     // convert
-    UInt32 n = (UInt32)src.size() >> 2;
+    UInt32 n = static_cast<UInt32>(src.size()) >> 2;
     return doUTF32ToUTF8(reinterpret_cast<const UInt8*>(src.data()), n, errors);
 }
 
@@ -302,9 +302,9 @@ Unicode::textToUTF8(const std::string& src, bool* errors)
     resetError(errors);
 
     // convert string to wide characters
-    UInt32 n     = (UInt32)src.size();
+    auto n     = static_cast<UInt32>(src.size());
     int len      = ARCH->convStringMBToWC(NULL, src.c_str(), n, errors);
-    wchar_t* wcs = new wchar_t[len + 1];
+    auto* wcs = new wchar_t[len + 1];
     ARCH->convStringMBToWC(wcs, src.c_str(), n, errors);
 
     // convert to UTF8
@@ -324,22 +324,22 @@ Unicode::UTF8ToWideChar(const std::string& src, UInt32& size, bool* errors)
     switch (ARCH->getWideCharEncoding()) {
     case IArchString::kUCS2:
         tmp = UTF8ToUCS2(src, errors);
-        size = (UInt32)tmp.size() >> 1;
+        size = static_cast<UInt32>(tmp.size()) >> 1;
         break;
 
     case IArchString::kUCS4:
         tmp = UTF8ToUCS4(src, errors);
-        size = (UInt32)tmp.size() >> 2;
+        size = static_cast<UInt32>(tmp.size()) >> 2;
         break;
 
     case IArchString::kUTF16:
         tmp = UTF8ToUTF16(src, errors);
-        size = (UInt32)tmp.size() >> 1;
+        size = static_cast<UInt32>(tmp.size()) >> 1;
         break;
 
     case IArchString::kUTF32:
         tmp = UTF8ToUTF32(src, errors);
-        size = (UInt32)tmp.size() >> 2;
+        size = static_cast<UInt32>(tmp.size()) >> 2;
         break;
 
     default:
@@ -347,7 +347,7 @@ Unicode::UTF8ToWideChar(const std::string& src, UInt32& size, bool* errors)
     }
 
     // copy to a wchar_t array
-    wchar_t* dst = new wchar_t[size];
+    auto* dst = new wchar_t[size];
     ::memcpy(dst, tmp.data(), sizeof(wchar_t) * size);
     return dst;
 }

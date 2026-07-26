@@ -136,9 +136,9 @@ static const KeyEntry    s_controlKeys[] = {
 };
 
 static void clearGroupList(std::vector<TISInputSourceRef>& groups) {
-    for (size_t i = 0; i < groups.size(); ++i) {
-        if (groups[i]) {
-            CFRelease(groups[i]);
+    for (auto & group : groups) {
+        if (group) {
+            CFRelease(group);
         }
     }
     groups.clear();
@@ -176,11 +176,10 @@ OSXKeyState::init()
     m_capsPressed = false;
 
     // build virtual key map
-    for (size_t i = 0; i < sizeof(s_controlKeys) / sizeof(s_controlKeys[0]);
-        ++i) {
+    for (auto s_controlKey : s_controlKeys) {
 
-        m_virtualKeyMap[s_controlKeys[i].m_virtualKey] =
-            s_controlKeys[i].m_keyID;
+        m_virtualKeyMap[s_controlKey.m_virtualKey] =
+            s_controlKey.m_keyID;
     }
 }
 
@@ -264,7 +263,7 @@ OSXKeyState::mapKeyFromEvent(KeyIDs& ids,
     }
 
     // check for special keys
-    VirtualKeyMap::const_iterator i = m_virtualKeyMap.find(vkCode);
+    auto i = m_virtualKeyMap.find(vkCode);
     if (i != m_virtualKeyMap.end()) {
         m_deadKeyState = 0;
         ids.push_back(i->second);
@@ -307,9 +306,9 @@ OSXKeyState::mapKeyFromEvent(KeyIDs& ids,
     }
 
     // translate via uchr resource
-    CFDataRef ref = (CFDataRef) TISGetInputSourceProperty(currentKeyboardLayout,
-                                kTISPropertyUnicodeKeyLayoutData);
-    const UCKeyboardLayout* layout = (const UCKeyboardLayout*) CFDataGetBytePtr(ref);
+    auto ref = static_cast<CFDataRef>(TISGetInputSourceProperty(currentKeyboardLayout,
+                                kTISPropertyUnicodeKeyLayoutData));
+    const auto* layout = reinterpret_cast<const UCKeyboardLayout*>(CFDataGetBytePtr(ref));
     const bool layoutValid = (layout != NULL);
 
     if (layoutValid) {
@@ -356,26 +355,26 @@ OSXKeyState::fakeMediaKey(KeyID id)
 CGEventFlags
 OSXKeyState::getModifierStateAsOSXFlags()
 {
-    CGEventFlags modifiers = CGEventFlags(0);
+    auto modifiers = static_cast<CGEventFlags>(0);
 
     if (m_shiftPressed) {
-        modifiers |= CGEventFlags(kCGEventFlagMaskShift);
+        modifiers |= static_cast<CGEventFlags>(kCGEventFlagMaskShift);
     }
 
     if (m_controlPressed) {
-        modifiers |= CGEventFlags(kCGEventFlagMaskControl);
+        modifiers |= static_cast<CGEventFlags>(kCGEventFlagMaskControl);
     }
 
     if (m_altPressed) {
-        modifiers |= CGEventFlags(kCGEventFlagMaskAlternate);
+        modifiers |= static_cast<CGEventFlags>(kCGEventFlagMaskAlternate);
     }
 
     if (m_superPressed) {
-        modifiers |= CGEventFlags(kCGEventFlagMaskCommand);
+        modifiers |= static_cast<CGEventFlags>(kCGEventFlagMaskCommand);
     }
 
     if (m_capsPressed) {
-        modifiers |= CGEventFlags(kCGEventFlagMaskAlphaShift);
+        modifiers |= static_cast<CGEventFlags>(kCGEventFlagMaskAlphaShift);
     }
 
     return modifiers;
@@ -417,10 +416,10 @@ SInt32
 OSXKeyState::pollActiveGroup() const
 {
     TISInputSourceRef keyboardLayout = TISCopyCurrentKeyboardLayoutInputSource();
-    CFDataRef id = (CFDataRef)TISGetInputSourceProperty(
-                        keyboardLayout, kTISPropertyInputSourceID);
+    auto id = static_cast<CFDataRef>(TISGetInputSourceProperty(
+                        keyboardLayout, kTISPropertyInputSourceID));
 
-    GroupMap::const_iterator i = m_groupMap.find(id);
+    auto i = m_groupMap.find(id);
     if (i != m_groupMap.end()) {
         return i->second;
     }
@@ -435,7 +434,7 @@ OSXKeyState::pollPressedKeys(KeyButtonSet& pressedKeys) const
 {
     ::KeyMap km;
     GetKeys(km);
-    const UInt8* m = reinterpret_cast<const UInt8*>(km);
+    const auto* m = reinterpret_cast<const UInt8*>(km);
     for (UInt32 i = 0; i < 16; ++i) {
         for (UInt32 j = 0; j < 8; ++j) {
             if ((m[i] & (1u << j)) != 0) {
@@ -451,16 +450,16 @@ OSXKeyState::getKeyMap(barrier::KeyMap& keyMap)
     // update keyboard groups
     if (getGroups(m_groups)) {
         m_groupMap.clear();
-        SInt32 numGroups = (SInt32)m_groups.size();
+        auto numGroups = static_cast<SInt32>(m_groups.size());
         for (SInt32 g = 0; g < numGroups; ++g) {
-            CFDataRef id = (CFDataRef)TISGetInputSourceProperty(
-                                m_groups[g], kTISPropertyInputSourceID);
+            auto id = static_cast<CFDataRef>(TISGetInputSourceProperty(
+                                m_groups[g], kTISPropertyInputSourceID));
             m_groupMap[id] = g;
         }
     }
 
     UInt32 keyboardType = LMGetKbdType();
-    for (SInt32 g = 0, n = (SInt32)m_groups.size(); g < n; ++g) {
+    for (SInt32 g = 0, n = static_cast<SInt32>(m_groups.size()); g < n; ++g) {
         // add special keys
         getKeyMapForSpecialKeys(keyMap, g);
 
@@ -469,8 +468,8 @@ OSXKeyState::getKeyMap(barrier::KeyMap& keyMap)
 
         // add regular keys
         // try uchr resource first
-        CFDataRef resourceRef = (CFDataRef)TISGetInputSourceProperty(
-            m_groups[g], kTISPropertyUnicodeKeyLayoutData);
+        auto resourceRef = static_cast<CFDataRef>(TISGetInputSourceProperty(
+            m_groups[g], kTISPropertyUnicodeKeyLayoutData));
 
         layoutValid = resourceRef != NULL;
         if (layoutValid)
@@ -635,9 +634,7 @@ OSXKeyState::getKeyMapForSpecialKeys(barrier::KeyMap& keyMap, SInt32 group) cons
 {
     // special keys are insensitive to modifers and none are dead keys
     barrier::KeyMap::KeyItem item;
-    for (size_t i = 0; i < sizeof(s_controlKeys) /
-                                sizeof(s_controlKeys[0]); ++i) {
-        const KeyEntry& entry = s_controlKeys[i];
+    for (auto entry : s_controlKeys) {
         item.m_id        = entry.m_keyID;
         item.m_group     = group;
         item.m_button    = mapVirtualKeyToKeyButton(entry.m_virtualKey);
@@ -768,9 +765,8 @@ OSXKeyState::getKeyMap(barrier::KeyMap& keyMap,
 
             // now add a key entry for each key/required modifier pair.
             item.m_sensitive = mapModifiersFromOSX(sensitive << 16);
-            for (std::set<UInt32>::iterator k = required.begin();
-                                            k != required.end(); ++k) {
-                item.m_required = mapModifiersFromOSX(*k << 16);
+            for (unsigned int k : required) {
+                item.m_required = mapModifiersFromOSX(k << 16);
                 keyMap.addKeyEntry(item);
             }
         }
@@ -867,8 +863,8 @@ OSXKeyState::getGroups(GroupList& groups) const
     // get number of layouts
     CFStringRef keys[] = { kTISPropertyInputSourceCategory };
     CFStringRef values[] = { kTISCategoryKeyboardInputSource };
-    CFDictionaryRef dict = CFDictionaryCreate(NULL, (const void **)keys, (const void **)values, 1, NULL, NULL);
-    CFArrayRef kbds = TISCreateInputSourceList(dict, (Boolean)false);
+    CFDictionaryRef dict = CFDictionaryCreate(NULL, reinterpret_cast<const void **>(keys), reinterpret_cast<const void **>(values), 1, NULL, NULL);
+    CFArrayRef kbds = TISCreateInputSourceList(dict, static_cast<Boolean>(false));
     n = CFArrayGetCount(kbds);
     gotLayouts = (n != 0);
 
@@ -883,7 +879,7 @@ OSXKeyState::getGroups(GroupList& groups) const
     clearGroupList(groups);
     for (CFIndex i = 0; i < n; ++i) {
         bool addToGroups = true;
-        TISInputSourceRef keyboardLayout =
+        auto keyboardLayout =
             (TISInputSourceRef)CFArrayGetValueAtIndex(kbds, i);
 
         if (addToGroups) {
@@ -922,8 +918,7 @@ OSXKeyState::adjustAltGrModifier(const KeyIDs& ids,
     if (!mask) return;
 
     if (!isCommand) {
-        for (KeyIDs::const_iterator i = ids.begin(); i != ids.end(); ++i) {
-            KeyID id = *i;
+        for (unsigned int id : ids) {
             if (id != kKeyNone &&
                 ((id < 0xe000u || id > 0xefffu) ||
                 (id >= kKeyKP_Equal && id <= kKeyKP_9))) {

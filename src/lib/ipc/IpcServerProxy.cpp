@@ -87,13 +87,13 @@ IpcServerProxy::send(const IpcMessage& message)
 
     switch (message.type()) {
     case kIpcHello: {
-        const IpcHelloMessage& hm = static_cast<const IpcHelloMessage&>(message);
+        const auto& hm = static_cast<const IpcHelloMessage&>(message);
         ProtocolUtil::writef(&m_stream, kIpcMsgHello, hm.clientType());
         break;
     }
 
     case kIpcCommand: {
-        const IpcCommandMessage& cm = static_cast<const IpcCommandMessage&>(message);
+        const auto& cm = static_cast<const IpcCommandMessage&>(message);
         std::string command = cm.command();
         ProtocolUtil::writef(&m_stream, kIpcMsgCommand, &command);
         break;

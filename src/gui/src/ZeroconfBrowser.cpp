@@ -71,7 +71,7 @@ void ZeroconfBrowser::browseReply(DNSServiceRef, DNSServiceFlags flags,
             quint32, DNSServiceErrorType errorCode, const char* serviceName,
             const char* regType, const char* replyDomain, void* context)
 {
-    ZeroconfBrowser* browser = static_cast<ZeroconfBrowser*>(context);
+    auto* browser = static_cast<ZeroconfBrowser*>(context);
     if (errorCode != kDNSServiceErr_NoError) {
         emit browser->error(errorCode);
     }

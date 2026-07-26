@@ -52,7 +52,7 @@ QString Action::text() const
      * argument, it can not have () in the end.
      */
     QString text = QString(m_ActionTypeNames[m_KeySequence.isMouseButton() ?
-                                             type() + int(mouseDown) : type()]);
+                                             type() + static_cast<int>(mouseDown) : type()]);
 
     switch (type())
     {

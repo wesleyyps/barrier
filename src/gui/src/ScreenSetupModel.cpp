@@ -88,7 +88,7 @@ QStringList ScreenSetupModel::mimeTypes() const
 
 QMimeData* ScreenSetupModel::mimeData(const QModelIndexList& indexes) const
 {
-    QMimeData* pMimeData = new QMimeData();
+    auto* pMimeData = new QMimeData();
     QByteArray encodedData;
 
     QDataStream stream(&encodedData, QIODevice::WriteOnly);

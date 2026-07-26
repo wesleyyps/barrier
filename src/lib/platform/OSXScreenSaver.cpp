@@ -151,7 +151,7 @@ OSXScreenSaver::launchTerminationCallback(
     if ((result == noErr) &&
         (actualSize > 0) &&
         (actualType == typeProcessSerialNumber)) {
-        OSXScreenSaver* screenSaver = (OSXScreenSaver*)userData;
+        auto* screenSaver = static_cast<OSXScreenSaver*>(userData);
         UInt32 eventKind = GetEventKind(theEvent);
         if (eventKind == kEventAppLaunched) {
             screenSaver->processLaunched(psn);
@@ -182,7 +182,7 @@ getProcessSerialNumber(const char* name, ProcessSerialNumber& psn)
         if (err != 0) {
             break;
         }
-        if (strcmp(name, (const char*)&procName[1]) == 0) {
+        if (strcmp(name, reinterpret_cast<const char*>(&procName[1])) == 0) {
             psn = checkPsn;
             break;
         }

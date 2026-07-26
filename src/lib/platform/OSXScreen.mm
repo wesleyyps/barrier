@@ -348,7 +348,7 @@ OSXScreen::registerHotKey(KeyID key, KeyModifierMask mask)
 		}
 	}
 	else {
-		EventHotKeyID hkid = { 'SNRG', (UInt32)id };
+		EventHotKeyID hkid = { 'SNRG', id };
 		OSStatus status = RegisterEventHotKey(macKey, macMask, hkid,
 								GetApplicationEventTarget(), 0,
 								&ref);
@@ -373,7 +373,7 @@ void
 OSXScreen::unregisterHotKey(UInt32 id)
 {
 	// look up hotkey
-	HotKeyMap::iterator i = m_hotKeys.find(id);
+	auto i = m_hotKeys.find(id);
 	if (i == m_hotKeys.end()) {
 		return;
 	}
@@ -386,7 +386,7 @@ OSXScreen::unregisterHotKey(UInt32 id)
 	else {
 		okay = false;
 		// XXX -- this is inefficient
-		for (ModifierHotKeyMap::iterator j = m_modifierHotKeys.begin();
+		for (auto j = m_modifierHotKeys.begin();
 								j != m_modifierHotKeys.end(); ++j) {
 			if (j->second == id) {
 				m_modifierHotKeys.erase(j);
@@ -996,7 +996,7 @@ OSXScreen::sendEvent(Event::Type type, void* data) const
 void
 OSXScreen::sendClipboardEvent(Event::Type type, ClipboardID id) const
 {
-	ClipboardInfo* info   = (ClipboardInfo*)malloc(sizeof(ClipboardInfo));
+	auto* info   = (ClipboardInfo*)malloc(sizeof(ClipboardInfo));
 	info->m_id             = id;
 	info->m_sequenceNumber = m_sequenceNumber;
 	sendEvent(type, info);
@@ -1005,7 +1005,7 @@ OSXScreen::sendClipboardEvent(Event::Type type, ClipboardID id) const
 void
 OSXScreen::handleSystemEvent(const Event& event, void*)
 {
-	EventRef* carbonEvent = static_cast<EventRef*>(event.getData());
+	auto* carbonEvent = static_cast<EventRef*>(event.getData());
 	assert(carbonEvent != NULL);
 
 	UInt32 eventClass = GetEventClass(*carbonEvent);
@@ -1140,8 +1140,8 @@ OSXScreen::onMouseMove(CGFloat mx, CGFloat my)
 			m_yFractionalMove += y;
 
 			// Return the integer part
-			SInt32 intX = (SInt32)m_xFractionalMove;
-			SInt32 intY = (SInt32)m_yFractionalMove;
+			auto intX = (SInt32)m_xFractionalMove;
+			auto intY = (SInt32)m_yFractionalMove;
 
 			// And keep only the fractional part
 			m_xFractionalMove -= intX;
@@ -1226,7 +1226,7 @@ OSXScreen::handleClipboardCheck(const Event&, void*)
 void
 OSXScreen::displayReconfigurationCallback(CGDirectDisplayID displayID, CGDisplayChangeSummaryFlags flags, void* inUserData)
 {
-	OSXScreen* screen = (OSXScreen*)inUserData;
+	auto* screen = (OSXScreen*)inUserData;
 
 	// Closing or opening the lid when an external monitor is
     // connected causes an kCGDisplayBeginConfigurationFlag event
@@ -1344,10 +1344,9 @@ OSXScreen::onKey(CGEventRef event)
 	}
 
 	// send key events
-	for (OSXKeyState::KeyIDs::const_iterator i = keys.begin();
-							i != keys.end(); ++i) {
+	for (unsigned int key : keys) {
 		m_keyState->sendKeyEvent(getEventTarget(), down, isRepeat,
-							*i, sendMask, 1, button);
+							key, sendMask, 1, button);
 	}
 
 	return true;
@@ -1464,7 +1463,7 @@ OSXScreen::getScrollSpeed() const
 	if (pref != NULL) {
 		CFTypeID id = CFGetTypeID(pref);
 		if (id == CFNumberGetTypeID()) {
-			CFNumberRef value = static_cast<CFNumberRef>(pref);
+			auto value = static_cast<CFNumberRef>(pref);
 			if (CFNumberGetValue(value, kCFNumberDoubleType, &scaling)) {
 				if (scaling < 0.0) {
 					scaling = 0.0;
@@ -1552,7 +1551,7 @@ OSXScreen::updateScreenShape()
 		return;
 	}
 
-	CGDirectDisplayID* displays = new CGDirectDisplayID[displayCount];
+	auto* displays = new CGDirectDisplayID[displayCount];
 	if (displays == NULL) {
 		return;
 	}
@@ -1606,7 +1605,7 @@ OSXScreen::userSwitchCallback(EventHandlerCallRef nextHandler,
 								EventRef theEvent,
 								void* inUserData)
 {
-	OSXScreen* screen = (OSXScreen*)inUserData;
+	auto* screen = (OSXScreen*)inUserData;
 	UInt32 kind        = GetEventKind(theEvent);
 	IEventQueue* events = screen->getEvents();
 
@@ -1910,7 +1909,7 @@ OSXScreen::handleCGInputEventSecondary(
 	// should be tested better before reintroducing.
 	return event;
 
-	OSXScreen* screen = (OSXScreen*)refcon;
+	auto* screen = (OSXScreen*)refcon;
 	if (screen->m_cursorHidden && type == kCGEventMouseMoved) {
 
 		CGPoint pos = CGEventGetLocation(event);
@@ -1931,7 +1930,7 @@ OSXScreen::handleCGInputEvent(CGEventTapProxy proxy,
 							   CGEventRef event,
 							   void* refcon)
 {
-	OSXScreen* screen = (OSXScreen*)refcon;
+	auto* screen = (OSXScreen*)refcon;
 	CGPoint pos;
 
 	switch(type) {

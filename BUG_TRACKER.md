@@ -42,3 +42,5 @@ When a bug category is addressed, it must be logged here with the files affected
 | 2026-07-25 | BUGPRONE_EXCEPTIONS | `TCPSocket.cpp`, `XSocket.cpp`, `ArchMultithreadPosix.cpp`, etc. | 32786811 | Handled empty catch blocks and exception escapes. | **COMMITTED** |
 | 2026-07-25 | BUGPRONE_SWITCHES | `ProtocolUtil.cpp`, `ClipboardChunk.cpp`, `OSXKeyState.cpp`, etc. | 32786811 | Added missing default cases to integer switch statements. | **COMMITTED** |
 | 2026-07-25 | BUGPRONE_NARROWING | `ArchNetworkBSD.cpp`, `TCPSocket.cpp`, `ClipboardChunk.cpp` | 32786811 | Fixed implicit narrowing conversions causing potential data loss. | **COMMITTED** |
+| 2026-07-26 | MODERNIZE_DEFAULTS | Across codebase (e.g. `App.cpp`, `ArchDaemonNone.cpp`) | 701ad505 | Applied `modernize-use-equals-default` to utilize compiler-optimized constructors/destructors. | **COMMITTED** |
+| 2026-07-26 | READABILITY_ELSE_RETURN | Across codebase (e.g. `String.cpp`, `Server.cpp`) | 701ad505 | Applied `readability-else-after-return` to reduce unnecessary nesting and improve flow control. | **COMMITTED** |

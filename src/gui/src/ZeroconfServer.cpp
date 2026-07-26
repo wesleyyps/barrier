@@ -27,7 +27,7 @@ ZeroconfServer::ZeroconfServer(QObject* parent) :
 
 void ZeroconfServer::incomingConnection(qintptr socketDescriptor)
 {
-    ZeroconfThread* thread = new ZeroconfThread(socketDescriptor, this);
+    auto* thread = new ZeroconfThread(socketDescriptor, this);
     connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
     thread->start();
 }

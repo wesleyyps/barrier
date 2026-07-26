@@ -102,9 +102,8 @@ Server::Server(
     std::string primaryName = getName(primaryClient);
 
 	// clear clipboards
-	for (ClipboardID id = 0; id < kClipboardEnd; ++id) {
-		ClipboardInfo& clipboard   = m_clipboards[id];
-		clipboard.m_clipboardOwner  = primaryName;
+	for (auto & clipboard : m_clipboards) {
+			clipboard.m_clipboardOwner  = primaryName;
 		clipboard.m_clipboardSeqNum = m_seqNum;
 		if (clipboard.m_clipboard.open(0)) {
 			(void)clipboard.m_clipboard.empty();
@@ -252,10 +251,9 @@ Server::~Server()
 
 	// force immediate disconnection of secondary clients
 	disconnect();
-	for (OldClients::iterator index = m_oldClients.begin();
-							index != m_oldClients.end(); ++index) {
-		BaseClientProxy* client = index->first;
-		m_events->deleteTimer(index->second);
+	for (auto & m_oldClient : m_oldClients) {
+		BaseClientProxy* client = m_oldClient.first;
+		m_events->deleteTimer(m_oldClient.second);
 		m_events->removeHandler(Event::kTimer, client);
 		m_events->removeHandler(m_events->forClientProxy().disconnected(), client);
 		delete client;
@@ -347,7 +345,7 @@ Server::adoptClient(BaseClientProxy* client)
 	}
 
 	// send notification
-	Server::ScreenConnectedInfo* info =
+	auto* info =
 		new Server::ScreenConnectedInfo(getName(client));
 	m_events->addEvent(Event(m_events->forServer().connected(),
 								m_primaryClient->getEventTarget(), info));
@@ -369,16 +367,15 @@ Server::disconnect()
 UInt32
 Server::getNumClients() const
 {
-	return (SInt32)m_clients.size();
+	return static_cast<SInt32>(m_clients.size());
 }
 
 void
 Server::getClients(std::vector<std::string>& list) const
 {
 	list.clear();
-	for (ClientList::const_iterator index = m_clients.begin();
-							index != m_clients.end(); ++index) {
-		list.push_back(index->first);
+	for (const auto & m_client : m_clients) {
+		list.push_back(m_client.first);
 	}
 }
 
@@ -624,7 +621,7 @@ Server::getNeighbor(BaseClientProxy* src,
 
 		// look up neighbor cell.  if the screen is connected and
 		// ready then we can stop.
-		ClientList::const_iterator index = m_clients.find(dstName);
+		auto index = m_clients.find(dstName);
 		if (index != m_clients.end()) {
 			LOG((CLOG_DEBUG2 "\"%s\" is on %s of \"%s\" at %f", dstName.c_str(), Config::dirName(dir), srcName.c_str(), t));
 			mapToPixel(index->second, dir, tTmp, x, y);
@@ -855,9 +852,9 @@ Server::isSwitchOkay(BaseClientProxy* newScreen,
 	}
 	if (options != NULL && options->count(kOptionScreenSwitchCorners) > 0) {
 		// get corner mask and size
-		Config::ScreenOptions::const_iterator i =
+		auto i =
 			options->find(kOptionScreenSwitchCorners);
-		UInt32 corners = static_cast<UInt32>(i->second);
+		auto corners = static_cast<UInt32>(i->second);
 		i = options->find(kOptionScreenSwitchCornerSize);
 		SInt32 size = 0;
 		if (i != options->end()) {
@@ -1103,10 +1100,9 @@ Server::sendOptions(BaseClientProxy* client) const
 	if (options != NULL) {
 		// convert options to a more convenient form for sending
 		optionsList.reserve(2 * options->size());
-		for (Config::ScreenOptions::const_iterator index = options->begin();
-									index != options->end(); ++index) {
-			optionsList.push_back(index->first);
-			optionsList.push_back(static_cast<UInt32>(index->second));
+		for (auto option : *options) {
+			optionsList.push_back(option.first);
+			optionsList.push_back(static_cast<UInt32>(option.second));
 		}
 	}
 
@@ -1115,10 +1111,9 @@ Server::sendOptions(BaseClientProxy* client) const
 	if (options != NULL) {
 		// convert options to a more convenient form for sending
 		optionsList.reserve(optionsList.size() + 2 * options->size());
-		for (Config::ScreenOptions::const_iterator index = options->begin();
-									index != options->end(); ++index) {
-			optionsList.push_back(index->first);
-			optionsList.push_back(static_cast<UInt32>(index->second));
+		for (auto option : *options) {
+			optionsList.push_back(option.first);
+			optionsList.push_back(static_cast<UInt32>(option.second));
 		}
 	}
 
@@ -1140,10 +1135,9 @@ Server::processOptions()
 	m_switchNeedsAlt = false;		// doesn't work correct.
 
 	bool newRelativeMoves = m_relativeMoves;
-	for (Config::ScreenOptions::const_iterator index = options->begin();
-								index != options->end(); ++index) {
-		const OptionID id       = index->first;
-		const OptionValue value = index->second;
+	for (auto option : *options) {
+		const OptionID id       = option.first;
+		const OptionValue value = option.second;
 		if (id == kOptionScreenSwitchDelay) {
 			m_switchWaitDelay = 1.0e-3 * static_cast<double>(value);
 			if (m_switchWaitDelay < 0.0) {
@@ -1188,7 +1182,7 @@ void
 Server::handleShapeChanged(const Event&, void* vclient)
 {
 	// ignore events from unknown clients
-	BaseClientProxy* client = static_cast<BaseClientProxy*>(vclient);
+	auto* client = static_cast<BaseClientProxy*>(vclient);
 	if (m_clientSet.count(client) == 0) {
 		return;
 	}
@@ -1225,11 +1219,11 @@ Server::handleClipboardGrabbed(const Event& event, void* vclient)
 	}
 
 	// ignore events from unknown clients
-	BaseClientProxy* grabber = static_cast<BaseClientProxy*>(vclient);
+	auto* grabber = static_cast<BaseClientProxy*>(vclient);
 	if (m_clientSet.count(grabber) == 0) {
 		return;
 	}
-	const IScreen::ClipboardInfo* info =
+	const auto* info =
 		static_cast<const IScreen::ClipboardInfo*>(event.getData());
 
 	// ignore grab if sequence number is old.  always allow primary
@@ -1255,9 +1249,8 @@ Server::handleClipboardGrabbed(const Event& event, void* vclient)
 
 	// tell all other screens to take ownership of clipboard.  tell the
 	// grabber that it's clipboard isn't dirty.
-	for (ClientList::iterator index = m_clients.begin();
-								index != m_clients.end(); ++index) {
-		BaseClientProxy* client = index->second;
+	for (auto & m_client : m_clients) {
+		BaseClientProxy* client = m_client.second;
 		if (client == grabber) {
 			client->setClipboardDirty(info->m_id, false);
 		}
@@ -1271,11 +1264,11 @@ void
 Server::handleClipboardChanged(const Event& event, void* vclient)
 {
 	// ignore events from unknown clients
-	BaseClientProxy* sender = static_cast<BaseClientProxy*>(vclient);
+	auto* sender = static_cast<BaseClientProxy*>(vclient);
 	if (m_clientSet.count(sender) == 0) {
 		return;
 	}
-	const IScreen::ClipboardInfo* info =
+	const auto* info =
 		static_cast<const IScreen::ClipboardInfo*>(event.getData());
 	onClipboardChanged(sender, info->m_id, info->m_sequenceNumber);
 }
@@ -1283,7 +1276,7 @@ Server::handleClipboardChanged(const Event& event, void* vclient)
 void
 Server::handleKeyDownEvent(const Event& event, void*)
 {
-	IPlatformScreen::KeyInfo* info =
+	auto* info =
 		static_cast<IPlatformScreen::KeyInfo*>(event.getData());
 	onKeyDown(info->m_key, info->m_mask, info->m_button, info->m_screens);
 }
@@ -1291,7 +1284,7 @@ Server::handleKeyDownEvent(const Event& event, void*)
 void
 Server::handleKeyUpEvent(const Event& event, void*)
 {
-	IPlatformScreen::KeyInfo* info =
+	auto* info =
 		 static_cast<IPlatformScreen::KeyInfo*>(event.getData());
 	onKeyUp(info->m_key, info->m_mask, info->m_button, info->m_screens);
 }
@@ -1299,7 +1292,7 @@ Server::handleKeyUpEvent(const Event& event, void*)
 void
 Server::handleKeyRepeatEvent(const Event& event, void*)
 {
-	IPlatformScreen::KeyInfo* info =
+	auto* info =
 		static_cast<IPlatformScreen::KeyInfo*>(event.getData());
 	onKeyRepeat(info->m_key, info->m_mask, info->m_count, info->m_button);
 }
@@ -1307,7 +1300,7 @@ Server::handleKeyRepeatEvent(const Event& event, void*)
 void
 Server::handleButtonDownEvent(const Event& event, void*)
 {
-	IPlatformScreen::ButtonInfo* info =
+	auto* info =
 		static_cast<IPlatformScreen::ButtonInfo*>(event.getData());
 	onMouseDown(info->m_button);
 }
@@ -1315,7 +1308,7 @@ Server::handleButtonDownEvent(const Event& event, void*)
 void
 Server::handleButtonUpEvent(const Event& event, void*)
 {
-	IPlatformScreen::ButtonInfo* info =
+	auto* info =
 		static_cast<IPlatformScreen::ButtonInfo*>(event.getData());
 	onMouseUp(info->m_button);
 }
@@ -1323,7 +1316,7 @@ Server::handleButtonUpEvent(const Event& event, void*)
 void
 Server::handleMotionPrimaryEvent(const Event& event, void*)
 {
-	IPlatformScreen::MotionInfo* info =
+	auto* info =
 		static_cast<IPlatformScreen::MotionInfo*>(event.getData());
 	onMouseMovePrimary(info->m_x, info->m_y);
 }
@@ -1331,7 +1324,7 @@ Server::handleMotionPrimaryEvent(const Event& event, void*)
 void
 Server::handleMotionSecondaryEvent(const Event& event, void*)
 {
-	IPlatformScreen::MotionInfo* info =
+	auto* info =
 		static_cast<IPlatformScreen::MotionInfo*>(event.getData());
 	onMouseMoveSecondary(info->m_x, info->m_y);
 }
@@ -1339,7 +1332,7 @@ Server::handleMotionSecondaryEvent(const Event& event, void*)
 void
 Server::handleWheelEvent(const Event& event, void*)
 {
-	IPlatformScreen::WheelInfo* info =
+	auto* info =
 		static_cast<IPlatformScreen::WheelInfo*>(event.getData());
 	onMouseWheel(info->m_xDelta, info->m_yDelta);
 }
@@ -1375,7 +1368,7 @@ Server::handleClientDisconnected(const Event&, void* vclient)
 {
 	// client has disconnected.  it might be an old client or an
 	// active client.  we don't care so just handle it both ways.
-	BaseClientProxy* client = static_cast<BaseClientProxy*>(vclient);
+	auto* client = static_cast<BaseClientProxy*>(vclient);
 	removeActiveClient(client);
 	removeOldClient(client);
 
@@ -1386,7 +1379,7 @@ void
 Server::handleClientCloseTimeout(const Event&, void* vclient)
 {
 	// client took too long to disconnect.  just dump it.
-	BaseClientProxy* client = static_cast<BaseClientProxy*>(vclient);
+	auto* client = static_cast<BaseClientProxy*>(vclient);
 	LOG((CLOG_NOTE "forced disconnection of client \"%s\"", getName(client).c_str()));
 	removeOldClient(client);
 
@@ -1396,7 +1389,7 @@ Server::handleClientCloseTimeout(const Event&, void* vclient)
 void
 Server::handleSwitchToScreenEvent(const Event& event, void*)
 {
-	SwitchToScreenInfo* info =
+	auto* info =
 		static_cast<SwitchToScreenInfo*>(event.getData());
 
 	ClientList::const_iterator index = m_clients.find(info->m_screen);
@@ -1429,7 +1422,7 @@ Server::handleToggleScreenEvent(const Event& event, void*)
 void
 Server::handleSwitchInDirectionEvent(const Event& event, void*)
 {
-	SwitchInDirectionInfo* info =
+	auto* info =
 		static_cast<SwitchInDirectionInfo*>(event.getData());
 
 	// jump to screen in chosen direction from center of this screen
@@ -1447,7 +1440,7 @@ Server::handleSwitchInDirectionEvent(const Event& event, void*)
 void
 Server::handleKeyboardBroadcastEvent(const Event& event, void*)
 {
-	KeyboardBroadcastInfo* info = (KeyboardBroadcastInfo*)event.getData();
+	auto* info = static_cast<KeyboardBroadcastInfo*>(event.getData());
 
 	// choose new state
 	bool newState;
@@ -1478,7 +1471,7 @@ Server::handleKeyboardBroadcastEvent(const Event& event, void*)
 void
 Server::handleLockCursorToScreenEvent(const Event& event, void*)
 {
-	LockCursorToScreenInfo* info = (LockCursorToScreenInfo*)event.getData();
+	auto* info = static_cast<LockCursorToScreenInfo*>(event.getData());
 
 	// choose new state
 	bool newState;
@@ -2068,7 +2061,7 @@ Server::onMouseWheel(SInt32 xDelta, SInt32 yDelta)
 void
 Server::onFileChunkSending(const void* data)
 {
-	FileChunk* chunk = static_cast<FileChunk*>(const_cast<void*>(data));
+	auto* chunk = static_cast<FileChunk*>(const_cast<void*>(data));
 
 	LOG((CLOG_DEBUG1 "sending file chunk"));
 	assert(m_active != NULL);
@@ -2138,7 +2131,7 @@ bool
 Server::removeClient(BaseClientProxy* client)
 {
 	// return false if not in list
-	ClientSet::iterator i = m_clientSet.find(client);
+	auto i = m_clientSet.find(client);
 	if (i == m_clientSet.end()) {
 		return false;
 	}
@@ -2176,7 +2169,7 @@ Server::closeClient(BaseClientProxy* client, const char* msg)
 
 	// send message
 	// FIXME -- avoid type cast (kinda hard, though)
-	((ClientProxy*)client)->close(msg);
+	(static_cast<ClientProxy*>(client))->close(msg);
 
 	// install timer.  wait timeout seconds for client to close.
 	double timeout = 5.0;
@@ -2201,10 +2194,9 @@ Server::closeClients(const Config& config)
 	// from the configuration (or who's canonical name is changing).
 	typedef std::set<BaseClientProxy*> RemovedClients;
 	RemovedClients removed;
-	for (ClientList::iterator index = m_clients.begin();
-								index != m_clients.end(); ++index) {
-		if (!config.isCanonicalName(index->first)) {
-			removed.insert(index->second);
+	for (auto & m_client : m_clients) {
+		if (!config.isCanonicalName(m_client.first)) {
+			removed.insert(m_client.second);
 		}
 	}
 
@@ -2213,9 +2205,8 @@ Server::closeClients(const Config& config)
 
 	// now close them.  we collect the list then close in two steps
 	// because closeClient() modifies the collection we iterate over.
-	for (RemovedClients::iterator index = removed.begin();
-								index != removed.end(); ++index) {
-		closeClient(*index, kMsgCClose);
+	for (auto index : removed) {
+		closeClient(index, kMsgCClose);
 	}
 }
 
@@ -2234,7 +2225,7 @@ Server::removeActiveClient(BaseClientProxy* client)
 void
 Server::removeOldClient(BaseClientProxy* client)
 {
-	OldClients::iterator i = m_oldClients.find(client);
+	auto i = m_oldClients.find(client);
 	if (i != m_oldClients.end()) {
 		m_events->removeHandler(m_events->forClientProxy().disconnected(), client);
 		m_events->removeHandler(Event::kTimer, i->second);
@@ -2312,8 +2303,8 @@ Server::ClipboardInfo::ClipboardInfo() :
 Server::LockCursorToScreenInfo*
 Server::LockCursorToScreenInfo::alloc(State state)
 {
-	LockCursorToScreenInfo* info =
-		(LockCursorToScreenInfo*)malloc(sizeof(LockCursorToScreenInfo));
+	auto* info =
+		static_cast<LockCursorToScreenInfo*>(malloc(sizeof(LockCursorToScreenInfo)));
 	info->m_state = state;
 	return info;
 }
@@ -2326,9 +2317,9 @@ Server::LockCursorToScreenInfo::alloc(State state)
 Server::SwitchToScreenInfo*
 Server::SwitchToScreenInfo::alloc(const std::string& screen)
 {
-	SwitchToScreenInfo* info =
-		(SwitchToScreenInfo*)malloc(sizeof(SwitchToScreenInfo) +
-								screen.size());
+	auto* info =
+		static_cast<SwitchToScreenInfo*>(malloc(sizeof(SwitchToScreenInfo) +
+								screen.size()));
 	memcpy(info->m_screen, screen.c_str(), screen.size() + 1);
 	return info;
 }
@@ -2341,8 +2332,8 @@ Server::SwitchToScreenInfo::alloc(const std::string& screen)
 Server::SwitchInDirectionInfo*
 Server::SwitchInDirectionInfo::alloc(EDirection direction)
 {
-	SwitchInDirectionInfo* info =
-		(SwitchInDirectionInfo*)malloc(sizeof(SwitchInDirectionInfo));
+	auto* info =
+		static_cast<SwitchInDirectionInfo*>(malloc(sizeof(SwitchInDirectionInfo)));
 	info->m_direction = direction;
 	return info;
 }
@@ -2354,8 +2345,8 @@ Server::SwitchInDirectionInfo::alloc(EDirection direction)
 Server::KeyboardBroadcastInfo*
 Server::KeyboardBroadcastInfo::alloc(State state)
 {
-	KeyboardBroadcastInfo* info =
-		(KeyboardBroadcastInfo*)malloc(sizeof(KeyboardBroadcastInfo));
+	auto* info =
+		static_cast<KeyboardBroadcastInfo*>(malloc(sizeof(KeyboardBroadcastInfo)));
 	info->m_state      = state;
 	info->m_screens[0] = '\0';
 	return info;
@@ -2364,9 +2355,9 @@ Server::KeyboardBroadcastInfo::alloc(State state)
 Server::KeyboardBroadcastInfo*
 Server::KeyboardBroadcastInfo::alloc(State state, const std::string& screens)
 {
-	KeyboardBroadcastInfo* info =
-		(KeyboardBroadcastInfo*)malloc(sizeof(KeyboardBroadcastInfo) +
-								screens.size());
+	auto* info =
+		static_cast<KeyboardBroadcastInfo*>(malloc(sizeof(KeyboardBroadcastInfo) +
+								screens.size()));
 	info->m_state = state;
 	memcpy(info->m_screens, screens.c_str(), screens.size() + 1);
 	return info;

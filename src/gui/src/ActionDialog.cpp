@@ -61,7 +61,7 @@ ActionDialog::ActionDialog(QWidget* parent, ServerConfig& config, Hotkey& hotkey
     for (const Screen& screen : serverConfig().screens()) {
         if (!screen.isNull())
         {
-            QListWidgetItem *pListItem = new QListWidgetItem(screen.name());
+            auto *pListItem = new QListWidgetItem(screen.name());
             m_pListScreens->addItem(pListItem);
             if (m_Action.typeScreenNames().indexOf(screen.name()) != -1)
                 m_pListScreens->setCurrentItem(pListItem);

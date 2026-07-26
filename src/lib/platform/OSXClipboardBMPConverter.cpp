@@ -114,7 +114,7 @@ std::string OSXClipboardBMPConverter::toIClipboard(const std::string& bmp) const
     }
 
     // check BMP file header
-    const UInt8* rawBMPHeader = reinterpret_cast<const UInt8*>(bmp.data());
+    const auto* rawBMPHeader = reinterpret_cast<const UInt8*>(bmp.data());
     if (rawBMPHeader[0] != 'B' || rawBMPHeader[1] != 'M') {
         return {};
     }

@@ -116,9 +116,9 @@ IOSXKeyResource::getKeyID(UInt8 c)
 
         // get current keyboard script
         TISInputSourceRef isref = TISCopyCurrentKeyboardInputSource();
-        CFArrayRef langs = (CFArrayRef) TISGetInputSourceProperty(isref, kTISPropertyInputSourceLanguages);
+        auto langs = static_cast<CFArrayRef>(TISGetInputSourceProperty(isref, kTISPropertyInputSourceLanguages));
         CFStringEncoding encoding = CFStringConvertIANACharSetNameToEncoding(
-                                        (CFStringRef)CFArrayGetValueAtIndex(langs, 0));
+                                        static_cast<CFStringRef>(CFArrayGetValueAtIndex(langs, 0)));
         // convert to unicode
         CFStringRef cfString =
             CFStringCreateWithCStringNoCopy(

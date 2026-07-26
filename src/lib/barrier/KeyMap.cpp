@@ -97,8 +97,8 @@ KeyMap::addKeyEntry(const KeyItem& item)
 
     // see if we already have this item;  just return if so
     KeyEntryList& entries = groupTable[item.m_group];
-    for (size_t i = 0, n = entries.size(); i < n; ++i) {
-        if (entries[i].size() == 1 && newItem == entries[i][0]) {
+    for (auto & entrie : entries) {
+        if (entrie.size() == 1 && newItem == entrie[0]) {
             return;
         }
     }
@@ -173,17 +173,17 @@ KeyMap::addKeyCombinationEntry(KeyID id, SInt32 group,
         // groups for keys, otherwise search just the given group.
         SInt32 n = 1;
         if (m_composeAcrossGroups) {
-            n = (SInt32)groupTable.size();
+            n = static_cast<SInt32>(groupTable.size());
         }
 
         bool found = false;
         for (SInt32 gd = 0; gd < n && !found; ++gd) {
             SInt32 eg = (group + gd) % getNumGroups();
             const KeyEntryList& entries = groupTable[eg];
-            for (size_t j = 0; j < entries.size(); ++j) {
-                if (entries[j].size() == 1) {
+            for (const auto & entrie : entries) {
+                if (entrie.size() == 1) {
                     found = true;
-                    items.push_back(entries[j][0]);
+                    items.push_back(entrie[0]);
                     break;
                 }
             }
@@ -229,9 +229,8 @@ KeyMap::finish()
     m_numGroups = findNumGroups();
 
     // make sure every key has the same number of groups
-    for (KeyIDMap::iterator i = m_keyIDMap.begin();
-                                i != m_keyIDMap.end(); ++i) {
-        i->second.resize(m_numGroups);
+    for (auto & i : m_keyIDMap) {
+        i.second.resize(m_numGroups);
     }
 
     // compute keys that generate each modifier
@@ -241,16 +240,14 @@ KeyMap::finish()
 void
 KeyMap::foreachKey(ForeachKeyCallback cb, void* userData)
 {
-    for (KeyIDMap::iterator i = m_keyIDMap.begin();
-                                i != m_keyIDMap.end(); ++i) {
-        KeyGroupTable& groupTable = i->second;
+    for (auto & i : m_keyIDMap) {
+        KeyGroupTable& groupTable = i.second;
         for (size_t group = 0; group < groupTable.size(); ++group) {
             KeyEntryList& entryList = groupTable[group];
-            for (size_t j = 0; j < entryList.size(); ++j) {
-                KeyItemList& itemList = entryList[j];
-                for (size_t k = 0; k < itemList.size(); ++k) {
-                    (*cb)(i->first, static_cast<SInt32>(group),
-                                itemList[k], userData);
+            for (auto & itemList : entryList) {
+                for (auto & k : itemList) {
+                    (*cb)(i.first, static_cast<SInt32>(group),
+                                k, userData);
                 }
             }
         }
@@ -349,17 +346,17 @@ KeyMap::findCompatibleKey(KeyID id, SInt32 group,
 {
     assert(group >= 0 && group < getNumGroups());
 
-    KeyIDMap::const_iterator i = m_keyIDMap.find(id);
+    auto i = m_keyIDMap.find(id);
     if (i == m_keyIDMap.end()) {
         return NULL;
     }
 
     const KeyEntryList& entries = i->second[group];
-    for (size_t j = 0; j < entries.size(); ++j) {
-        if ((entries[j].back().m_sensitive & sensitive) == 0 ||
-            (entries[j].back().m_required & sensitive) ==
+    for (const auto & entrie : entries) {
+        if ((entrie.back().m_sensitive & sensitive) == 0 ||
+            (entrie.back().m_required & sensitive) ==
                 (required & sensitive)) {
-            return &entries[j];
+            return &entrie;
         }
     }
 
@@ -395,9 +392,8 @@ void
 KeyMap::collectButtons(const ModifierToKeys& mods, ButtonToKeyMap& keys)
 {
     keys.clear();
-    for (ModifierToKeys::const_iterator i = mods.begin();
-                                i != mods.end(); ++i) {
-        keys.insert(std::make_pair(i->second.m_button, &i->second));
+    for (const auto & mod : mods) {
+        keys.insert(std::make_pair(mod.second.m_button, &mod.second));
     }
 }
 
@@ -461,10 +457,9 @@ SInt32
 KeyMap::findNumGroups() const
 {
     size_t max = 0;
-    for (KeyIDMap::const_iterator i = m_keyIDMap.begin();
-                                i != m_keyIDMap.end(); ++i) {
-        if (i->second.size() > max) {
-            max = i->second.size();
+    for (const auto & i : m_keyIDMap) {
+        if (i.second.size() > max) {
+            max = i.second.size();
         }
     }
     return static_cast<SInt32>(max);
@@ -480,14 +475,14 @@ KeyMap::setModifierKeys()
         const KeyGroupTable& groupTable = i->second;
         for (size_t g = 0; g < groupTable.size(); ++g) {
             const KeyEntryList& entries = groupTable[g];
-            for (size_t j = 0; j < entries.size(); ++j) {
+            for (const auto & entrie : entries) {
                 // skip multi-key sequences
-                if (entries[j].size() != 1) {
+                if (entrie.size() != 1) {
                     continue;
                 }
 
                 // skip keys that don't generate a modifier
-                const KeyItem& item = entries[j].back();
+                const KeyItem& item = entrie.back();
                 if (item.m_generates == 0) {
                     continue;
                 }
@@ -496,7 +491,7 @@ KeyMap::setModifierKeys()
                 for (SInt32 b = 0; b < kKeyModifierNumBits; ++b) {
                     // skip if item doesn't generate bit b
                     if (((1u << b) & item.m_generates) != 0) {
-                        SInt32 mIndex = (SInt32)g * kKeyModifierNumBits + b;
+                        SInt32 mIndex = static_cast<SInt32>(g) * kKeyModifierNumBits + b;
                         m_modifierKeys[mIndex].push_back(&item);
                     }
                 }
@@ -515,7 +510,7 @@ KeyMap::mapCommandKey(Keystrokes& keys, KeyID id, SInt32 group,
     static const KeyModifierMask s_overrideModifiers = 0xffffu;
 
     // find KeySym in table
-    KeyIDMap::const_iterator i = m_keyIDMap.find(id);
+    auto i = m_keyIDMap.find(id);
     if (i == m_keyIDMap.end()) {
         // unknown key
         LOG((CLOG_DEBUG1 "key %04x is not on keyboard", id));
@@ -529,8 +524,8 @@ KeyMap::mapCommandKey(Keystrokes& keys, KeyID id, SInt32 group,
     for (SInt32 groupOffset = 0; groupOffset < numGroups; ++groupOffset) {
         SInt32 effectiveGroup = getEffectiveGroup(group, groupOffset);
         const KeyEntryList& entryList = keyGroupTable[effectiveGroup];
-        for (size_t i = 0; i < entryList.size(); ++i) {
-            if (entryList[i].size() != 1) {
+        for (const auto & i : entryList) {
+            if (i.size() != 1) {
                 // ignore multikey entries
                 continue;
             }
@@ -540,7 +535,7 @@ KeyMap::mapCommandKey(Keystrokes& keys, KeyID id, SInt32 group,
             // after the right button not the right character.
             // we'll use desiredMask as-is, overriding the key's required
             // modifiers, when synthesizing this button.
-            const KeyItem& item = entryList[i].back();
+            const KeyItem& item = i.back();
             KeyModifierMask desiredShiftMask = KeyModifierShift & desiredMask;
             KeyModifierMask requiredIgnoreShiftMask = item.m_required & ~KeyModifierShift;
             if ((item.m_required & desiredShiftMask) == (item.m_sensitive & desiredShiftMask) &&
@@ -606,7 +601,7 @@ KeyMap::mapCharacterKey(Keystrokes& keys, KeyID id, SInt32 group,
                 bool isAutoRepeat) const
 {
     // find KeySym in table
-    KeyIDMap::const_iterator i = m_keyIDMap.find(id);
+    auto i = m_keyIDMap.find(id);
     if (i == m_keyIDMap.end()) {
         // unknown key
         LOG((CLOG_DEBUG1 "key %04x is not on keyboard", id));
@@ -648,8 +643,8 @@ KeyMap::mapCharacterKey(Keystrokes& keys, KeyID id, SInt32 group,
     SInt32 newGroup             = group;
 
     // add each key
-    for (size_t j = 0; j < itemList.size(); ++j) {
-        if (!keysForKeyItem(itemList[j], newGroup, newModifiers,
+    for (const auto & j : itemList) {
+        if (!keysForKeyItem(j, newGroup, newModifiers,
                             newState, desiredMask,
                             0, isAutoRepeat, keys)) {
             LOG((CLOG_DEBUG1 "can't map key"));
@@ -695,7 +690,7 @@ KeyMap::findBestKey(const KeyEntryList& entryList,
                 KeyModifierMask desiredState) const
 {
     // check for an item that can accommodate the desiredState exactly
-    for (SInt32 i = 0; i < (SInt32)entryList.size(); ++i) {
+    for (SInt32 i = 0; i < static_cast<SInt32>(entryList.size()); ++i) {
         const KeyItem& item = entryList[i].back();
         if ((item.m_required & desiredState) == item.m_required &&
             (item.m_required & desiredState) == (item.m_sensitive & desiredState)) {
@@ -707,7 +702,7 @@ KeyMap::findBestKey(const KeyEntryList& entryList,
     // choose the item that requires the fewest modifier changes
     SInt32 bestCount = 32;
     SInt32 bestIndex = -1;
-    for (SInt32 i = 0; i < (SInt32)entryList.size(); ++i) {
+    for (SInt32 i = 0; i < static_cast<SInt32>(entryList.size()); ++i) {
         const KeyItem& item = entryList[i].back();
         KeyModifierMask change =
             ((item.m_required ^ desiredState) & item.m_sensitive);
@@ -740,10 +735,9 @@ KeyMap::keyForModifier(KeyButton button, SInt32 group,
     // must use the other shift button to do the shifting.
     const ModifierKeyItemList& items =
         m_modifierKeys[group * kKeyModifierNumBits + modifierBit];
-    for (ModifierKeyItemList::const_iterator i = items.begin();
-                                i != items.end(); ++i) {
-        if ((*i)->m_button != button) {
-            return (*i);
+    for (auto item : items) {
+        if (item->m_button != button) {
+            return item;
         }
     }
     return NULL;
@@ -853,15 +847,14 @@ KeyMap::keysToRestoreModifiers(const KeyItem& keyItem, SInt32,
     }
 
     // press wanted keys
-    for (ModifierToKeys::const_iterator i = desiredModifiers.begin();
-                                i != desiredModifiers.end(); ++i) {
-        KeyButton button = i->second.m_button;
+    for (const auto & desiredModifier : desiredModifiers) {
+        KeyButton button = desiredModifier.second.m_button;
         if (button != keyItem.m_button && oldKeys.count(button) == 0) {
             EKeystroke type = kKeystrokePress;
-            if (i->second.m_lock) {
+            if (desiredModifier.second.m_lock) {
                 type = kKeystrokeModify;
             }
-            addKeystrokes(type, i->second,
+            addKeystrokes(type, desiredModifier.second,
                                 activeModifiers, currentState, keystrokes);
         }
     }
@@ -996,7 +989,7 @@ KeyMap::addKeystrokes(EKeystroke type, const KeyItem& keyItem,
             std::pair<ModifierToKeys::iterator,
                         ModifierToKeys::iterator> range =
                 activeModifiers.equal_range(keyItem.m_generates);
-            for (ModifierToKeys::iterator i = range.first;
+            for (auto i = range.first;
                                 i != range.second; ++i) {
                 if (i->second.m_button == button) {
                     activeModifiers.erase(i);
@@ -1053,7 +1046,7 @@ KeyMap::addKeystrokes(EKeystroke type, const KeyItem& keyItem,
             std::pair<ModifierToKeys::const_iterator,
                         ModifierToKeys::const_iterator> range =
                 activeModifiers.equal_range(keyItem.m_generates);
-            for (ModifierToKeys::const_iterator i = range.first;
+            for (auto i = range.first;
                                 i != range.second; ++i) {
                 keystrokes.push_back(Keystroke(i->second.m_button,
                                 false, false, i->second.m_client));
@@ -1170,7 +1163,7 @@ KeyMap::formatKey(KeyID key, KeyModifierMask mask)
         }
         // XXX -- we're assuming ASCII here
         else if (key >= 33 && key < 127) {
-            x += (char)key;
+            x += static_cast<char>(key);
         }
         else {
             x += barrier::string::sprintf("\\u%04x", key);
@@ -1200,12 +1193,12 @@ KeyMap::parseKey(const String& x, KeyID& key)
             // unknown key
             return false;
         }
-        key = (KeyID)x[0];
+        key = static_cast<KeyID>(x[0]);
     }
     else if (x.size() == 6 && x[0] == '\\' && x[1] == 'u') {
         // escaped unicode (\uXXXX where XXXX is a hex number)
         char* end;
-        key = (KeyID)strtol(x.c_str() + 2, &end, 16);
+        key = static_cast<KeyID>(strtol(x.c_str() + 2, &end, 16));
         if (*end != '\0') {
             return false;
         }

@@ -55,7 +55,7 @@ static
 void
 interrupt(Arch::ESignal, void* data)
 {
-    EventQueue* events = static_cast<EventQueue*>(data);
+    auto* events = static_cast<EventQueue*>(data);
     events->addEvent(Event(Event::kQuit));
 }
 
@@ -185,8 +185,8 @@ EventQueue::adoptBuffer(IEventQueueBuffer* buffer)
 
     // discard old buffer and old events
     delete m_buffer;
-    for (EventTable::iterator i = m_events.begin(); i != m_events.end(); ++i) {
-        Event::deleteData(i->second);
+    for (auto & m_event : m_events) {
+        Event::deleteData(m_event.second);
     }
     m_events.clear();
     m_oldEventIDs.clear();
@@ -368,14 +368,14 @@ void
 EventQueue::deleteTimer(EventQueueTimer* timer)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    for (TimerQueue::iterator index = m_timerQueue.begin();
+    for (auto index = m_timerQueue.begin();
                             index != m_timerQueue.end(); ++index) {
         if (index->getTimer() == timer) {
             m_timerQueue.erase(index);
             break;
         }
     }
-    Timers::iterator index = m_timers.find(timer);
+    auto index = m_timers.find(timer);
     if (index != m_timers.end()) {
         m_timers.erase(index);
     }
@@ -397,10 +397,10 @@ EventQueue::removeHandler(Event::Type type, void* target)
     IEventJob* handler = NULL;
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        HandlerTable::iterator index = m_handlers.find(target);
+        auto index = m_handlers.find(target);
         if (index != m_handlers.end()) {
             TypeHandlerTable& typeHandlers = index->second;
-            TypeHandlerTable::iterator index2 = typeHandlers.find(type);
+            auto index2 = typeHandlers.find(type);
             if (index2 != typeHandlers.end()) {
                 handler = index2->second;
                 typeHandlers.erase(index2);
@@ -416,22 +416,20 @@ EventQueue::removeHandlers(void* target)
     std::vector<IEventJob*> handlers;
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        HandlerTable::iterator index = m_handlers.find(target);
+        auto index = m_handlers.find(target);
         if (index != m_handlers.end()) {
             // copy to handlers array and clear table for target
             TypeHandlerTable& typeHandlers = index->second;
-            for (TypeHandlerTable::iterator index2 = typeHandlers.begin();
-                            index2 != typeHandlers.end(); ++index2) {
-                handlers.push_back(index2->second);
+            for (auto & typeHandler : typeHandlers) {
+                handlers.push_back(typeHandler.second);
             }
             typeHandlers.clear();
         }
     }
 
     // delete handlers
-    for (std::vector<IEventJob*>::iterator index = handlers.begin();
-                            index != handlers.end(); ++index) {
-        delete *index;
+    for (auto & handler : handlers) {
+        delete handler;
     }
 }
 
@@ -439,10 +437,10 @@ IEventJob*
 EventQueue::getHandler(Event::Type type, void* target) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    HandlerTable::const_iterator index = m_handlers.find(target);
+    auto index = m_handlers.find(target);
     if (index != m_handlers.end()) {
         const TypeHandlerTable& typeHandlers = index->second;
-        TypeHandlerTable::const_iterator index2 = typeHandlers.find(type);
+        auto index2 = typeHandlers.find(type);
         if (index2 != typeHandlers.end()) {
             return index2->second;
         }
@@ -474,7 +472,7 @@ Event
 EventQueue::removeEvent(UInt32 eventID)
 {
     // look up id
-    EventTable::iterator index = m_events.find(eventID);
+    auto index = m_events.find(eventID);
     if (index == m_events.end()) {
         return Event();
     }
@@ -504,9 +502,8 @@ EventQueue::hasTimerExpired(Event& event)
     m_time.reset();
 
     // countdown elapsed time
-    for (TimerQueue::iterator index = m_timerQueue.begin();
-                            index != m_timerQueue.end(); ++index) {
-        (*index) -= time;
+    for (auto & index : m_timerQueue) {
+        index -= time;
     }
 
     // done if no timers are expired
@@ -548,7 +545,7 @@ EventQueue::getNextTimerTimeout() const
 
 Event::Type EventQueue::getRegisteredType(const std::string& name) const
 {
-    NameMap::const_iterator found = m_nameMap.find(name);
+    auto found = m_nameMap.find(name);
     if (found != m_nameMap.end())
         return found->second;
 

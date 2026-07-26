@@ -39,7 +39,7 @@ QBarrierApplication::~QBarrierApplication()
 void QBarrierApplication::commitData(QSessionManager&)
 {
     for (QWidget* widget : topLevelWidgets()) {
-        MainWindow* mainWindow = qobject_cast<MainWindow*>(widget);
+        auto* mainWindow = qobject_cast<MainWindow*>(widget);
         if (mainWindow)
             mainWindow->saveSettings();
     }

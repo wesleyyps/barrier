@@ -358,7 +358,7 @@ Client::resetOptions()
 void
 Client::setOptions(const OptionsList& options)
 {
-    for (OptionsList::const_iterator index = options.begin();
+    for (auto index = options.begin();
          index != options.end(); ++index) {
         const OptionID id       = *index;
         if (id == kOptionClipboardSharing) {
@@ -425,7 +425,7 @@ Client::sendEvent(Event::Type type, void* data)
 void
 Client::sendConnectionFailedEvent(const char* msg)
 {
-    FailInfo* info = new FailInfo(msg);
+    auto* info = new FailInfo(msg);
     info->m_retry = true;
     Event event(m_events->forClient().connectionFailed(), getEventTarget(), info, Event::kDontFreeData);
     m_events->addEvent(event);
@@ -434,7 +434,7 @@ Client::sendConnectionFailedEvent(const char* msg)
 void
 Client::sendFileChunk(const void* data)
 {
-    FileChunk* chunk = static_cast<FileChunk*>(const_cast<void*>(data));
+    auto* chunk = static_cast<FileChunk*>(const_cast<void*>(data));
     LOG((CLOG_DEBUG1 "send file chunk"));
     assert(m_server != NULL);
 
@@ -608,7 +608,7 @@ Client::handleConnected(const Event&, void*)
 void
 Client::handleConnectionFailed(const Event& event, void*)
 {
-    IDataSocket::ConnectionFailedInfo* info =
+    auto* info =
         static_cast<IDataSocket::ConnectionFailedInfo*>(event.getData());
 
     cleanupTimer();
@@ -664,7 +664,7 @@ Client::handleClipboardGrabbed(const Event& event, void*)
         return;
     }
 
-    const IScreen::ClipboardInfo* info =
+    const auto* info =
         static_cast<const IScreen::ClipboardInfo*>(event.getData());
 
     // grab ownership

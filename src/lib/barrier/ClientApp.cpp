@@ -259,7 +259,7 @@ void
 ClientApp::handleClientRestart(const Event&, void* vtimer)
 {
     // discard old timer
-    EventQueueTimer* timer = static_cast<EventQueueTimer*>(vtimer);
+    auto* timer = static_cast<EventQueueTimer*>(vtimer);
     m_events->deleteTimer(timer);
     m_events->removeHandler(Event::kTimer, timer);
 
@@ -293,7 +293,7 @@ ClientApp::handleClientConnected(const Event&, void*)
 void
 ClientApp::handleClientFailed(const Event& e, void*)
 {
-    Client::FailInfo* info =
+    auto* info =
         static_cast<Client::FailInfo*>(e.getData());
 
     updateStatus(String("Failed to connect to server: ") + info->m_what);
@@ -328,7 +328,7 @@ Client*
 ClientApp::openClient(const String& name, const NetworkAddress& address,
                 barrier::Screen* screen)
 {
-    Client* client = new Client(
+    auto* client = new Client(
         m_events,
         name,
         address,
@@ -465,7 +465,7 @@ ClientApp::mainLoop()
     Thread thread([this](){ run_events_loop(); });
 
     // wait until carbon loop is ready
-    OSXScreen* screen = dynamic_cast<OSXScreen*>(
+    auto* screen = dynamic_cast<OSXScreen*>(
         m_clientScreen->getPlatformScreen());
     screen->waitForCarbonLoop();
 

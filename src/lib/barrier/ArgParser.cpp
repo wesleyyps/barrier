@@ -460,7 +460,7 @@ ArgParser::assembleCommand(std::vector<String>& argsArray,  String ignoreArg, in
 {
     String result;
 
-    for (std::vector<String>::iterator it = argsArray.begin(); it != argsArray.end(); ++it) {
+    for (auto it = argsArray.begin(); it != argsArray.end(); ++it) {
         if (it->compare(ignoreArg) == 0) {
             it = it + parametersRequired;
             continue;

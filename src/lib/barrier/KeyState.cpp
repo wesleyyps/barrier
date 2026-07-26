@@ -24,7 +24,7 @@
 #include <iterator>
 #include <list>
 
-static const KeyButton kButtonMask = (KeyButton)(IKeyState::kNumButtons - 1);
+static const KeyButton kButtonMask = static_cast<KeyButton>(IKeyState::kNumButtons - 1);
 
 static const KeyID s_decomposeTable[] = {
     // spacing version of dead keys
@@ -503,9 +503,8 @@ KeyState::updateKeyState()
     // get the current keyboard state
     KeyButtonSet keysDown;
     pollPressedKeys(keysDown);
-    for (KeyButtonSet::const_iterator i = keysDown.begin();
-                                i != keysDown.end(); ++i) {
-        m_keys[*i] = 1;
+    for (unsigned short i : keysDown) {
+        m_keys[i] = 1;
     }
 
     // get the current modifier state
@@ -523,7 +522,7 @@ void
 KeyState::addActiveModifierCB(KeyID, SInt32 group,
                 barrier::KeyMap::KeyItem& keyItem, void* vcontext)
 {
-    AddActiveModifierContext* context =
+    auto* context =
         static_cast<AddActiveModifierContext*>(vcontext);
     if (group == context->m_activeGroup &&
         (keyItem.m_generates & context->m_mask) != 0) {
@@ -585,7 +584,7 @@ KeyState::fakeKeyDown(KeyID id, KeyModifierMask mask, KeyButton serverID)
         return;
     }
 
-    KeyButton localID = (KeyButton)(keyItem->m_button & kButtonMask);
+    auto localID = static_cast<KeyButton>(keyItem->m_button & kButtonMask);
     updateModifierKeyState(localID, oldActiveModifiers, m_activeModifiers);
     if (localID != 0) {
         // note keys down
@@ -621,7 +620,7 @@ KeyState::fakeKeyRepeat(
     if (keyItem == NULL) {
         return false;
     }
-    KeyButton localID = (KeyButton)(keyItem->m_button & kButtonMask);
+    auto localID = static_cast<KeyButton>(keyItem->m_button & kButtonMask);
     if (localID == 0) {
         return false;
     }
@@ -635,11 +634,10 @@ KeyState::fakeKeyRepeat(
     if (localID != oldLocalID) {
         // replace key up with previous KeyButton but leave key down
         // alone so it uses the new KeyButton.
-        for (Keystrokes::iterator index = keys.begin();
-                                index != keys.end(); ++index) {
-            if (index->m_type == Keystroke::kButton &&
-                index->m_data.m_button.m_button == localID) {
-                index->m_data.m_button.m_button = oldLocalID;
+        for (auto & key : keys) {
+            if (key.m_type == Keystroke::kButton &&
+                key.m_data.m_button.m_button == localID) {
+                key.m_data.m_button.m_button = oldLocalID;
                 break;
             }
         }
@@ -680,13 +678,13 @@ KeyState::fakeKeyUp(KeyButton serverID)
     m_serverKeys[serverID] = 0;
 
     // check if this is a modifier
-    ModifierToKeys::iterator i = m_activeModifiers.begin();
+    auto i = m_activeModifiers.begin();
     while (i != m_activeModifiers.end()) {
         if (i->second.m_button == localID && !i->second.m_lock) {
             // modifier is no longer down
             KeyModifierMask mask = i->first;
 
-            ModifierToKeys::iterator tmp = i;
+            auto tmp = i;
             ++i;
             m_activeModifiers.erase(tmp);
 
@@ -848,11 +846,11 @@ KeyState::fakeKeys(const Keystrokes& keys, UInt32 count)
 
     // generate key events
     LOG((CLOG_DEBUG1 "keystrokes:"));
-    for (Keystrokes::const_iterator k = keys.begin(); k != keys.end(); ) {
+    for (auto k = keys.begin(); k != keys.end(); ) {
         if (k->m_type == Keystroke::kButton && k->m_data.m_button.m_repeat) {
             // repeat from here up to but not including the next key
             // with m_repeat == false count times.
-            Keystrokes::const_iterator start = k;
+            auto start = k;
             while (count-- > 0) {
                 // send repeating events
                 for (k = start; k != keys.end() &&
@@ -882,13 +880,11 @@ KeyState::updateModifierKeyState(KeyButton button,
 {
     // get the pressed modifier buttons before and after
     barrier::KeyMap::ButtonToKeyMap oldKeys, newKeys;
-    for (ModifierToKeys::const_iterator i = oldModifiers.begin();
-                                i != oldModifiers.end(); ++i) {
-        oldKeys.insert(std::make_pair(i->second.m_button, &i->second));
+    for (const auto & oldModifier : oldModifiers) {
+        oldKeys.insert(std::make_pair(oldModifier.second.m_button, &oldModifier.second));
     }
-    for (ModifierToKeys::const_iterator i = newModifiers.begin();
-                                i != newModifiers.end(); ++i) {
-        newKeys.insert(std::make_pair(i->second.m_button, &i->second));
+    for (const auto & newModifier : newModifiers) {
+        newKeys.insert(std::make_pair(newModifier.second.m_button, &newModifier.second));
     }
 
     // get the modifier buttons that were pressed or released

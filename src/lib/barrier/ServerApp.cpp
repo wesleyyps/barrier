@@ -266,7 +266,7 @@ ServerApp::forceReconnect(const Event&, void*)
 void
 ServerApp::handleClientConnected(const Event&, void* vlistener)
 {
-    ClientListener* listener = static_cast<ClientListener*>(vlistener);
+    auto* listener = static_cast<ClientListener*>(vlistener);
     ClientProxy* client = listener->getNextClient();
     if (client != NULL) {
         m_server->adoptClient(client);
@@ -662,7 +662,7 @@ ServerApp::openClientListener(const NetworkAddress& address)
         }
     }
 
-    ClientListener* listen = new ClientListener(
+    auto* listen = new ClientListener(
         address,
         new TCPSocketFactory(m_events, getSocketMultiplexer()),
         m_events, security_level);
@@ -678,7 +678,7 @@ ServerApp::openClientListener(const NetworkAddress& address)
 Server*
 ServerApp::openServer(Config& config, PrimaryClient* primaryClient)
 {
-    Server* server = new Server(config, primaryClient, m_serverScreen, m_events, args());
+    auto* server = new Server(config, primaryClient, m_serverScreen, m_events, args());
     try {
         m_events->adoptHandler(
             m_events->forServer().disconnected(), server,
@@ -796,7 +796,7 @@ ServerApp::mainLoop()
     Thread thread([this](){ run_events_loop(); });
 
     // wait until carbon loop is ready
-    OSXScreen* screen = dynamic_cast<OSXScreen*>(
+    auto* screen = dynamic_cast<OSXScreen*>(
         m_serverScreen->getPlatformScreen());
     screen->waitForCarbonLoop();
 

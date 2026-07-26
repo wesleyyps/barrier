@@ -410,7 +410,7 @@ ClientProxy1_0::setOptions(const OptionsList& options)
     ProtocolUtil::writef(getStream(), kMsgDSetOptions, &options);
 
     // check options
-    for (UInt32 i = 0, n = (UInt32)options.size(); i < n; i += 2) {
+    for (UInt32 i = 0, n = static_cast<UInt32>(options.size()); i < n; i += 2) {
         if (options[i] == kOptionHeartbeat) {
             double rate = 1.0e-3 * static_cast<double>(options[i + 1]);
             if (rate <= 0.0) {
@@ -481,7 +481,7 @@ ClientProxy1_0::recvGrabClipboard()
     }
 
     // notify
-    ClipboardInfo* info   = new ClipboardInfo;
+    auto* info   = new ClipboardInfo;
     info->m_id             = id;
     info->m_sequenceNumber = seqNum;
     m_events->addEvent(Event(m_events->forClipboard().clipboardGrabbed(),

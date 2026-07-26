@@ -108,17 +108,14 @@ void OSXClipboard::add(EFormat format, const std::string& data)
         LOG((CLOG_DEBUG " format of data to be added to clipboard was kHTML"));
     }
 
-    for (ConverterList::const_iterator index = m_converters.begin();
-            index != m_converters.end(); ++index) {
-
-        IOSXClipboardConverter* converter = *index;
+    for (auto converter : m_converters) {
 
         // skip converters for other formats
         if (converter->getFormat() == format) {
             std::string osXData = converter->fromIClipboard(data);
             CFStringRef flavorType = converter->getOSXFormat();
             CFDataRef dataRef = CFDataCreate(kCFAllocatorDefault, (UInt8 *)osXData.data(), osXData.size());
-            PasteboardItemID itemID = (PasteboardItemID)1;
+            auto itemID = (PasteboardItemID)1;
 
             PasteboardPutItemFlavor(
                 m_pboard,
@@ -164,11 +161,9 @@ OSXClipboard::has(EFormat format) const
         return false;
 
     PasteboardItemID item;
-    PasteboardGetItemIdentifier(m_pboard, (CFIndex) 1, &item);
+    PasteboardGetItemIdentifier(m_pboard, static_cast<CFIndex>(1), &item);
 
-    for (ConverterList::const_iterator index = m_converters.begin();
-            index != m_converters.end(); ++index) {
-        IOSXClipboardConverter* converter = *index;
+    for (auto converter : m_converters) {
         if (converter->getFormat() == format) {
             PasteboardFlavorFlags flags;
             CFStringRef type = converter->getOSXFormat();
@@ -191,14 +186,13 @@ std::string OSXClipboard::get(EFormat format) const
     if (m_pboard == NULL)
         return result;
 
-    PasteboardGetItemIdentifier(m_pboard, (CFIndex) 1, &item);
+    PasteboardGetItemIdentifier(m_pboard, static_cast<CFIndex>(1), &item);
 
 
     // find the converter for the first clipboard format we can handle
     IOSXClipboardConverter* converter = NULL;
-    for (ConverterList::const_iterator index = m_converters.begin();
-            index != m_converters.end(); ++index) {
-        converter = *index;
+    for (auto m_converter : m_converters) {
+        converter = m_converter;
 
         PasteboardFlavorFlags flags;
         type = converter->getOSXFormat();
@@ -247,9 +241,8 @@ OSXClipboard::clearConverters()
     if (m_pboard == NULL)
         return;
 
-    for (ConverterList::iterator index = m_converters.begin();
-            index != m_converters.end(); ++index) {
-        delete *index;
+    for (auto & m_converter : m_converters) {
+        delete m_converter;
     }
     m_converters.clear();
 }

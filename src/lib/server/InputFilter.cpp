@@ -119,7 +119,7 @@ InputFilter::KeystrokeCondition::match(const Event& event)
     }
 
     // check if it's our hotkey
-    IPrimaryScreen::HotKeyInfo* kinfo =
+    auto* kinfo =
         static_cast<IPlatformScreen::HotKeyInfo*>(event.getData());
     if (kinfo->m_id != m_id) {
         return kNoMatch;
@@ -214,7 +214,7 @@ InputFilter::MouseButtonCondition::match(const Event& event)
 
     // check if it's the right button and modifiers.  ignore modifiers
     // that cannot be combined with a mouse button.
-    IPlatformScreen::ButtonInfo* minfo =
+    auto* minfo =
         static_cast<IPlatformScreen::ButtonInfo*>(event.getData());
     if (minfo->m_button != m_button ||
         (minfo->m_mask & ~s_ignoreMask) != m_mask) {
@@ -252,7 +252,7 @@ InputFilter::EFilterStatus
 InputFilter::ScreenConnectedCondition::match(const Event& event)
 {
     if (event.getType() == m_events->forServer().connected()) {
-        Server::ScreenConnectedInfo* info =
+        auto* info =
             static_cast<Server::ScreenConnectedInfo*>(event.getData());
         if (m_screen == info->m_screen || m_screen.empty()) {
             return kActivate;
@@ -350,7 +350,7 @@ InputFilter::SwitchToScreenAction::perform(const Event& event)
     // event if it has one.
     std::string screen = m_screen;
     if (screen.empty() && event.getType() == m_events->forServer().connected()) {
-        Server::ScreenConnectedInfo* info =
+        auto* info =
             static_cast<Server::ScreenConnectedInfo*>(event.getData());
         screen = info->m_screen;
     }
@@ -699,13 +699,11 @@ void
 InputFilter::Rule::clear()
 {
     delete m_condition;
-    for (ActionList::iterator i = m_activateActions.begin();
-                                i != m_activateActions.end(); ++i) {
-        delete *i;
+    for (auto & m_activateAction : m_activateActions) {
+        delete m_activateAction;
     }
-    for (ActionList::iterator i = m_deactivateActions.begin();
-                                i != m_deactivateActions.end(); ++i) {
-        delete *i;
+    for (auto & m_deactivateAction : m_deactivateActions) {
+        delete m_deactivateAction;
     }
 
     m_condition = NULL;
@@ -720,13 +718,11 @@ InputFilter::Rule::copy(const Rule& rule)
     if (rule.m_condition != NULL) {
         m_condition = rule.m_condition->clone();
     }
-    for (ActionList::const_iterator i = rule.m_activateActions.begin();
-                                i != rule.m_activateActions.end(); ++i) {
-        m_activateActions.push_back((*i)->clone());
+    for (auto m_activateAction : rule.m_activateActions) {
+        m_activateActions.push_back(m_activateAction->clone());
     }
-    for (ActionList::const_iterator i = rule.m_deactivateActions.begin();
-                                i != rule.m_deactivateActions.end(); ++i) {
-        m_deactivateActions.push_back((*i)->clone());
+    for (auto m_deactivateAction : rule.m_deactivateActions) {
+        m_deactivateActions.push_back(m_deactivateAction->clone());
     }
 }
 
@@ -823,10 +819,9 @@ InputFilter::Rule::handleEvent(const Event& event)
     }
 
     // perform actions
-    for (ActionList::const_iterator i = actions->begin();
-                                i != actions->end(); ++i) {
-        LOG((CLOG_DEBUG1 "hotkey: %s", (*i)->format().c_str()));
-        (*i)->perform(event);
+    for (auto action : *actions) {
+        LOG((CLOG_DEBUG1 "hotkey: %s", action->format().c_str()));
+        action->perform(event);
     }
 
     return true;
@@ -841,7 +836,7 @@ std::string InputFilter::Rule::format() const
         s += " = ";
 
         // activate actions
-        ActionList::const_iterator i = m_activateActions.begin();
+        auto i = m_activateActions.begin();
         if (i != m_activateActions.end()) {
             s += (*i)->format();
             while (++i != m_activateActions.end()) {
@@ -962,9 +957,8 @@ InputFilter::setPrimaryClient(PrimaryClient* client)
     }
 
     if (m_primaryClient != NULL) {
-        for (RuleList::iterator rule  = m_ruleList.begin();
-                                 rule != m_ruleList.end(); ++rule) {
-            rule->disable(m_primaryClient);
+        for (auto & rule : m_ruleList) {
+            rule.disable(m_primaryClient);
         }
 
         m_events->removeHandler(m_events->forIKeyState().keyDown(),
@@ -1021,9 +1015,8 @@ InputFilter::setPrimaryClient(PrimaryClient* client)
                             new TMethodEventJob<InputFilter>(this,
                                 &InputFilter::handleEvent));
 
-        for (RuleList::iterator rule  = m_ruleList.begin();
-                                 rule != m_ruleList.end(); ++rule) {
-            rule->enable(m_primaryClient);
+        for (auto & rule : m_ruleList) {
+            rule.enable(m_primaryClient);
         }
     }
 }
@@ -1031,10 +1024,9 @@ InputFilter::setPrimaryClient(PrimaryClient* client)
 std::string InputFilter::format(const std::string& linePrefix) const
 {
     std::string s;
-    for (RuleList::const_iterator i = m_ruleList.begin();
-                                i != m_ruleList.end(); ++i) {
+    for (const auto & i : m_ruleList) {
         s += linePrefix;
-        s += i->format();
+        s += i.format();
         s += "\n";
     }
     return s;
@@ -1057,13 +1049,11 @@ InputFilter::operator==(const InputFilter& x) const
     // compare rule lists.  the easiest way to do that is to format each
     // rule into a string, sort the strings, then compare the results.
     std::vector<std::string> aList, bList;
-    for (RuleList::const_iterator i = m_ruleList.begin();
-                                i != m_ruleList.end(); ++i) {
-        aList.push_back(i->format());
+    for (const auto & i : m_ruleList) {
+        aList.push_back(i.format());
     }
-    for (RuleList::const_iterator i = x.m_ruleList.begin();
-                                i != x.m_ruleList.end(); ++i) {
-        bList.push_back(i->format());
+    for (const auto & i : x.m_ruleList) {
+        bList.push_back(i.format());
     }
     std::partial_sort(aList.begin(), aList.end(), aList.end());
     std::partial_sort(bList.begin(), bList.end(), bList.end());
@@ -1085,9 +1075,8 @@ InputFilter::handleEvent(const Event& event, void*)
                                 Event::kDeliverImmediately);
 
     // let each rule try to match the event until one does
-    for (RuleList::iterator rule  = m_ruleList.begin();
-                             rule != m_ruleList.end(); ++rule) {
-        if (rule->handleEvent(myEvent)) {
+    for (auto & rule : m_ruleList) {
+        if (rule.handleEvent(myEvent)) {
             // handled
             return;
         }
