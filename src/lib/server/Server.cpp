@@ -17,6 +17,7 @@
  */
 
 #include "server/Server.h"
+#include <array>
 
 #include "server/ClientProxy.h"
 #include "server/ClientProxyUnknown.h"
@@ -1830,9 +1831,9 @@ Server::onMouseMovePrimary(SInt32 x, SInt32 y)
 	}
 
 	// check both horizontally and vertically
-	EDirection dirs[] = {dirh, dirv};
-	SInt32 xs[] = {xh, x};
-	SInt32 ys[] = {y, yv};
+	std::array<EDirection, 2> dirs = {{dirh, dirv}};
+	std::array<SInt32, 2> xs = {{xh, x}};
+	std::array<SInt32, 2> ys = {{y, yv}};
 	for (int i = 0; i < 2; ++i) {
 		EDirection dir = dirs[i];
 		if (dir == kNoDirection) {

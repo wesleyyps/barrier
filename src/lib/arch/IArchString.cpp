@@ -17,6 +17,7 @@
  */
 
 #include "arch/IArchString.h"
+#include <array>
 #include "arch/Arch.h"
 #include "common/common.h"
 
@@ -49,16 +50,16 @@ IArchString::convStringWCToMB(char* dst,
     }
 
     if (dst == nullptr) {
-        char dummy[MB_LEN_MAX];
+        std::array<char, MB_LEN_MAX> dummy;
         for (const wchar_t* scan = src; n > 0; ++scan, --n) {
-            ptrdiff_t mblen = wctomb(dummy, *scan);
+            ptrdiff_t mblen = wctomb(dummy.data(), *scan);
             if (mblen == -1) {
                 *errors = true;
                 mblen   = 1;
             }
             len += mblen;
         }
-        ptrdiff_t mblen = wctomb(dummy, L'\0');
+        ptrdiff_t mblen = wctomb(dummy.data(), L'\0');
         if (mblen != -1) {
             len += mblen - 1;
         }

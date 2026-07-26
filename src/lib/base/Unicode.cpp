@@ -18,6 +18,7 @@
 
 #include "arch/Arch.h"
 #include "base/Unicode.h"
+#include <array>
 
 #include <cstring>
 
@@ -31,7 +32,7 @@ UInt16
 decode16(const UInt8* n, bool byteSwapped)
 {
     union x16 {
-        UInt8    n8[2];
+        std::array<UInt8, 2> n8;
         UInt16    n16;
     } c;
     if (byteSwapped) {
@@ -51,7 +52,7 @@ UInt32
 decode32(const UInt8* n, bool byteSwapped)
 {
     union x32 {
-        UInt8    n8[4];
+        std::array<UInt8, 4> n8;
         UInt32    n32;
     } c;
     if (byteSwapped) {
@@ -702,7 +703,7 @@ Unicode::fromUTF8(const UInt8*& data, UInt32& n)
     }
 
     // check for characters that didn't use the smallest possible encoding
-    static UInt32 s_minChar[] = {
+    static const std::array<UInt32, 7> s_minChar = {{
         0,
         0x00000000,
         0x00000080,
@@ -710,7 +711,7 @@ Unicode::fromUTF8(const UInt8*& data, UInt32& n)
         0x00010000,
         0x00200000,
         0x04000000
-    };
+    }};
     if (c < s_minChar[size]) {
         return s_invalid;
     }
@@ -729,7 +730,7 @@ Unicode::fromUTF8(const UInt8*& data, UInt32& n)
 void
 Unicode::toUTF8(std::string& dst, UInt32 c, bool* errors)
 {
-    UInt8 data[6];
+    std::array<UInt8, 6> data;
 
     // handle characters outside the valid range
     if ((c >= 0x0000d800 && c <= 0x0000dfff) || c >= 0x80000000) {
@@ -740,25 +741,25 @@ Unicode::toUTF8(std::string& dst, UInt32 c, bool* errors)
     // convert to UTF-8
     if (c < 0x00000080) {
         data[0] = static_cast<UInt8>(c);
-        dst.append(reinterpret_cast<char*>(data), 1);
+        dst.append(reinterpret_cast<char*>(data.data()), 1);
     }
     else if (c < 0x00000800) {
         data[0] = static_cast<UInt8>(((c >>  6) & 0x0000001f) + 0xc0);
         data[1] = static_cast<UInt8>((c         & 0x0000003f) + 0x80);
-        dst.append(reinterpret_cast<char*>(data), 2);
+        dst.append(reinterpret_cast<char*>(data.data()), 2);
     }
     else if (c < 0x00010000) {
         data[0] = static_cast<UInt8>(((c >> 12) & 0x0000000f) + 0xe0);
         data[1] = static_cast<UInt8>(((c >>  6) & 0x0000003f) + 0x80);
         data[2] = static_cast<UInt8>((c         & 0x0000003f) + 0x80);
-        dst.append(reinterpret_cast<char*>(data), 3);
+        dst.append(reinterpret_cast<char*>(data.data()), 3);
     }
     else if (c < 0x00200000) {
         data[0] = static_cast<UInt8>(((c >> 18) & 0x00000007) + 0xf0);
         data[1] = static_cast<UInt8>(((c >> 12) & 0x0000003f) + 0x80);
         data[2] = static_cast<UInt8>(((c >>  6) & 0x0000003f) + 0x80);
         data[3] = static_cast<UInt8>((c         & 0x0000003f) + 0x80);
-        dst.append(reinterpret_cast<char*>(data), 4);
+        dst.append(reinterpret_cast<char*>(data.data()), 4);
     }
     else if (c < 0x04000000) {
         data[0] = static_cast<UInt8>(((c >> 24) & 0x00000003) + 0xf8);
@@ -766,7 +767,7 @@ Unicode::toUTF8(std::string& dst, UInt32 c, bool* errors)
         data[2] = static_cast<UInt8>(((c >> 12) & 0x0000003f) + 0x80);
         data[3] = static_cast<UInt8>(((c >>  6) & 0x0000003f) + 0x80);
         data[4] = static_cast<UInt8>((c         & 0x0000003f) + 0x80);
-        dst.append(reinterpret_cast<char*>(data), 5);
+        dst.append(reinterpret_cast<char*>(data.data()), 5);
     }
     else if (c < 0x80000000) {
         data[0] = static_cast<UInt8>(((c >> 30) & 0x00000001) + 0xfc);
@@ -775,7 +776,7 @@ Unicode::toUTF8(std::string& dst, UInt32 c, bool* errors)
         data[3] = static_cast<UInt8>(((c >> 12) & 0x0000003f) + 0x80);
         data[4] = static_cast<UInt8>(((c >>  6) & 0x0000003f) + 0x80);
         data[5] = static_cast<UInt8>((c         & 0x0000003f) + 0x80);
-        dst.append(reinterpret_cast<char*>(data), 6);
+        dst.append(reinterpret_cast<char*>(data.data()), 6);
     }
     else {
         assert(0 && "character out of range");

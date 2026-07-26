@@ -17,6 +17,7 @@
  */
 
 #include "barrier/KeyState.h"
+#include <array>
 #include "base/Log.h"
 
 #include <cstring>
@@ -26,7 +27,7 @@
 
 static const KeyButton kButtonMask = static_cast<KeyButton>(IKeyState::kNumButtons - 1);
 
-static const KeyID s_decomposeTable[] = {
+static const std::array<KeyID, 1281> s_decomposeTable = {{
     // spacing version of dead keys
     0x0060, 0x0300, 0x0020, 0, // grave,        dead_grave,       space
     0x00b4, 0x0301, 0x0020, 0, // acute,        dead_acute,       space
@@ -339,9 +340,9 @@ static const KeyID s_decomposeTable[] = {
 
     // end of table
     0
-};
+}};
 
-static const KeyID s_numpadTable[] = {
+static const std::array<KeyID, 70> s_numpadTable = {{
     kKeyKP_Space,        0x0020,
     kKeyKP_Tab,            kKeyTab,
     kKeyKP_Enter,        kKeyReturn,
@@ -377,7 +378,7 @@ static const KeyID s_numpadTable[] = {
     kKeyKP_7,            0x0037,
     kKeyKP_8,            0x0038,
     kKeyKP_9,            0x0039
-};
+}};
 
 //
 // KeyState
@@ -807,10 +808,9 @@ KeyState::addKeypadEntries()
     // map every numpad key to its equivalent non-numpad key if it's not
     // on the keyboard.
     for (SInt32 g = 0, n = m_keyMap.getNumGroups(); g < n; ++g) {
-        for (size_t i = 0; i < sizeof(s_numpadTable) /
-                                sizeof(s_numpadTable[0]); i += 2) {
+        for (size_t i = 0; i < s_numpadTable.size(); i += 2) {
             m_keyMap.addKeyCombinationEntry(s_numpadTable[i], g,
-                                s_numpadTable + i + 1, 1);
+                                s_numpadTable.data() + i + 1, 1);
         }
     }
 }
@@ -820,7 +820,7 @@ KeyState::addCombinationEntries()
 {
     for (SInt32 g = 0, n = m_keyMap.getNumGroups(); g < n; ++g) {
         // add dead and compose key composition sequences
-        for (const KeyID* i = s_decomposeTable; *i != 0; ++i) {
+        for (const KeyID* i = s_decomposeTable.data(); *i != 0; ++i) {
             // count the decomposed keys for this key
             UInt32 numKeys = 0;
             for (const KeyID* j = i; *++j != 0; ) {

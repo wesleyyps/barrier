@@ -17,6 +17,7 @@
  */
 
 #include "platform/OSXScreen.h"
+#include <array>
 
 #include "base/EventQueue.h"
 #include "client/Client.h"
@@ -130,14 +131,14 @@ OSXScreen::OSXScreen(IEventQueue* events, bool isPrimary, bool autoShowHideCurso
 		CGDisplayRegisterReconfigurationCallback(displayReconfigurationCallback, this);
 
 		// install fast user switching event handler
-		EventTypeSpec switchEventTypes[2];
+		std::array<EventTypeSpec, 2> switchEventTypes;
 		switchEventTypes[0].eventClass = kEventClassSystem;
 		switchEventTypes[0].eventKind  = kEventSystemUserSessionDeactivated;
 		switchEventTypes[1].eventClass = kEventClassSystem;
 		switchEventTypes[1].eventKind  = kEventSystemUserSessionActivated;
 		EventHandlerUPP switchEventHandler =
 			NewEventHandlerUPP(userSwitchCallback);
-		InstallApplicationEventHandler(switchEventHandler, 2, switchEventTypes,
+		InstallApplicationEventHandler(switchEventHandler, 2, switchEventTypes.data(),
 									   this, &m_switchEventHandlerRef);
 		DisposeEventHandlerUPP(switchEventHandler);
 
@@ -416,14 +417,14 @@ OSXScreen::unregisterHotKey(UInt32 id)
 void
 OSXScreen::constructMouseButtonEventMap()
 {
-	const CGEventType source[NumButtonIDs][3] = {
-		{kCGEventLeftMouseUp, kCGEventLeftMouseDragged, kCGEventLeftMouseDown},
-		{kCGEventRightMouseUp, kCGEventRightMouseDragged, kCGEventRightMouseDown},
-		{kCGEventOtherMouseUp, kCGEventOtherMouseDragged, kCGEventOtherMouseDown},
-		{kCGEventOtherMouseUp, kCGEventOtherMouseDragged, kCGEventOtherMouseDown},
-		{kCGEventOtherMouseUp, kCGEventOtherMouseDragged, kCGEventOtherMouseDown},
-		{kCGEventOtherMouseUp, kCGEventOtherMouseDragged, kCGEventOtherMouseDown}
-	};
+	const std::array<std::array<CGEventType, 3>, NumButtonIDs> source = {{
+		{{kCGEventLeftMouseUp, kCGEventLeftMouseDragged, kCGEventLeftMouseDown}},
+		{{kCGEventRightMouseUp, kCGEventRightMouseDragged, kCGEventRightMouseDown}},
+		{{kCGEventOtherMouseUp, kCGEventOtherMouseDragged, kCGEventOtherMouseDown}},
+		{{kCGEventOtherMouseUp, kCGEventOtherMouseDragged, kCGEventOtherMouseDown}},
+		{{kCGEventOtherMouseUp, kCGEventOtherMouseDragged, kCGEventOtherMouseDown}},
+		{{kCGEventOtherMouseUp, kCGEventOtherMouseDragged, kCGEventOtherMouseDown}}
+	}};
 
 	for (UInt16 button = 0; button < NumButtonIDs; button++) {
 		MouseButtonEventMapType new_map;
