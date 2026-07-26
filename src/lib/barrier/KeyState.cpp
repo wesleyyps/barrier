@@ -775,9 +775,8 @@ KeyState::getButton(KeyID id, SInt32 group) const
     if (items == NULL) {
         return 0;
     }
-    else {
-        return items->back().m_button;
-    }
+            return items->back().m_button;
+   
 }
 
 void

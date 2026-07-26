@@ -442,9 +442,8 @@ Server::getJumpZoneSize(BaseClientProxy* client) const
 	if (client == m_primaryClient) {
 		return m_primaryClient->getJumpZoneSize();
 	}
-	else {
-		return 0;
-	}
+			return 0;
+
 }
 
 void
@@ -1057,7 +1056,7 @@ Server::getCorner(BaseClientProxy* client,
 		if (y < ay + size) {
 			return (xSide < 0) ? kTopLeftMask : kTopRightMask;
 		}
-		else if (y >= ay + ah - size) {
+		if (y >= ay + ah - size) {
 			return (xSide < 0) ? kBottomLeftMask : kBottomRightMask;
 		}
 	}
@@ -1067,7 +1066,7 @@ Server::getCorner(BaseClientProxy* client,
 		if (x < ax + size) {
 			return (ySide < 0) ? kTopLeftMask : kBottomLeftMask;
 		}
-		else if (x >= ax + aw - size) {
+		if (x >= ax + aw - size) {
 			return (ySide < 0) ? kTopRightMask : kBottomRightMask;
 		}
 	}

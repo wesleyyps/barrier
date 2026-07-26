@@ -931,9 +931,8 @@ QString MainWindow::getScreenName()
     if (appConfig().screenName() == "") {
         return QHostInfo::localHostName();
     }
-    else {
-        return appConfig().screenName();
-    }
+            return appConfig().screenName();
+   
 }
 
 void MainWindow::changeEvent(QEvent* event)

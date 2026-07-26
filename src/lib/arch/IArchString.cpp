@@ -33,8 +33,7 @@ std::mutex s_mutex;
 //
 
 IArchString::~IArchString()
-{
-}
+= default;
 
 int
 IArchString::convStringWCToMB(char* dst,

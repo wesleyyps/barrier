@@ -102,7 +102,7 @@ ClipboardChunk::assemble(barrier::IStream* stream,
         dataCached.clear();
         return kStart;
     }
-    else if (mark == kDataChunk) {
+    if (mark == kDataChunk) {
         dataCached.append(data);
         return kNotFinish;
     }

@@ -70,12 +70,10 @@ StopLogOutputter::write(ELevel, const char*)
 //
 
 ConsoleLogOutputter::ConsoleLogOutputter()
-{
-}
+= default;
 
 ConsoleLogOutputter::~ConsoleLogOutputter()
-{
-}
+= default;
 
 void
 ConsoleLogOutputter::open(const char* title)
@@ -243,8 +241,7 @@ FileLogOutputter::FileLogOutputter(const char* logFile)
 }
 
 FileLogOutputter::~FileLogOutputter()
-{
-}
+= default;
 
 void
 FileLogOutputter::setLogFilename(const char* logFile)

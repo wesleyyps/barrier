@@ -27,8 +27,7 @@ DataDownloader::DataDownloader(QObject* parent) :
 }
 
 DataDownloader::~DataDownloader()
-{
-}
+= default;
 
 void DataDownloader::complete(QNetworkReply* reply)
 {

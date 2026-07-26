@@ -91,7 +91,7 @@ OSXEventQueueBuffer::getEvent(Event& event, UInt32& dataID)
         event = Event(Event::kQuit);
         return kSystem;
     }
-    else if (error != noErr) {
+    if (error != noErr) {
         return kNone;
     }
     else {

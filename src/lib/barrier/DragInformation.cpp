@@ -93,9 +93,8 @@ DragInformation::getDragFileExtension(String filename)
     if (findResult != string::npos) {
         return filename.substr(findResult + 1, filename.size() - findResult - 1);
     }
-    else {
-        return "";
-    }
+            return "";
+   
 }
 
 int

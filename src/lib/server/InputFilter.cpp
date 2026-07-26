@@ -476,11 +476,10 @@ std::string InputFilter::KeyboardBroadcastAction::format() const
     if (m_screens.empty() || m_screens[0] == '*') {
         return barrier::string::sprintf("%s(%s)", s_name, s_mode[m_mode]);
     }
-    else {
-        return barrier::string::sprintf("%s(%s,%.*s)", s_name, s_mode[m_mode],
+            return barrier::string::sprintf("%s(%s,%.*s)", s_name, s_mode[m_mode],
                             m_screens.size() - 2,
                             m_screens.c_str() + 1);
-    }
+   
 }
 
 void
@@ -549,7 +548,7 @@ std::string InputFilter::KeystrokeAction::format() const
                             barrier::KeyMap::formatKey(m_keyInfo->m_key,
                                 m_keyInfo->m_mask).c_str());
     }
-    else if (m_keyInfo->m_screens[0] == '*') {
+    if (m_keyInfo->m_screens[0] == '*') {
         return barrier::string::sprintf("%s(%s,*)", type,
                             barrier::KeyMap::formatKey(m_keyInfo->m_key,
                                 m_keyInfo->m_mask).c_str());
@@ -879,9 +878,8 @@ InputFilter::Rule::getNumActions(bool onActivation) const
     if (onActivation) {
         return static_cast<UInt32>(m_activateActions.size());
     }
-    else {
-        return static_cast<UInt32>(m_deactivateActions.size());
-    }
+            return static_cast<UInt32>(m_deactivateActions.size());
+   
 }
 
 const InputFilter::Action&
@@ -890,9 +888,8 @@ InputFilter::Rule::getAction(bool onActivation, UInt32 index) const
     if (onActivation) {
         return *m_activateActions[index];
     }
-    else {
-        return *m_deactivateActions[index];
-    }
+            return *m_deactivateActions[index];
+   
 }
 
 

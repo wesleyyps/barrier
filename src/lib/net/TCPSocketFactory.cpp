@@ -49,9 +49,8 @@ IDataSocket* TCPSocketFactory::create(IArchNetwork::EAddressFamily family,
         secureSocket->initSsl (false);
         return secureSocket;
     }
-    else {
-        return new TCPSocket(m_events, m_socketMultiplexer, family);
-    }
+            return new TCPSocket(m_events, m_socketMultiplexer, family);
+   
 }
 
 IListenSocket* TCPSocketFactory::createListen(IArchNetwork::EAddressFamily family,

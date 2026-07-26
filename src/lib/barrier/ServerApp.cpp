@@ -80,8 +80,7 @@ ServerApp::ServerApp(IEventQueue* events, CreateTaskBarReceiverFunc createTaskBa
 }
 
 ServerApp::~ServerApp()
-{
-}
+= default;
 
 void
 ServerApp::parseArgs(int argc, const char* const* argv)
@@ -497,10 +496,9 @@ bool ServerApp::initServer()
         m_serverState = kInitializing;
         return true;
     }
-    else {
-        // don't try again
+            // don't try again
         return false;
-    }
+   
 }
 
 barrier::Screen*
@@ -598,10 +596,9 @@ ServerApp::startServer()
         m_serverState = kStarting;
         return true;
     }
-    else {
-        // don't try again
+            // don't try again
         return false;
-    }
+   
 }
 
 barrier::Screen*
@@ -875,9 +872,8 @@ ServerApp::standardStartup(int argc, char** argv)
     if (args().m_daemon) {
         return ARCH->daemonize(daemonName(), daemonMainLoopStatic);
     }
-    else {
-        return mainLoop();
-    }
+            return mainLoop();
+   
 }
 
 int

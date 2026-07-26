@@ -126,7 +126,6 @@ std::string OSXClipboardBMPConverter::toIClipboard(const std::string& bmp) const
     if (offset == 14 + 40) {
         return bmp.substr(14);
     }
-    else {
-        return bmp.substr(14, 40) + bmp.substr(offset, bmp.size() - offset);
-    }
+            return bmp.substr(14, 40) + bmp.substr(offset, bmp.size() - offset);
+   
 }

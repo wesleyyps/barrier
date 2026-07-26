@@ -38,8 +38,7 @@ m_Enabled(false)
 }
 
 IpcClient::~IpcClient()
-{
-}
+= default;
 
 void IpcClient::connected()
 {

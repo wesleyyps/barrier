@@ -39,8 +39,7 @@ ClientProxy1_4::ClientProxy1_4(const std::string& name, barrier::IStream* stream
 }
 
 ClientProxy1_4::~ClientProxy1_4()
-{
-}
+= default;
 
 void
 ClientProxy1_4::keyDown(KeyID key, KeyModifierMask mask, KeyButton button)

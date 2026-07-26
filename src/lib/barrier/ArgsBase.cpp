@@ -49,5 +49,4 @@ m_pluginDirectory("")
 }
 
 ArgsBase::~ArgsBase()
-{
-}
+= default;

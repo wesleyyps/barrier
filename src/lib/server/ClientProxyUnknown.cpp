@@ -77,9 +77,8 @@ ClientProxyUnknown::orphanClientProxy()
         m_proxy = NULL;
         return proxy;
     }
-    else {
-        return NULL;
-    }
+            return NULL;
+   
 }
 
 void

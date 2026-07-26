@@ -62,9 +62,8 @@ ClientProxy1_3::parseMessage(const UInt8* code)
         resetHeartbeatTimer();
         return true;
     }
-    else {
-        return ClientProxy1_2::parseMessage(code);
-    }
+            return ClientProxy1_2::parseMessage(code);
+   
 }
 
 void

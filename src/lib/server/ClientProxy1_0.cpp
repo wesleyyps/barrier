@@ -187,7 +187,7 @@ ClientProxy1_0::parseHandshakeMessage(const UInt8* code)
         LOG((CLOG_DEBUG2 "no-op from", getName().c_str()));
         return true;
     }
-    else if (memcmp(code, kMsgDInfo, 4) == 0) {
+    if (memcmp(code, kMsgDInfo, 4) == 0) {
         // future messages get parsed by parseMessage
         // NOTE: we're taking address of virtual function here,
         // not ClientProxy1_0 implementation of it.
@@ -212,7 +212,7 @@ ClientProxy1_0::parseMessage(const UInt8* code)
         }
         return false;
     }
-    else if (memcmp(code, kMsgCNoop, 4) == 0) {
+    if (memcmp(code, kMsgCNoop, 4) == 0) {
         // discard no-ops
         LOG((CLOG_DEBUG2 "no-op from", getName().c_str()));
         return true;

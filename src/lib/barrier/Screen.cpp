@@ -380,9 +380,8 @@ Screen::isLockedToScreen() const
         if (m_enableDragDrop) {
             return (buttonID == kButtonLeft) ? false : true;
         }
-        else {
-            return true;
-        }
+                    return true;
+       
     }
 
     // not locked
@@ -395,9 +394,8 @@ Screen::getJumpZoneSize() const
     if (!m_isPrimary) {
         return 0;
     }
-    else {
-        return m_screen->getJumpZoneSize();
-    }
+            return m_screen->getJumpZoneSize();
+   
 }
 
 void

@@ -67,8 +67,7 @@ ClientApp::ClientApp(IEventQueue* events, CreateTaskBarReceiverFunc createTaskBa
 }
 
 ClientApp::~ClientApp()
-{
-}
+= default;
 
 void
 ClientApp::parseArgs(int argc, const char* const* argv)
@@ -424,10 +423,9 @@ ClientApp::startClient()
         scheduleClientRestart(retryTime);
         return true;
     }
-    else {
-        // don't try again
+            // don't try again
         return false;
-    }
+   
 }
 
 
@@ -507,9 +505,8 @@ ClientApp::standardStartup(int argc, char** argv)
     if (args().m_daemon) {
         return ARCH->daemonize(daemonName(), &daemonMainLoopStatic);
     }
-    else {
-        return mainLoop();
-    }
+            return mainLoop();
+   
 }
 
 int

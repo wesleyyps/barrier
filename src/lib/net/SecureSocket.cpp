@@ -166,7 +166,7 @@ SecureSocket::doRead()
         if (status < 0) {
             return kBreak;
         }
-        else if (status == 0) {
+        if (status == 0) {
             return kNew;
         }
     }
@@ -338,12 +338,11 @@ bool SecureSocket::load_certificates(const barrier::fs::path& path)
         showError("ssl certificate is not specified");
         return false;
     }
-    else {
-        if (!barrier::fs::is_regular_file(path)) {
+            if (!barrier::fs::is_regular_file(path)) {
             showError("ssl certificate doesn't exist: " + path.u8string());
             return false;
         }
-    }
+   
 
     int r = 0;
     r = SSL_CTX_use_certificate_file(m_ssl->m_context, path.u8string().c_str(), SSL_FILETYPE_PEM);
@@ -686,9 +685,8 @@ std::string SecureSocket::getError()
         ERR_error_string_n(e, error, MAX_ERROR_SIZE);
         return error;
     }
-    else {
-        return "";
-    }
+            return "";
+   
 }
 
 void
@@ -738,10 +736,9 @@ bool SecureSocket::verify_cert_fingerprint(const barrier::fs::path& fingerprint_
     if (db.is_trusted(fingerprint_sha256)) {
         LOG((CLOG_NOTE "Fingerprint matches trusted fingerprint"));
         return true;
-    } else {
-        LOG((CLOG_NOTE "Fingerprint does not match trusted fingerprint"));
+    }         LOG((CLOG_NOTE "Fingerprint does not match trusted fingerprint"));
         return false;
-    }
+   
 }
 
 MultiplexerJobStatus SecureSocket::serviceConnect(ISocketMultiplexerJob* job,

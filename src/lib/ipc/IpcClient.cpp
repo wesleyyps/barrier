@@ -51,8 +51,7 @@ IpcClient::init()
 }
 
 IpcClient::~IpcClient()
-{
-}
+= default;
 
 void
 IpcClient::connect()

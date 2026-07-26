@@ -47,7 +47,7 @@ ArgParser::parseServerArgs(ServerArgs& args, int argc, const char* const* argv)
         if (parsePlatformArg(args, argc, argv, i)) {
             continue;
         }
-        else if (parseGenericArgs(argc, argv, i)) {
+        if (parseGenericArgs(argc, argv, i)) {
             continue;
         }
         else if (parseDeprecatedArgs(argc, argv, i)) {
@@ -91,7 +91,7 @@ ArgParser::parseClientArgs(ClientArgs& args, int argc, const char* const* argv)
         if (parsePlatformArg(args, argc, argv, i)) {
             continue;
         }
-        else if (parseGenericArgs(argc, argv, i)) {
+        if (parseGenericArgs(argc, argv, i)) {
             continue;
         }
         else if (parseDeprecatedArgs(argc, argv, i)) {
@@ -311,7 +311,7 @@ ArgParser::parseDeprecatedArgs(int argc, const char* const* argv, int& i)
         i++;
         return true;
     }
-    else if (isArg(i, argc, argv, NULL, "--res-w")) {
+    if (isArg(i, argc, argv, NULL, "--res-w")) {
         LOG((CLOG_NOTE "--res-w is deprecated"));
         i++;
         return true;

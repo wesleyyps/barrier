@@ -38,8 +38,7 @@ m_Socket(socket)
 }
 
 IpcReader::~IpcReader()
-{
-}
+= default;
 
 void IpcReader::start()
 {
@@ -109,7 +108,7 @@ bool IpcReader::readStream(char* buffer, int length)
             IPC_LOG(std::cout << "socket ended, aborting" << std::endl);
             return false;
         }
-        else if (length - read > 0) {
+        if (length - read > 0) {
             IPC_LOG(std::cout << "more remains, seek to " << got << std::endl);
             buffer += got;
         }
@@ -122,7 +121,7 @@ int IpcReader::bytesToInt(const char *buffer, int size)
     if (size == 1) {
         return (unsigned char)buffer[0];
     }
-    else if (size == 2) {
+    if (size == 2) {
         return
             (((unsigned char)buffer[0]) << 8) +
               (unsigned char)buffer[1];

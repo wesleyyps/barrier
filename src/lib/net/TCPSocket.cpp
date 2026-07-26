@@ -410,8 +410,7 @@ MultiplexerJobStatus TCPSocket::newJobOrStopServicing()
     auto new_job = newJob();
     if (new_job)
         return {true, std::move(new_job)};
-    else
-        return {false, {}};
+            return {false, {}};
 }
 
 std::unique_ptr<ISocketMultiplexerJob> TCPSocket::newJob()
@@ -421,7 +420,7 @@ std::unique_ptr<ISocketMultiplexerJob> TCPSocket::newJob()
     if (m_socket == NULL) {
         return {};
     }
-    else if (!m_connected) {
+    if (!m_connected) {
         assert(!m_readable);
         if (!(m_readable || m_writable)) {
             return {};
@@ -607,7 +606,7 @@ MultiplexerJobStatus TCPSocket::serviceConnected(ISocketMultiplexerJob* job,
 
     if (writeResult == kBreak || readResult == kBreak) {
         return {false, {}};
-    } else if (writeResult == kNew || readResult == kNew) {
+    } if (writeResult == kNew || readResult == kNew) {
         return newJobOrStopServicing();
     } else {
         return {true, {}};

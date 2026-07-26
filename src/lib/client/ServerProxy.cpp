@@ -478,9 +478,8 @@ ServerProxy::translateKey(KeyID id) const
     if (id2 != kKeyModifierIDNull) {
         return s_translationTable[m_modifierTranslationTable[id2]][side];
     }
-    else {
-        return id;
-    }
+            return id;
+   
 }
 
 KeyModifierMask

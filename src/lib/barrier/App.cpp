@@ -251,8 +251,7 @@ MinimalApp::MinimalApp() :
 }
 
 MinimalApp::~MinimalApp()
-{
-}
+= default;
 
 int
 MinimalApp::standardStartup(int argc, char** argv)

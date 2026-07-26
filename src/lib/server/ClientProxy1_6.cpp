@@ -41,8 +41,7 @@ ClientProxy1_6::ClientProxy1_6(const std::string& name, barrier::IStream* stream
 }
 
 ClientProxy1_6::~ClientProxy1_6()
-{
-}
+= default;
 
 void
 ClientProxy1_6::setClipboard(ClipboardID id, const IClipboard* clipboard)

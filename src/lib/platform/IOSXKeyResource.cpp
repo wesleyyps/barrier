@@ -25,7 +25,7 @@ IOSXKeyResource::getKeyID(UInt8 c)
     if (c == 0) {
         return kKeyNone;
     }
-    else if (c >= 32 && c < 127) {
+    if (c >= 32 && c < 127) {
         // ASCII
         return static_cast<KeyID>(c);
     }

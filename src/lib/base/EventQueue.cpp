@@ -165,9 +165,8 @@ EventQueue::getTypeName(Event::Type type)
         if (i == m_typeMap.end()) {
             return "<unknown>";
         }
-        else {
-            return i->second;
-        }
+                    return i->second;
+       
     }
 }
 

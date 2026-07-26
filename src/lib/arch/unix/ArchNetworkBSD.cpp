@@ -88,8 +88,7 @@ inet_aton(const char* cp, struct in_addr* inp)
 //
 
 ArchNetworkBSD::ArchNetworkBSD()
-{
-}
+= default;
 
 ArchNetworkBSD::~ArchNetworkBSD()
 {

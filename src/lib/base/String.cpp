@@ -95,7 +95,7 @@ vformat(const char* fmt, va_list args)
             if (*scan == '\0') {
                 break;
             }
-            else if (*scan == '%') {
+            if (*scan == '%') {
                 // literal
                 index.push_back(0);
                 pos.push_back(static_cast<size_t>((scan - 1) - fmt));

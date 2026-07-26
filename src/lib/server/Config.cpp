@@ -440,9 +440,8 @@ std::string Config::getCanonicalName(const std::string& name) const
 	if (index == m_nameToCanonicalName.end()) {
         return std::string();
 	}
-	else {
-		return index->second;
-	}
+			return index->second;
+
 }
 
 std::string Config::getNeighbor(const std::string& srcName, EDirection srcSide,
@@ -462,8 +461,7 @@ std::string Config::getNeighbor(const std::string& srcName, EDirection srcSide,
 		// no neighbor
 		return "";
 	}
-	else {
-		// compute position on neighbor
+			// compute position on neighbor
 		if (positionOut != NULL) {
 			*positionOut =
 				dstEdge->inverseTransform(srcEdge->transform(position));
@@ -471,7 +469,7 @@ std::string Config::getNeighbor(const std::string& srcName, EDirection srcSide,
 
 		// return neighbor's name
 		return getCanonicalName(dstEdge->getName());
-	}
+
 }
 
 bool Config::hasNeighbor(const std::string& srcName, EDirection srcSide) const
@@ -1555,7 +1553,7 @@ Config::CellEdge::operator<(const CellEdge& o) const
 	if (static_cast<int>(m_side) < static_cast<int>(o.m_side)) {
 		return true;
 	}
-	else if (static_cast<int>(m_side) > static_cast<int>(o.m_side)) {
+	if (static_cast<int>(m_side) > static_cast<int>(o.m_side)) {
 		return false;
 	}
 
@@ -1966,7 +1964,7 @@ OptionValue ConfigReadContext::parseCorner(const std::string& arg) const
 	if (CaselessCmp::equal(arg, "left")) {
 		return kTopLeftMask | kBottomLeftMask;
 	}
-	else if (CaselessCmp::equal(arg, "right")) {
+	if (CaselessCmp::equal(arg, "right")) {
 		return kTopRightMask | kBottomRightMask;
 	}
 	else if (CaselessCmp::equal(arg, "top")) {

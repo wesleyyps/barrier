@@ -123,9 +123,8 @@ OSXUchrKeyResource::getTableForModifier(UInt32 mask) const
     if (mask >= m_m->modifiersCount) {
         return m_m->defaultTableNum;
     }
-    else {
-        return m_m->tableNum[mask];
-    }
+            return m_m->tableNum[mask];
+   
 }
 
 KeyID

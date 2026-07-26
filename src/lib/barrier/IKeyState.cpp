@@ -129,13 +129,12 @@ IKeyState::KeyInfo::join(const std::set<String>& destinations)
             screens = "*";
             break;
         }
-        else {
-            if (screens.empty()) {
+                    if (screens.empty()) {
                 screens = ":";
             }
             screens += *i;
             screens += ":";
-        }
+       
     }
     return screens;
 }

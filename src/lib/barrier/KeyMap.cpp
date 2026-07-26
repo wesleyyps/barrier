@@ -271,7 +271,7 @@ KeyMap::mapKey(Keystrokes& keys, KeyID id, SInt32 group,
         keys.push_back(Keystroke(1, false, false));
         return NULL;
     }
-    else if (id == kKeyPrevGroup) {
+    if (id == kKeyPrevGroup) {
         keys.push_back(Keystroke(-1, false, false));
         return NULL;
     }
@@ -913,9 +913,8 @@ KeyMap::keysForModifierState(KeyButton button, SInt32 group,
                 LOG((CLOG_DEBUG1 "no key for modifier %04x", mask));
                 return false;
             }
-            else {
-                continue;
-            }
+                            continue;
+           
         }
 
         // if this modifier is sensitive to modifiers then adjust those
@@ -940,7 +939,7 @@ KeyMap::keysForModifierState(KeyButton button, SInt32 group,
                                 notRequiredMask, keystrokes)) {
                 return false;
             }
-            else if (!active) {
+            if (!active) {
                 // release the modifier
                 // XXX -- this doesn't work!  if Alt and Meta are mapped
                 // to one key and we want to release Meta we can't do

@@ -1996,9 +1996,8 @@ OSXScreen::handleCGInputEvent(CGEventTapProxy proxy,
 
 	if (screen->m_isOnScreen) {
 		return event;
-	} else {
-		return NULL;
-	}
+	} 		return NULL;
+
 }
 
 void

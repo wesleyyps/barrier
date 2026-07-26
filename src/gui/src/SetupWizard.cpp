@@ -54,8 +54,7 @@ SetupWizard::SetupWizard(MainWindow& mainWindow, bool startMain) :
 }
 
 SetupWizard::~SetupWizard()
-{
-}
+= default;
 
 bool SetupWizard::validateCurrentPage()
 {
