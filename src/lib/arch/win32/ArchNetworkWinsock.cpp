@@ -388,7 +388,7 @@ ArchNetworkWinsock::connectSocket(ArchSocket s, ArchNetAddress addr)
 }
 
 int
-ArchNetworkWinsock::pollSocket(PollEntry pe[], int num, double timeout)
+ArchNetworkWinsock::pollSocket(PollEntry* pe, int num, double timeout)
 {
     int i;
     DWORD n;

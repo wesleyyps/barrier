@@ -187,7 +187,7 @@ public:
 
     (Cancellation point)
     */
-    virtual int            pollSocket(PollEntry[], int num, double timeout) = 0;
+    virtual int            pollSocket(PollEntry* pe, int num, double timeout) = 0;
 
     //! Unblock thread in pollSocket()
     /*!

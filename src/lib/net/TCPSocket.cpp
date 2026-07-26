@@ -25,6 +25,7 @@
 #include "mt/Lock.h"
 #include "arch/Arch.h"
 #include "arch/XArch.h"
+#include <array>
 #include "base/Log.h"
 #include "base/IEventQueue.h"
 #include "base/IEventJob.h"
@@ -330,24 +331,24 @@ TCPSocket::init()
 TCPSocket::EJobResult
 TCPSocket::doRead()
 {
-    UInt8 buffer[4096];
-    memset(buffer, 0, sizeof(buffer));
+    std::array<UInt8, 4096> buffer;
+    buffer.fill(0);
     size_t bytesRead = 0;
 
-    bytesRead = ARCH->readSocket(m_socket, buffer, sizeof(buffer));
+    bytesRead = ARCH->readSocket(m_socket, buffer.data(), buffer.size());
 
     if (bytesRead > 0) {
         bool wasEmpty = (m_inputBuffer.getSize() == 0);
 
         // slurp up as much as possible
         do {
-            m_inputBuffer.write(buffer, static_cast<UInt32>(bytesRead));
+            m_inputBuffer.write(buffer.data(), static_cast<UInt32>(bytesRead));
 
             if (m_inputBuffer.getSize() > MAX_INPUT_BUFFER_SIZE) {
                 break;
             }
 
-            bytesRead = ARCH->readSocket(m_socket, buffer, sizeof(buffer));
+            bytesRead = ARCH->readSocket(m_socket, buffer.data(), buffer.size());
         } while (bytesRead > 0);
 
         // send input ready if input buffer was empty

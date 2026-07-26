@@ -16,7 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#import "platform/OSXScreenSaver.h"
+#include "platform/OSXScreenSaver.h"
+#include <array>
 
 #import "platform/OSXScreenSaverUtil.h"
 #import "barrier/IPrimaryScreen.h"
@@ -43,7 +44,7 @@ OSXScreenSaver::OSXScreenSaver(IEventQueue* events, void* eventTarget) :
     m_screenSaverController = screenSaverUtilCreateController();
 
     // install launch/termination event handlers
-    EventTypeSpec launchEventTypes[2];
+    std::array<EventTypeSpec, 2> launchEventTypes;
     launchEventTypes[0].eventClass = kEventClassApplication;
     launchEventTypes[0].eventKind  = kEventAppLaunched;
     launchEventTypes[1].eventClass = kEventClassApplication;
@@ -52,7 +53,7 @@ OSXScreenSaver::OSXScreenSaver(IEventQueue* events, void* eventTarget) :
     EventHandlerUPP launchTerminationEventHandler =
         NewEventHandlerUPP(launchTerminationCallback);
     InstallApplicationEventHandler(launchTerminationEventHandler, 2,
-                                launchEventTypes, this,
+                                launchEventTypes.data(), this,
                                 &m_launchTerminationEventHandlerRef);
     DisposeEventHandlerUPP(launchTerminationEventHandler);
 

@@ -17,6 +17,7 @@
  */
 
 #include "platform/OSXClipboardBMPConverter.h"
+#include <array>
 #include "base/Log.h"
 
 // BMP file header structure
@@ -95,15 +96,15 @@ std::string OSXClipboardBMPConverter::fromIClipboard(const std::string& bmp) con
 {
     LOG((CLOG_DEBUG1 "ENTER OSXClipboardBMPConverter::doFromIClipboard()"));
     // create BMP image
-    UInt8 header[14];
-    UInt8* dst = header;
+    std::array<UInt8, 14> header;
+    UInt8* dst = header.data();
     toLE(dst, 'B');
     toLE(dst, 'M');
     toLE(dst, static_cast<UInt32>(14 + bmp.size()));
     toLE(dst, static_cast<UInt16>(0));
     toLE(dst, static_cast<UInt16>(0));
     toLE(dst, static_cast<UInt32>(14 + 40));
-    return std::string(reinterpret_cast<const char*>(header), 14) + bmp;
+    return std::string(reinterpret_cast<const char*>(header.data()), 14) + bmp;
 }
 
 std::string OSXClipboardBMPConverter::toIClipboard(const std::string& bmp) const
