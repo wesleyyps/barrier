@@ -22,7 +22,6 @@
 #include "test/global/gtest.h"
 
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::NiceMock;
 
 bool
@@ -40,8 +39,8 @@ client_stubCheckUnexpectedArgs()
 TEST(ClientArgsParsingTests, parseClientArgs_yScrollArg_setYScroll)
 {
     NiceMock<MockArgParser> argParser;
-    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(Invoke(client_stubParseGenericArgs));
-    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(Invoke(client_stubCheckUnexpectedArgs));
+    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(client_stubParseGenericArgs);
+    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(client_stubCheckUnexpectedArgs);
     ClientArgs clientArgs;
     const int argc = 3;
     const char* kYScrollCmd[argc] = { "stub", "--yscroll", "1" };
@@ -54,8 +53,8 @@ TEST(ClientArgsParsingTests, parseClientArgs_yScrollArg_setYScroll)
 TEST(ClientArgsParsingTests, parseClientArgs_addressArg_setBarrierAddress)
 {
     NiceMock<MockArgParser> argParser;
-    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(Invoke(client_stubParseGenericArgs));
-    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(Invoke(client_stubCheckUnexpectedArgs));
+    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(client_stubParseGenericArgs);
+    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(client_stubCheckUnexpectedArgs);
     ClientArgs clientArgs;
     const int argc = 2;
     const char* kAddressCmd[argc] = { "stub", "mock_address" };
@@ -69,8 +68,8 @@ TEST(ClientArgsParsingTests, parseClientArgs_addressArg_setBarrierAddress)
 TEST(ClientArgsParsingTests, parseClientArgs_noAddressArg_returnFalse)
 {
     NiceMock<MockArgParser> argParser;
-    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(Invoke(client_stubParseGenericArgs));
-    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(Invoke(client_stubCheckUnexpectedArgs));
+    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(client_stubParseGenericArgs);
+    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(client_stubCheckUnexpectedArgs);
     ClientArgs clientArgs;
     const int argc = 1;
     const char* kNoAddressCmd[argc] = { "stub" };
@@ -83,8 +82,8 @@ TEST(ClientArgsParsingTests, parseClientArgs_noAddressArg_returnFalse)
 TEST(ClientArgsParsingTests, parseClientArgs_unrecognizedArg_returnFalse)
 {
     NiceMock<MockArgParser> argParser;
-    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(Invoke(client_stubParseGenericArgs));
-    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(Invoke(client_stubCheckUnexpectedArgs));
+    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(client_stubParseGenericArgs);
+    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(client_stubCheckUnexpectedArgs);
     ClientArgs clientArgs;
     const int argc = 3;
     const char* kUnrecognizedCmd[argc] = { "stub", "mock_arg", "mock_address"};

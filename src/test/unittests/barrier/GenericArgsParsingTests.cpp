@@ -23,7 +23,6 @@
 
 using namespace barrier;
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::NiceMock;
 
 bool g_helpShowed = false;
@@ -218,7 +217,7 @@ TEST(GenericArgsParsingTests, parseGenericArgs_helpCmd_showHelp)
     ArgParser argParser(&app);
     ArgsBase argsBase;
     argParser.setArgsBase(argsBase);
-    ON_CALL(app, help()).WillByDefault(Invoke(showMockHelp));
+    ON_CALL(app, help()).WillByDefault(showMockHelp);
 
     argParser.parseGenericArgs(argc, kHelpCmd, i);
 
@@ -238,7 +237,7 @@ TEST(GenericArgsParsingTests, parseGenericArgs_versionCmd_showVersion)
     ArgParser argParser(&app);
     ArgsBase argsBase;
     argParser.setArgsBase(argsBase);
-    ON_CALL(app, version()).WillByDefault(Invoke(showMockVersion));
+    ON_CALL(app, version()).WillByDefault(showMockVersion);
 
     argParser.parseGenericArgs(argc, kVersionCmd, i);
 

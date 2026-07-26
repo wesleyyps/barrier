@@ -25,7 +25,6 @@
 
 using ::testing::_;
 using ::testing::NiceMock;
-using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::ReturnRef;
 using ::testing::SaveArg;
@@ -171,7 +170,7 @@ TEST(KeyStateTests, updateKeyState_pollInsertsSingleKey_keyIsDown)
     NiceMock<MockKeyMap> keyMap;
     MockEventQueue eventQueue;
     KeyStateImpl keyState(eventQueue, keyMap);
-    ON_CALL(keyState, pollPressedKeys(_)).WillByDefault(Invoke(stubPollPressedKeys));
+    ON_CALL(keyState, pollPressedKeys(_)).WillByDefault(stubPollPressedKeys);
 
     keyState.updateKeyState();
 
@@ -222,7 +221,7 @@ TEST(KeyStateTests, updateKeyState_activeModifiers_keyMapGotModifers)
     MockEventQueue eventQueue;
     KeyStateImpl keyState(eventQueue, keyMap);
     ON_CALL(keyState, pollActiveModifiers()).WillByDefault(Return(1));
-    ON_CALL(keyMap, foreachKey(_, _)).WillByDefault(Invoke(assertMaskIsOne));
+    ON_CALL(keyMap, foreachKey(_, _)).WillByDefault(assertMaskIsOne);
 
     // key map gets new modifiers via foreachKey()
     EXPECT_CALL(keyMap, foreachKey(_, _));
@@ -270,7 +269,7 @@ TEST(KeyStateTests, fakeKeyDown_serverKeyAlreadyDown_fakeKeyCalledTwice)
     KeyStateImpl keyState(eventQueue, keyMap);
     s_stubKeyItem.m_client = 0;
     s_stubKeyItem.m_button = 1;
-    ON_CALL(keyMap, mapKey(_, _, _, _, _, _, _)).WillByDefault(Invoke(stubMapKey));
+    ON_CALL(keyMap, mapKey(_, _, _, _, _, _, _)).WillByDefault(stubMapKey);
 
     // 2 calls to fakeKeyDown should still call fakeKey, even though
     // repeated keys are handled differently.
@@ -299,7 +298,7 @@ TEST(KeyStateTests, fakeKeyDown_mapReturnsKeystrokes_fakeKeyCalled)
     KeyStateImpl keyState(eventQueue, keyMap);
     s_stubKeyItem.m_button = 0;
     s_stubKeyItem.m_client = 0;
-    ON_CALL(keyMap, mapKey(_, _, _, _, _, _, _)).WillByDefault(Invoke(stubMapKey));
+    ON_CALL(keyMap, mapKey(_, _, _, _, _, _, _)).WillByDefault(stubMapKey);
 
     EXPECT_CALL(keyState, fakeKey(_)).Times(1);
 
@@ -372,12 +371,12 @@ TEST(KeyStateTests, fakeKeyRepeat_validKey_returnsTrue)
 
     // set the button to 1 for fakeKeyDown call
     s_stubKeyItem.m_button = 1;
-    ON_CALL(keyMap, mapKey(_, _, _, _, _, _, _)).WillByDefault(Invoke(stubMapKey));
+    ON_CALL(keyMap, mapKey(_, _, _, _, _, _, _)).WillByDefault(stubMapKey);
     keyState.fakeKeyDown(1, 0, 0);
 
     // change the button to 2
     s_stubKeyItem.m_button = 2;
-    ON_CALL(keyMap, mapKey(_, _, _, _, _, _, _)).WillByDefault(Invoke(stubMapKey));
+    ON_CALL(keyMap, mapKey(_, _, _, _, _, _, _)).WillByDefault(stubMapKey);
 
     bool actual = keyState.fakeKeyRepeat(1, 0, 0, 0);
 
@@ -407,7 +406,7 @@ TEST(KeyStateTests, fakeKeyUp_buttonAlreadyDown_returnsTrue)
 
     // press button 1 down.
     s_stubKeyItem.m_button = 1;
-    ON_CALL(keyMap, mapKey(_, _, _, _, _, _, _)).WillByDefault(Invoke(stubMapKey));
+    ON_CALL(keyMap, mapKey(_, _, _, _, _, _, _)).WillByDefault(stubMapKey);
     keyState.fakeKeyDown(1, 0, 1);
 
     // this takes the button id, which is the 3rd arg of fakeKeyDown
@@ -424,7 +423,7 @@ TEST(KeyStateTests, fakeAllKeysUp_keysWereDown_keysAreUp)
 
     // press button 1 down.
     s_stubKeyItem.m_button = 1;
-    ON_CALL(keyMap, mapKey(_, _, _, _, _, _, _)).WillByDefault(Invoke(stubMapKey));
+    ON_CALL(keyMap, mapKey(_, _, _, _, _, _, _)).WillByDefault(stubMapKey);
     keyState.fakeKeyDown(1, 0, 1);
 
     // method under test
@@ -442,7 +441,7 @@ TEST(KeyStateTests, isKeyDown_keyDown_returnsTrue)
 
     // press button 1 down.
     s_stubKeyItem.m_button = 1;
-    ON_CALL(keyMap, mapKey(_, _, _, _, _, _, _)).WillByDefault(Invoke(stubMapKey));
+    ON_CALL(keyMap, mapKey(_, _, _, _, _, _, _)).WillByDefault(stubMapKey);
     keyState.fakeKeyDown(1, 0, 1);
 
     // method under test

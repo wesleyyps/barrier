@@ -166,7 +166,21 @@ void generate_pem_self_signed_cert(const std::string& path)
     }
     auto private_key_free = finally([private_key](){ EVP_PKEY_free(private_key); });
 
-    auto* rsa = RSA_generate_key(2048, RSA_F4, nullptr, nullptr);
+    auto* rsa = RSA_new();
+    if (rsa) {
+        BIGNUM* e = BN_new();
+        if (e) {
+            BN_set_word(e, RSA_F4);
+            if (RSA_generate_key_ex(rsa, 2048, e, nullptr) != 1) {
+                RSA_free(rsa);
+                rsa = nullptr;
+            }
+            BN_free(e);
+        } else {
+            RSA_free(rsa);
+            rsa = nullptr;
+        }
+    }
     if (!rsa) {
         throw std::runtime_error("Failed to generate RSA key");
     }

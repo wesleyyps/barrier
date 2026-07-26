@@ -40,7 +40,11 @@ void NewScreenWidget::mousePressEvent(QMouseEvent* event)
 
     auto* pDrag = new QDrag(this);
     pDrag->setMimeData(pMimeData);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+    pDrag->setPixmap(pixmap(Qt::ReturnByValue));
+#else
     pDrag->setPixmap(*pixmap());
+#endif
     pDrag->setHotSpot(event->pos());
 
     pDrag->exec(Qt::CopyAction, Qt::CopyAction);

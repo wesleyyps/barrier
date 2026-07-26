@@ -24,7 +24,6 @@
 
 using ::testing::_;
 using ::testing::NiceMock;
-using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::ReturnRef;
 using ::testing::SaveArg;
