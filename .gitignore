@@ -34,3 +34,5 @@ CMakeCache.txt
 /out/build/x64-Debug
 .cache
 .history
+.env
+cov-int
