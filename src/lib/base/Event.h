@@ -60,7 +60,7 @@ public:
     \p target is the intended recipient of the event.
     \p flags is any combination of \c Flags.
     */
-    Event(Type type, void* target = NULL, void* data = NULL,
+    Event(Type type, void* target = nullptr, void* data = nullptr,
                              Flags flags = kNone);
 
     //! @name manipulators
