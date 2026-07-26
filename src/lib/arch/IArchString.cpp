@@ -17,6 +17,7 @@
  */
 
 #include "arch/IArchString.h"
+#include <array>
 #include "arch/Arch.h"
 #include "common/common.h"
 
@@ -33,8 +34,7 @@ std::mutex s_mutex;
 //
 
 IArchString::~IArchString()
-{
-}
+= default;
 
 int
 IArchString::convStringWCToMB(char* dst,
@@ -45,21 +45,21 @@ IArchString::convStringWCToMB(char* dst,
     ptrdiff_t len = 0;
 
     bool dummyErrors;
-    if (errors == NULL) {
+    if (errors == nullptr) {
         errors = &dummyErrors;
     }
 
-    if (dst == NULL) {
-        char dummy[MB_LEN_MAX];
+    if (dst == nullptr) {
+        std::array<char, MB_LEN_MAX> dummy;
         for (const wchar_t* scan = src; n > 0; ++scan, --n) {
-            ptrdiff_t mblen = wctomb(dummy, *scan);
+            ptrdiff_t mblen = wctomb(dummy.data(), *scan);
             if (mblen == -1) {
                 *errors = true;
                 mblen   = 1;
             }
             len += mblen;
         }
-        ptrdiff_t mblen = wctomb(dummy, L'\0');
+        ptrdiff_t mblen = wctomb(dummy.data(), L'\0');
         if (mblen != -1) {
             len += mblen - 1;
         }
@@ -84,7 +84,7 @@ IArchString::convStringWCToMB(char* dst,
         len = dst - dst0;
     }
 
-    return (int)len;
+    return static_cast<int>(len);
 }
 
 int
@@ -93,16 +93,16 @@ IArchString::convStringMBToWC(wchar_t* dst,
 {
     std::lock_guard<std::mutex> lock(s_mutex);
 
-    ptrdiff_t n = (ptrdiff_t)n_param; // fix compiler warning
+    auto n = static_cast<ptrdiff_t>(n_param); // fix compiler warning
     ptrdiff_t len = 0;
     wchar_t dummy;
 
     bool dummyErrors;
-    if (errors == NULL) {
+    if (errors == nullptr) {
         errors = &dummyErrors;
     }
 
-    if (dst == NULL) {
+    if (dst == nullptr) {
         for (const char* scan = src; n > 0; ) {
             ptrdiff_t mblen = mbtowc(&dummy, scan, n);
             switch (mblen) {
@@ -145,7 +145,7 @@ IArchString::convStringMBToWC(wchar_t* dst,
             case -2:
                 // incomplete character.  convert to unknown character.
                 *errors = true;
-                *dst    = (wchar_t)0xfffd;
+                *dst    = static_cast<wchar_t>(0xfffd);
                 n       = 0;
                 break;
 
@@ -153,13 +153,13 @@ IArchString::convStringMBToWC(wchar_t* dst,
                 // invalid character.  count one unknown character and
                 // start at the next byte.
                 *errors = true;
-                *dst    = (wchar_t)0xfffd;
+                *dst    = static_cast<wchar_t>(0xfffd);
                 scan   += 1;
                 n      -= 1;
                 break;
 
             case 0:
-                *dst    = (wchar_t)0x0000;
+                *dst    = static_cast<wchar_t>(0x0000);
                 scan   += 1;
                 n      -= 1;
                 break;
@@ -174,5 +174,5 @@ IArchString::convStringMBToWC(wchar_t* dst,
         len = dst - dst0;
     }
 
-    return (int)len;
+    return static_cast<int>(len);
 }

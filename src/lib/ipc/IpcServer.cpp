@@ -96,7 +96,7 @@ void
 IpcServer::handleClientConnecting(const Event&, void*)
 {
     barrier::IStream* stream = m_socket->accept();
-    if (stream == NULL) {
+    if (stream == nullptr) {
         return;
     }
 
@@ -126,7 +126,7 @@ IpcServer::handleClientConnecting(const Event&, void*)
 void
 IpcServer::handleClientDisconnected(const Event& e, void*)
 {
-    IpcClientProxy* proxy = static_cast<IpcClientProxy*>(e.getTarget());
+    auto* proxy = static_cast<IpcClientProxy*>(e.getTarget());
 
     std::lock_guard<std::mutex> lock(m_clientsMutex);
     m_clients.remove(proxy);

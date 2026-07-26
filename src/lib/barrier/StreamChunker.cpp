@@ -39,7 +39,7 @@ static const size_t g_chunkSize = 32 * 1024; //32kb
 
 bool StreamChunker::s_isChunkingFile = false;
 bool StreamChunker::s_interruptFile = false;
-Mutex* StreamChunker::s_interruptMutex = NULL;
+Mutex* StreamChunker::s_interruptMutex = nullptr;
 
 void
 StreamChunker::sendFile(const char* filename,
@@ -85,7 +85,7 @@ StreamChunker::sendFile(const char* filename,
 
         char* chunkData = new char[chunkSize];
         file.read(chunkData, chunkSize);
-        UInt8* data = reinterpret_cast<UInt8*>(chunkData);
+        auto* data = reinterpret_cast<UInt8*>(chunkData);
         FileChunk* fileChunk = FileChunk::data(data, chunkSize);
         delete[] chunkData;
 

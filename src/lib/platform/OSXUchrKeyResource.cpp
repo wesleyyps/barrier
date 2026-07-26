@@ -25,19 +25,19 @@
 
 OSXUchrKeyResource::OSXUchrKeyResource(const void* resource,
                 UInt32 keyboardType) :
-    m_m(NULL),
-    m_cti(NULL),
-    m_sdi(NULL),
-    m_sri(NULL),
-    m_st(NULL)
+    m_m(nullptr),
+    m_cti(nullptr),
+    m_sdi(nullptr),
+    m_sri(nullptr),
+    m_st(nullptr)
 {
     m_resource = static_cast<const UCKeyboardLayout*>(resource);
-    if (m_resource == NULL) {
+    if (m_resource == nullptr) {
         return;
     }
 
     // find the keyboard info for the current keyboard type
-    const UCKeyboardTypeHeader* th = NULL;
+    const UCKeyboardTypeHeader* th = nullptr;
     const UCKeyboardLayout* r = m_resource;
     for (ItemCount i = 0; i < r->keyboardTypeCount; ++i) {
         if (keyboardType >= r->keyboardTypeList[i].keyboardTypeFirst &&
@@ -50,13 +50,13 @@ OSXUchrKeyResource::OSXUchrKeyResource(const void* resource,
             th = r->keyboardTypeList + i;
         }
     }
-    if (th == NULL) {
+    if (th == nullptr) {
         // cannot find a suitable keyboard type
         return;
     }
 
     // get tables for keyboard type
-    const UInt8* const base = reinterpret_cast<const UInt8*>(m_resource);
+    const auto* const base = reinterpret_cast<const UInt8*>(m_resource);
     m_m   = reinterpret_cast<const UCKeyModifiersToTableNum*>(base +
                                 th->keyModifiersToTableNumOffset);
     m_cti = reinterpret_cast<const UCKeyToCharTableIndex*>(base +
@@ -75,7 +75,7 @@ OSXUchrKeyResource::OSXUchrKeyResource(const void* resource,
     // find the space key, but only if it can combine with dead keys.
     // a dead key followed by a space yields the non-dead version of
     // the dead key.
-    m_spaceOutput = 0xffffu;
+    m_spaceOutput = 0xffffU;
     UInt32 table  = getTableForModifier(0);
     for (UInt32 button = 0, n = getNumButtons(); button < n; ++button) {
         KeyID id = getKey(table, button);
@@ -95,7 +95,7 @@ OSXUchrKeyResource::OSXUchrKeyResource(const void* resource,
 bool
 OSXUchrKeyResource::isValid() const
 {
-    return (m_m != NULL);
+    return (m_m != nullptr);
 }
 
 UInt32
@@ -123,9 +123,8 @@ OSXUchrKeyResource::getTableForModifier(UInt32 mask) const
     if (mask >= m_m->modifiersCount) {
         return m_m->defaultTableNum;
     }
-    else {
-        return m_m->tableNum[mask];
-    }
+            return m_m->tableNum[mask];
+   
 }
 
 KeyID
@@ -134,8 +133,8 @@ OSXUchrKeyResource::getKey(UInt32 table, UInt32 button) const
     assert(table < getNumTables());
     assert(button < getNumButtons());
 
-    const UInt8* const base   = reinterpret_cast<const UInt8*>(m_resource);
-    const UCKeyOutput* cPtr = reinterpret_cast<const UCKeyOutput*>(base +
+    const auto* const base   = reinterpret_cast<const UInt8*>(m_resource);
+    const auto* cPtr = reinterpret_cast<const UCKeyOutput*>(base +
                                 m_cti->keyToCharTableOffsets[table]);
 
   const UCKeyOutput c = cPtr[button];
@@ -168,7 +167,7 @@ bool
 OSXUchrKeyResource::getDeadKey(
     KeySequence& keys, UInt16 index) const
 {
-    if (m_sri == NULL || index >= m_sri->keyStateRecordCount) {
+    if (m_sri == nullptr || index >= m_sri->keyStateRecordCount) {
         // XXX -- should we be using some other fallback?
         return false;
     }
@@ -183,7 +182,7 @@ OSXUchrKeyResource::getDeadKey(
     }
 
     // no dead keys if we couldn't find the space key
-    if (m_spaceOutput == 0xffffu) {
+    if (m_spaceOutput == 0xffffU) {
         return false;
     }
 
@@ -200,8 +199,8 @@ OSXUchrKeyResource::getDeadKey(
     }
 
     // convert keys to their dead counterparts
-    for (KeySequence::iterator i = keys.begin(); i != keys.end(); ++i) {
-        *i = barrier::KeyMap::getDeadKey(*i);
+    for (unsigned int & key : keys) {
+        key = barrier::KeyMap::getDeadKey(key);
     }
 
     return true;
@@ -211,11 +210,11 @@ bool
 OSXUchrKeyResource::getKeyRecord(
     KeySequence& keys, UInt16 index, UInt16& state) const
 {
-    const UInt8* const base = reinterpret_cast<const UInt8*>(m_resource);
-    const UCKeyStateRecord* sr =
+    const auto* const base = reinterpret_cast<const UInt8*>(m_resource);
+    const auto* sr =
         reinterpret_cast<const UCKeyStateRecord*>(base +
                                 m_sri->keyStateRecordOffsets[index]);
-    const UCKeyStateEntryTerminal* kset =
+    const auto* kset =
         reinterpret_cast<const UCKeyStateEntryTerminal*>(sr->stateEntryData);
 
     UInt16 nextState = 0;
@@ -254,7 +253,7 @@ OSXUchrKeyResource::getKeyRecord(
     }
     if (!found) {
         // use a terminator
-        if (m_st != NULL && state < m_st->keyStateTerminatorCount) {
+        if (m_st != nullptr && state < m_st->keyStateTerminatorCount) {
             if (!addSequence(keys, m_st->keyStateTerminators[state - 1])) {
                 return false;
             }

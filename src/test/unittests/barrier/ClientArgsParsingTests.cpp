@@ -20,9 +20,9 @@
 #include "test/mock/barrier/MockArgParser.h"
 
 #include "test/global/gtest.h"
+#include <array>
 
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::NiceMock;
 
 bool
@@ -40,13 +40,13 @@ client_stubCheckUnexpectedArgs()
 TEST(ClientArgsParsingTests, parseClientArgs_yScrollArg_setYScroll)
 {
     NiceMock<MockArgParser> argParser;
-    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(Invoke(client_stubParseGenericArgs));
-    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(Invoke(client_stubCheckUnexpectedArgs));
+    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(client_stubParseGenericArgs);
+    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(client_stubCheckUnexpectedArgs);
     ClientArgs clientArgs;
-    const int argc = 3;
-    const char* kYScrollCmd[argc] = { "stub", "--yscroll", "1" };
+    constexpr int argc = 3;
+    std::array<const char*, argc> kYScrollCmd = { "stub", "--yscroll", "1" };
 
-    argParser.parseClientArgs(clientArgs, argc, kYScrollCmd);
+    argParser.parseClientArgs(clientArgs, argc, kYScrollCmd.data());
 
     EXPECT_EQ(1, clientArgs.m_yscroll);
 }
@@ -54,13 +54,13 @@ TEST(ClientArgsParsingTests, parseClientArgs_yScrollArg_setYScroll)
 TEST(ClientArgsParsingTests, parseClientArgs_addressArg_setBarrierAddress)
 {
     NiceMock<MockArgParser> argParser;
-    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(Invoke(client_stubParseGenericArgs));
-    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(Invoke(client_stubCheckUnexpectedArgs));
+    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(client_stubParseGenericArgs);
+    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(client_stubCheckUnexpectedArgs);
     ClientArgs clientArgs;
-    const int argc = 2;
-    const char* kAddressCmd[argc] = { "stub", "mock_address" };
+    constexpr int argc = 2;
+    std::array<const char*, argc> kAddressCmd = { "stub", "mock_address" };
 
-    bool result = argParser.parseClientArgs(clientArgs, argc, kAddressCmd);
+    bool result = argParser.parseClientArgs(clientArgs, argc, kAddressCmd.data());
 
     EXPECT_EQ("mock_address", clientArgs.m_barrierAddress);
     EXPECT_EQ(true, result);
@@ -69,13 +69,13 @@ TEST(ClientArgsParsingTests, parseClientArgs_addressArg_setBarrierAddress)
 TEST(ClientArgsParsingTests, parseClientArgs_noAddressArg_returnFalse)
 {
     NiceMock<MockArgParser> argParser;
-    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(Invoke(client_stubParseGenericArgs));
-    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(Invoke(client_stubCheckUnexpectedArgs));
+    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(client_stubParseGenericArgs);
+    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(client_stubCheckUnexpectedArgs);
     ClientArgs clientArgs;
-    const int argc = 1;
-    const char* kNoAddressCmd[argc] = { "stub" };
+    constexpr int argc = 1;
+    std::array<const char*, argc> kNoAddressCmd = { "stub" };
 
-    bool result = argParser.parseClientArgs(clientArgs, argc, kNoAddressCmd);
+    bool result = argParser.parseClientArgs(clientArgs, argc, kNoAddressCmd.data());
 
     EXPECT_FALSE(result);
 }
@@ -83,13 +83,13 @@ TEST(ClientArgsParsingTests, parseClientArgs_noAddressArg_returnFalse)
 TEST(ClientArgsParsingTests, parseClientArgs_unrecognizedArg_returnFalse)
 {
     NiceMock<MockArgParser> argParser;
-    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(Invoke(client_stubParseGenericArgs));
-    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(Invoke(client_stubCheckUnexpectedArgs));
+    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(client_stubParseGenericArgs);
+    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(client_stubCheckUnexpectedArgs);
     ClientArgs clientArgs;
-    const int argc = 3;
-    const char* kUnrecognizedCmd[argc] = { "stub", "mock_arg", "mock_address"};
+    constexpr int argc = 3;
+    std::array<const char*, argc> kUnrecognizedCmd = { "stub", "mock_arg", "mock_address"};
 
-    bool result = argParser.parseClientArgs(clientArgs, argc, kUnrecognizedCmd);
+    bool result = argParser.parseClientArgs(clientArgs, argc, kUnrecognizedCmd.data());
 
     EXPECT_FALSE(result);
 }

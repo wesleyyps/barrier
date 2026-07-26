@@ -24,6 +24,11 @@ Master branch overall build status: [![Build Status](https://dev.azure.com/debau
 
 Our CI Builds are provided by Microsoft Azure Pipelines, Flathub, and Canonical.
 
+#### Static Analysis
+
+[![Coverity Scan Build Status](https://scan.coverity.com/projects/33186/badge.svg)](https://scan.coverity.com/projects/wesleyyps-barrier)
+
+
 ### What is it?
 
 Barrier is software that mimics the functionality of a KVM switch, which historically would allow you to use a single keyboard and mouse to control multiple computers by physically turning a dial on the box to switch the machine you're controlling at any given moment. Barrier does this in software, allowing you to tell it which machine to control by moving your mouse to the edge of the screen, or by using a keypress to switch focus to a different system.
@@ -116,7 +121,7 @@ __Q: Is it possible to use Barrier on Mac OS X / OS X versions prior to 10.12?__
 >         - _(For a GUI workaround for Mac OS X 10.9, see the [discussion at issue #544](https://github.com/debauchee/barrier/issues/544))_
 
 > Note: Only versions [v2.3.4](https://github.com/debauchee/barrier/releases/tag/v2.3.4) and [later](https://github.com/debauchee/barrier/releases/latest) of Barrier can be supported by this project.
->  - Anyone using an earlier version is advised to upgrade due to recently-addressed security vulnerabilities *(and other bug fixes)*. 
+>  - Anyone using an earlier version is advised to upgrade due to recently-addressed security vulnerabilities *(and other bug fixes)*.
 >    - This is especially important for computers accessible from the public Internet *(or from other shared/untrusted networks, such as when using shared WiFi)*.
 
 
@@ -128,7 +133,7 @@ __Q: Is it possible to use Barrier on Mac OS X / OS X versions prior to 10.12?__
 **Q: After loading my configuration on the client the field 'Server IP' is still empty!**
 
 > A: Edit your configuration to include the server's ip address manually with
-> 
+>
 >```
 >(...)
 >
@@ -146,3 +151,8 @@ __Q: Is it possible to use Barrier on Mac OS X / OS X versions prior to 10.12?__
 >      - *(see [#109](https://github.com/debauchee/barrier/issues/109) and [#1251](https://github.com/debauchee/barrier/issues/1251) for status or to volunteer your talents)*
 >
 > The complete list of open issues can be found in the ['Issues' tab on GitHub](https://github.com/debauchee/barrier/issues?q=is%3Aissue+is%3Aopen). Help is always appreciated.
+
+## Development Notes
+
+### Test Framework
+Barrier's test suite uses the unified [GoogleTest](https://github.com/google/googletest) framework (gtest + gmock) as a git submodule in `ext/googletest`. Build with CMake 3.10+ — the submodule is initialized via `git submodule update --init --recursive`.

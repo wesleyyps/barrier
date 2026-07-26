@@ -17,6 +17,7 @@
  */
 
 #include "platform/OSXClipboardBMPConverter.h"
+#include <array>
 #include "base/Log.h"
 
 // BMP file header structure
@@ -52,8 +53,8 @@ static
 void
 toLE(UInt8*& dst, UInt16 src)
 {
-    dst[0] = static_cast<UInt8>(src & 0xffu);
-    dst[1] = static_cast<UInt8>((src >> 8) & 0xffu);
+    dst[0] = static_cast<UInt8>(src & 0xffU);
+    dst[1] = static_cast<UInt8>((src >> 8) & 0xffU);
     dst += 2;
 }
 
@@ -61,10 +62,10 @@ static
 void
 toLE(UInt8*& dst, UInt32 src)
 {
-    dst[0] = static_cast<UInt8>(src & 0xffu);
-    dst[1] = static_cast<UInt8>((src >> 8) & 0xffu);
-    dst[2] = static_cast<UInt8>((src >> 16) & 0xffu);
-    dst[3] = static_cast<UInt8>((src >> 24) & 0xffu);
+    dst[0] = static_cast<UInt8>(src & 0xffU);
+    dst[1] = static_cast<UInt8>((src >> 8) & 0xffU);
+    dst[2] = static_cast<UInt8>((src >> 16) & 0xffU);
+    dst[3] = static_cast<UInt8>((src >> 24) & 0xffU);
     dst += 4;
 }
 
@@ -95,15 +96,15 @@ std::string OSXClipboardBMPConverter::fromIClipboard(const std::string& bmp) con
 {
     LOG((CLOG_DEBUG1 "ENTER OSXClipboardBMPConverter::doFromIClipboard()"));
     // create BMP image
-    UInt8 header[14];
-    UInt8* dst = header;
+    std::array<UInt8, 14> header;
+    UInt8* dst = header.data();
     toLE(dst, 'B');
     toLE(dst, 'M');
     toLE(dst, static_cast<UInt32>(14 + bmp.size()));
     toLE(dst, static_cast<UInt16>(0));
     toLE(dst, static_cast<UInt16>(0));
     toLE(dst, static_cast<UInt32>(14 + 40));
-    return std::string(reinterpret_cast<const char*>(header), 14) + bmp;
+    return std::string(reinterpret_cast<const char*>(header.data()), 14) + bmp;
 }
 
 std::string OSXClipboardBMPConverter::toIClipboard(const std::string& bmp) const
@@ -114,7 +115,7 @@ std::string OSXClipboardBMPConverter::toIClipboard(const std::string& bmp) const
     }
 
     // check BMP file header
-    const UInt8* rawBMPHeader = reinterpret_cast<const UInt8*>(bmp.data());
+    const auto* rawBMPHeader = reinterpret_cast<const UInt8*>(bmp.data());
     if (rawBMPHeader[0] != 'B' || rawBMPHeader[1] != 'M') {
         return {};
     }
@@ -126,7 +127,6 @@ std::string OSXClipboardBMPConverter::toIClipboard(const std::string& bmp) const
     if (offset == 14 + 40) {
         return bmp.substr(14);
     }
-    else {
-        return bmp.substr(14, 40) + bmp.substr(offset, bmp.size() - offset);
-    }
+            return bmp.substr(14, 40) + bmp.substr(offset, bmp.size() - offset);
+   
 }

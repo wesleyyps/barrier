@@ -16,7 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#import "platform/OSXScreenSaver.h"
+#include "platform/OSXScreenSaver.h"
+#include <array>
 
 #import "platform/OSXScreenSaverUtil.h"
 #import "barrier/IPrimaryScreen.h"
@@ -43,7 +44,7 @@ OSXScreenSaver::OSXScreenSaver(IEventQueue* events, void* eventTarget) :
     m_screenSaverController = screenSaverUtilCreateController();
 
     // install launch/termination event handlers
-    EventTypeSpec launchEventTypes[2];
+    std::array<EventTypeSpec, 2> launchEventTypes;
     launchEventTypes[0].eventClass = kEventClassApplication;
     launchEventTypes[0].eventKind  = kEventAppLaunched;
     launchEventTypes[1].eventClass = kEventClassApplication;
@@ -52,7 +53,7 @@ OSXScreenSaver::OSXScreenSaver(IEventQueue* events, void* eventTarget) :
     EventHandlerUPP launchTerminationEventHandler =
         NewEventHandlerUPP(launchTerminationCallback);
     InstallApplicationEventHandler(launchTerminationEventHandler, 2,
-                                launchEventTypes, this,
+                                launchEventTypes.data(), this,
                                 &m_launchTerminationEventHandlerRef);
     DisposeEventHandlerUPP(launchTerminationEventHandler);
 
@@ -94,7 +95,7 @@ OSXScreenSaver::activate()
 void
 OSXScreenSaver::deactivate()
 {
-    screenSaverUtilDeactivate(m_screenSaverController, m_enabled);
+    screenSaverUtilDeactivate(m_screenSaverController, static_cast<int>(m_enabled));
 }
 
 bool
@@ -151,7 +152,7 @@ OSXScreenSaver::launchTerminationCallback(
     if ((result == noErr) &&
         (actualSize > 0) &&
         (actualType == typeProcessSerialNumber)) {
-        OSXScreenSaver* screenSaver = (OSXScreenSaver*)userData;
+        auto* screenSaver = static_cast<OSXScreenSaver*>(userData);
         UInt32 eventKind = GetEventKind(theEvent);
         if (eventKind == kEventAppLaunched) {
             screenSaver->processLaunched(psn);
@@ -182,7 +183,7 @@ getProcessSerialNumber(const char* name, ProcessSerialNumber& psn)
         if (err != 0) {
             break;
         }
-        if (strcmp(name, (const char*)&procName[1]) == 0) {
+        if (strcmp(name, reinterpret_cast<const char*>(&procName[1])) == 0) {
             psn = checkPsn;
             break;
         }
@@ -195,7 +196,7 @@ testProcessName(const char* name, const ProcessSerialNumber& psn)
 {
     CFStringRef    processName;
     OSStatus    err = CopyProcessName(&psn, &processName);
-    return (err == 0 && CFEqual(CFSTR("ScreenSaverEngine"), processName));
+    return (err == 0 && (CFEqual(CFSTR("ScreenSaverEngine"), processName) != 0u));
 }
 
 #pragma GCC diagnostic error "-Wdeprecated-declarations"

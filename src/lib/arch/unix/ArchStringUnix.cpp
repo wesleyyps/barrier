@@ -27,12 +27,10 @@
 #include "arch/multibyte.h"
 
 ArchStringUnix::ArchStringUnix()
-{
-}
+= default;
 
 ArchStringUnix::~ArchStringUnix()
-{
-}
+= default;
 
 IArchString::EWideCharEncoding
 ArchStringUnix::getWideCharEncoding()

@@ -21,7 +21,7 @@
 #include <QSettings>
 #include <QTextStream>
 
-const char* Action::m_ActionTypeNames[] =
+const std::array<const char*, 10> Action::m_ActionTypeNames =
 {
     "keyDown", "keyUp", "keystroke",
     "switchToScreen", "toggleScreen",
@@ -29,8 +29,8 @@ const char* Action::m_ActionTypeNames[] =
     "mouseDown", "mouseUp", "mousebutton"
 };
 
-const char* Action::m_SwitchDirectionNames[] = { "left", "right", "up", "down" };
-const char* Action::m_LockCursorModeNames[] = { "toggle", "on", "off" };
+const std::array<const char*, 4> Action::m_SwitchDirectionNames = { "left", "right", "up", "down" };
+const std::array<const char*, 3> Action::m_LockCursorModeNames = { "toggle", "on", "off" };
 
 Action::Action() :
     m_KeySequence(),
@@ -52,7 +52,7 @@ QString Action::text() const
      * argument, it can not have () in the end.
      */
     QString text = QString(m_ActionTypeNames[m_KeySequence.isMouseButton() ?
-                                             type() + int(mouseDown) : type()]);
+                                             type() + static_cast<int>(mouseDown) : type()]);
 
     switch (type())
     {

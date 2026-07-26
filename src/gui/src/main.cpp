@@ -29,8 +29,9 @@
 #include <QtGui>
 #include <QSettings>
 #include <QMessageBox>
+#include <array>
 
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
 #include <Carbon/Carbon.h>
 #endif
 
@@ -49,7 +50,7 @@ public:
 
 int waitForTray();
 
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
 bool checkMacAssistiveDevices();
 #endif
 
@@ -73,7 +74,7 @@ int main(int argc, char* argv[])
 
 	QBarrierApplication app(argc, argv);
 
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
 	if (app.applicationDirPath().startsWith("/Volumes/")) {
         // macOS preferences track applications allowed assistive access by path
         // Unfortunately, there's no user-friendly way to allow assistive access
@@ -82,7 +83,7 @@ int main(int argc, char* argv[])
         // /Applications). Thus we require Barrier to reside in the /Applications
         // folder
 		QMessageBox::information(
-			NULL, "Barrier",
+			nullptr, "Barrier",
 			"Please drag Barrier to the Applications folder, and open it from there.");
 		return 1;
 	}
@@ -99,14 +100,14 @@ int main(int argc, char* argv[])
 
     if (QGuiApplication::platformName() == "wayland") {
         QMessageBox::warning(
-        NULL, "Barrier",
+        nullptr, "Barrier",
         "You are using wayland session, which is currently not fully supported by Barrier.");
     }
 
 	QSettings settings;
 	AppConfig appConfig (&settings);
 
-	if (appConfig.getAutoHide() && !trayAvailable)
+	if (appConfig.getAutoHide() && (trayAvailable == 0))
 	{
 		// force auto hide to false - otherwise there is no way to get the GUI back
 		fprintf(stdout, "System tray not available, force disabling auto hide!\n");
@@ -145,15 +146,15 @@ int waitForTray()
 		if (++trayAttempts > TRAY_RETRY_COUNT)
 		{
 			fprintf(stdout, "System tray is unavailable.\n");
-			return false;
+			return 0;
 		}
 
 		QThreadImpl::msleep(TRAY_RETRY_WAIT);
 	}
-	return true;
+	return 1;
 }
 
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
 bool checkMacAssistiveDevices()
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090 // mavericks
@@ -164,15 +165,15 @@ bool checkMacAssistiveDevices()
 	// tab, with a list of allowed applications. barrier should
 	// show up there automatically, but will be unchecked.
 
-	if (AXIsProcessTrusted()) {
+	if (AXIsProcessTrusted() != 0u) {
 		return true;
 	}
 
-	const void* keys[] = { kAXTrustedCheckOptionPrompt };
-	const void* trueValue[] = { kCFBooleanTrue };
-	CFDictionaryRef options = CFDictionaryCreate(NULL, keys, trueValue, 1, NULL, NULL);
+	std::array<const void*, 1> keys = { kAXTrustedCheckOptionPrompt };
+	std::array<const void*, 1> trueValue = { kCFBooleanTrue };
+	CFDictionaryRef options = CFDictionaryCreate(nullptr, keys.data(), trueValue.data(), 1, nullptr, nullptr);
 
-	bool result = AXIsProcessTrustedWithOptions(options);
+	bool result = AXIsProcessTrustedWithOptions(options) != 0u;
 	CFRelease(options);
 	return result;
 

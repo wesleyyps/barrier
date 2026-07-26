@@ -27,7 +27,7 @@ namespace barrier {
 template<class Callable>
 class final_action {
 public:
-    final_action() noexcept {}
+    final_action() noexcept = default;
     final_action(Callable callable) noexcept : callable_{callable} {}
 
     ~final_action() noexcept

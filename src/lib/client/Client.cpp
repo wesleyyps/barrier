@@ -57,17 +57,17 @@ Client::Client(IEventQueue* events, const std::string& name, const NetworkAddres
     m_serverAddress(address),
     m_socketFactory(socketFactory),
     m_screen(screen),
-    m_stream(NULL),
-    m_timer(NULL),
-    m_server(NULL),
+    m_stream(nullptr),
+    m_timer(nullptr),
+    m_server(nullptr),
     m_ready(false),
     m_active(false),
     m_suspended(false),
     m_connectOnResume(false),
     m_events(events),
-    m_sendFileThread(NULL),
-    m_writeToDropDirThread(NULL),
-    m_socket(NULL),
+    m_sendFileThread(nullptr),
+    m_writeToDropDirThread(nullptr),
+    m_socket(nullptr),
     m_useSecureNetwork(args.m_enableCrypto),
     m_args(args),
     m_enableClipboard(true)
@@ -118,7 +118,7 @@ Client::~Client()
 void
 Client::connect()
 {
-    if (m_stream != NULL) {
+    if (m_stream != nullptr) {
         return;
     }
     if (m_suspended) {
@@ -141,7 +141,7 @@ Client::connect()
         m_serverAddress.resolve();
 
         // m_serverAddress will be null if the hostname address is not reolved
-        if (m_serverAddress.getAddress() != NULL) {
+        if (m_serverAddress.getAddress() != nullptr) {
           // to help users troubleshoot, show server host name (issue: 60)
           LOG((CLOG_NOTE "connecting to '%s': %s:%i",
           m_serverAddress.getHostname().c_str(),
@@ -182,11 +182,11 @@ Client::disconnect(const char* msg)
     cleanupScreen();
     cleanupConnecting();
     cleanupConnection();
-    if (msg != NULL) {
+    if (msg != nullptr) {
         sendConnectionFailedEvent(msg);
     }
     else {
-        sendEvent(m_events->forClient().disconnected(), NULL);
+        sendEvent(m_events->forClient().disconnected(), nullptr);
     }
 }
 
@@ -195,19 +195,19 @@ Client::handshakeComplete()
 {
     m_ready = true;
     m_screen->enable();
-    sendEvent(m_events->forClient().connected(), NULL);
+    sendEvent(m_events->forClient().connected(), nullptr);
 }
 
 bool
 Client::isConnected() const
 {
-    return (m_server != NULL);
+    return (m_server != nullptr);
 }
 
 bool
 Client::isConnecting() const
 {
-    return (m_timer != NULL);
+    return (m_timer != nullptr);
 }
 
 NetworkAddress
@@ -247,9 +247,9 @@ Client::enter(SInt32 xAbs, SInt32 yAbs, UInt32, KeyModifierMask mask, bool)
     m_screen->mouseMove(xAbs, yAbs);
     m_screen->enter(mask);
 
-    if (m_sendFileThread != NULL) {
+    if (m_sendFileThread != nullptr) {
         StreamChunker::interruptFile();
-        m_sendFileThread = NULL;
+        m_sendFileThread = nullptr;
     }
 }
 
@@ -358,7 +358,7 @@ Client::resetOptions()
 void
 Client::setOptions(const OptionsList& options)
 {
-    for (OptionsList::const_iterator index = options.begin();
+    for (auto index = options.begin();
          index != options.end(); ++index) {
         const OptionID id       = *index;
         if (id == kOptionClipboardSharing) {
@@ -366,7 +366,7 @@ Client::setOptions(const OptionsList& options)
             if (*index == static_cast<OptionValue>(false)) {
                 LOG((CLOG_NOTE "clipboard sharing is disabled"));
             }
-            m_enableClipboard = *index;
+            m_enableClipboard = ((*index) != 0u);
 
             break;
         }
@@ -425,7 +425,7 @@ Client::sendEvent(Event::Type type, void* data)
 void
 Client::sendConnectionFailedEvent(const char* msg)
 {
-    FailInfo* info = new FailInfo(msg);
+    auto* info = new FailInfo(msg);
     info->m_retry = true;
     Event event(m_events->forClient().connectionFailed(), getEventTarget(), info, Event::kDontFreeData);
     m_events->addEvent(event);
@@ -434,7 +434,7 @@ Client::sendConnectionFailedEvent(const char* msg)
 void
 Client::sendFileChunk(const void* data)
 {
-    FileChunk* chunk = static_cast<FileChunk*>(const_cast<void*>(data));
+    auto* chunk = static_cast<FileChunk*>(const_cast<void*>(data));
     LOG((CLOG_DEBUG1 "send file chunk"));
     assert(m_server != NULL);
 
@@ -519,7 +519,7 @@ Client::setupTimer()
 {
     assert(m_timer == NULL);
 
-    m_timer = m_events->newOneShotTimer(15.0, NULL);
+    m_timer = m_events->newOneShotTimer(15.0, nullptr);
     m_events->adoptHandler(Event::kTimer, m_timer,
                             new TMethodEventJob<Client>(this,
                                 &Client::handleConnectTimeout));
@@ -528,7 +528,7 @@ Client::setupTimer()
 void
 Client::cleanupConnecting()
 {
-    if (m_stream != NULL) {
+    if (m_stream != nullptr) {
         m_events->removeHandler(m_events->forIDataSocket().connected(),
                             m_stream->getEventTarget());
         m_events->removeHandler(m_events->forIDataSocket().connectionFailed(),
@@ -539,7 +539,7 @@ Client::cleanupConnecting()
 void
 Client::cleanupConnection()
 {
-    if (m_stream != NULL) {
+    if (m_stream != nullptr) {
         m_events->removeHandler(m_events->forIStream().inputReady(),
                             m_stream->getEventTarget());
         m_events->removeHandler(m_events->forIStream().outputError(),
@@ -559,7 +559,7 @@ Client::cleanupConnection()
 void
 Client::cleanupScreen()
 {
-    if (m_server != NULL) {
+    if (m_server != nullptr) {
         if (m_ready) {
             m_screen->disable();
             m_ready = false;
@@ -569,17 +569,17 @@ Client::cleanupScreen()
         m_events->removeHandler(m_events->forClipboard().clipboardGrabbed(),
                             getEventTarget());
         delete m_server;
-        m_server = NULL;
+        m_server = nullptr;
     }
 }
 
 void
 Client::cleanupTimer()
 {
-    if (m_timer != NULL) {
+    if (m_timer != nullptr) {
         m_events->removeHandler(Event::kTimer, m_timer);
         m_events->deleteTimer(m_timer);
-        m_timer = NULL;
+        m_timer = nullptr;
     }
 }
 
@@ -587,7 +587,7 @@ void
 Client::cleanupStream()
 {
     delete m_stream;
-    m_stream = NULL;
+    m_stream = nullptr;
 }
 
 void
@@ -608,7 +608,7 @@ Client::handleConnected(const Event&, void*)
 void
 Client::handleConnectionFailed(const Event& event, void*)
 {
-    IDataSocket::ConnectionFailedInfo* info =
+    auto* info =
         static_cast<IDataSocket::ConnectionFailedInfo*>(event.getData());
 
     cleanupTimer();
@@ -637,7 +637,7 @@ Client::handleOutputError(const Event&, void*)
     cleanupScreen();
     cleanupConnection();
     LOG((CLOG_WARN "error sending to server"));
-    sendEvent(m_events->forClient().disconnected(), NULL);
+    sendEvent(m_events->forClient().disconnected(), nullptr);
 }
 
 void
@@ -647,7 +647,7 @@ Client::handleDisconnected(const Event&, void*)
     cleanupScreen();
     cleanupConnection();
     LOG((CLOG_DEBUG1 "disconnected"));
-    sendEvent(m_events->forClient().disconnected(), NULL);
+    sendEvent(m_events->forClient().disconnected(), nullptr);
 }
 
 void
@@ -664,7 +664,7 @@ Client::handleClipboardGrabbed(const Event& event, void*)
         return;
     }
 
-    const IScreen::ClipboardInfo* info =
+    const auto* info =
         static_cast<const IScreen::ClipboardInfo*>(event.getData());
 
     // grab ownership
@@ -685,7 +685,8 @@ Client::handleClipboardGrabbed(const Event& event, void*)
 void
 Client::handleHello(const Event&, void*)
 {
-    SInt16 major, minor;
+    SInt16 major;
+    SInt16 minor;
     if (!ProtocolUtil::readf(m_stream, kMsgHello, &major, &minor)) {
         sendConnectionFailedEvent("Protocol error from server, check encryption settings");
         cleanupTimer();
@@ -728,7 +729,7 @@ Client::handleSuspend(const Event&, void*)
     LOG((CLOG_INFO "suspend"));
     m_suspended       = true;
     bool wasConnected = isConnected();
-    disconnect(NULL);
+    disconnect(nullptr);
     m_connectOnResume = wasConnected;
 }
 
@@ -804,7 +805,7 @@ Client::isReceivedFileSizeValid()
 void
 Client::sendFileToServer(const char* filename)
 {
-    if (m_sendFileThread != NULL) {
+    if (m_sendFileThread != nullptr) {
         StreamChunker::interruptFile();
     }
 
@@ -820,7 +821,7 @@ void Client::send_file_thread(const char* filename)
         LOG((CLOG_ERR "failed sending file chunks: %s", error.what()));
     }
 
-    m_sendFileThread = NULL;
+    m_sendFileThread = nullptr;
 }
 
 void

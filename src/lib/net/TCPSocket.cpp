@@ -25,6 +25,7 @@
 #include "mt/Lock.h"
 #include "arch/Arch.h"
 #include "arch/XArch.h"
+#include <array>
 #include "base/Log.h"
 #include "base/IEventQueue.h"
 #include "base/IEventJob.h"
@@ -78,7 +79,7 @@ TCPSocket::~TCPSocket()
         close();
     }
     catch (...) {
-        // ignore
+        // NOLINT(bugprone-empty-catch)
     }
 }
 
@@ -102,7 +103,7 @@ TCPSocket::close()
     LOG((CLOG_DEBUG "Closing socket: %08X", m_socket));
 
     // remove ourself from the multiplexer
-    setJob(NULL);
+    setJob(nullptr);
 
     Lock lock(&m_mutex);
 
@@ -113,9 +114,9 @@ TCPSocket::close()
     onDisconnected();
 
     // close the socket
-    if (m_socket != NULL) {
+    if (m_socket != nullptr) {
         ArchSocket socket = m_socket;
-        m_socket = NULL;
+        m_socket = nullptr;
         try {
             ARCH->closeSocket(socket);
         }
@@ -141,7 +142,7 @@ TCPSocket::read(void* buffer, UInt32 n)
     if (n > size) {
         n = size;
     }
-    if (buffer != NULL && n != 0) {
+    if (buffer != nullptr && n != 0) {
         memcpy(buffer, m_inputBuffer.peek(n), n);
     }
     m_inputBuffer.pop(n);
@@ -208,7 +209,7 @@ TCPSocket::shutdownInput()
             ARCH->closeSocketForRead(m_socket);
         }
         catch (XArchNetwork&) {
-            // ignore
+            // NOLINT(bugprone-empty-catch)
         }
 
         // shutdown buffer for reading
@@ -235,7 +236,7 @@ TCPSocket::shutdownOutput()
             ARCH->closeSocketForWrite(m_socket);
         }
         catch (XArchNetwork&) {
-            // ignore
+            // NOLINT(bugprone-empty-catch)
         }
 
         // shutdown buffer for writing
@@ -279,7 +280,7 @@ TCPSocket::connect(const NetworkAddress& addr)
         Lock lock(&m_mutex);
 
         // fail on attempts to reconnect
-        if (m_socket == NULL || m_connected) {
+        if (m_socket == nullptr || m_connected) {
             sendConnectionFailedEvent("busy");
             return;
         }
@@ -318,10 +319,10 @@ TCPSocket::init()
     catch (XArchNetwork& e) {
         try {
             ARCH->closeSocket(m_socket);
-            m_socket = NULL;
+            m_socket = nullptr;
         }
         catch (XArchNetwork&) {
-            // ignore
+            // NOLINT(bugprone-empty-catch)
         }
         throw XSocketCreate(e.what());
     }
@@ -330,24 +331,24 @@ TCPSocket::init()
 TCPSocket::EJobResult
 TCPSocket::doRead()
 {
-    UInt8 buffer[4096];
-    memset(buffer, 0, sizeof(buffer));
+    std::array<UInt8, 4096> buffer;
+    buffer.fill(0);
     size_t bytesRead = 0;
 
-    bytesRead = ARCH->readSocket(m_socket, buffer, sizeof(buffer));
+    bytesRead = ARCH->readSocket(m_socket, buffer.data(), buffer.size());
 
     if (bytesRead > 0) {
         bool wasEmpty = (m_inputBuffer.getSize() == 0);
 
         // slurp up as much as possible
         do {
-            m_inputBuffer.write(buffer, (UInt32)bytesRead);
+            m_inputBuffer.write(buffer.data(), static_cast<UInt32>(bytesRead));
 
             if (m_inputBuffer.getSize() > MAX_INPUT_BUFFER_SIZE) {
                 break;
             }
 
-            bytesRead = ARCH->readSocket(m_socket, buffer, sizeof(buffer));
+            bytesRead = ARCH->readSocket(m_socket, buffer.data(), buffer.size());
         } while (bytesRead > 0);
 
         // send input ready if input buffer was empty
@@ -380,7 +381,7 @@ TCPSocket::doWrite()
 
     bufferSize = m_outputBuffer.getSize();
     const void* buffer = m_outputBuffer.peek(bufferSize);
-    bytesWrote = (UInt32)ARCH->writeSocket(m_socket, buffer, bufferSize);
+    bytesWrote = static_cast<int>(ARCH->writeSocket(m_socket, buffer, bufferSize));
 
     if (bytesWrote > 0) {
         discardWrittenData(bytesWrote);
@@ -398,7 +399,7 @@ void TCPSocket::removeJob()
 
 void TCPSocket::setJob(std::unique_ptr<ISocketMultiplexerJob>&& job)
 {
-    if (job.get() == nullptr) {
+    if (job == nullptr) {
         removeJob();
     } else {
         m_socketMultiplexer->addSocket(this, std::move(job));
@@ -410,18 +411,17 @@ MultiplexerJobStatus TCPSocket::newJobOrStopServicing()
     auto new_job = newJob();
     if (new_job)
         return {true, std::move(new_job)};
-    else
-        return {false, {}};
+            return {false, {}};
 }
 
 std::unique_ptr<ISocketMultiplexerJob> TCPSocket::newJob()
 {
     // note -- must have m_mutex locked on entry
 
-    if (m_socket == NULL) {
+    if (m_socket == nullptr) {
         return {};
     }
-    else if (!m_connected) {
+    if (!m_connected) {
         assert(!m_readable);
         if (!(m_readable || m_writable)) {
             return {};
@@ -446,7 +446,7 @@ std::unique_ptr<ISocketMultiplexerJob> TCPSocket::newJob()
 void
 TCPSocket::sendConnectionFailedEvent(const char* msg)
 {
-    ConnectionFailedInfo* info = new ConnectionFailedInfo(msg);
+    auto* info = new ConnectionFailedInfo(msg);
     m_events->addEvent(Event(m_events->forIDataSocket().connectionFailed(),
                             getEventTarget(), info, Event::kDontFreeData));
 }
@@ -454,7 +454,7 @@ TCPSocket::sendConnectionFailedEvent(const char* msg)
 void
 TCPSocket::sendEvent(Event::Type type)
 {
-    m_events->addEvent(Event(type, getEventTarget(), NULL));
+    m_events->addEvent(Event(type, getEventTarget(), nullptr));
 }
 
 void
@@ -607,7 +607,7 @@ MultiplexerJobStatus TCPSocket::serviceConnected(ISocketMultiplexerJob* job,
 
     if (writeResult == kBreak || readResult == kBreak) {
         return {false, {}};
-    } else if (writeResult == kNew || readResult == kNew) {
+    } if (writeResult == kNew || readResult == kNew) {
         return newJobOrStopServicing();
     } else {
         return {true, {}};

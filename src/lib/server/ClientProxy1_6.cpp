@@ -41,8 +41,7 @@ ClientProxy1_6::ClientProxy1_6(const std::string& name, barrier::IStream* stream
 }
 
 ClientProxy1_6::~ClientProxy1_6()
-{
-}
+= default;
 
 void
 ClientProxy1_6::setClipboard(ClipboardID id, const IClipboard* clipboard)
@@ -90,7 +89,7 @@ ClientProxy1_6::recvClipboard()
         m_clipboard[id].m_sequenceNumber = seq;
 
         // notify
-        ClipboardInfo* info = new ClipboardInfo;
+        auto* info = new ClipboardInfo;
         info->m_id = id;
         info->m_sequenceNumber = seq;
         m_events->addEvent(Event(m_events->forClipboard().clipboardChanged(),

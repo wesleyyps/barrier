@@ -17,6 +17,7 @@
  */
 
 #include "barrier/KeyState.h"
+#include <array>
 #include "base/Log.h"
 
 #include <cstring>
@@ -24,9 +25,9 @@
 #include <iterator>
 #include <list>
 
-static const KeyButton kButtonMask = (KeyButton)(IKeyState::kNumButtons - 1);
+static const KeyButton kButtonMask = static_cast<KeyButton>(IKeyState::kNumButtons - 1);
 
-static const KeyID s_decomposeTable[] = {
+static const std::array<KeyID, 1281> s_decomposeTable = {{
     // spacing version of dead keys
     0x0060, 0x0300, 0x0020, 0, // grave,        dead_grave,       space
     0x00b4, 0x0301, 0x0020, 0, // acute,        dead_acute,       space
@@ -339,9 +340,9 @@ static const KeyID s_decomposeTable[] = {
 
     // end of table
     0
-};
+}};
 
-static const KeyID s_numpadTable[] = {
+static const std::array<KeyID, 70> s_numpadTable = {{
     kKeyKP_Space,        0x0020,
     kKeyKP_Tab,            kKeyTab,
     kKeyKP_Enter,        kKeyReturn,
@@ -377,7 +378,7 @@ static const KeyID s_numpadTable[] = {
     kKeyKP_7,            0x0037,
     kKeyKP_8,            0x0038,
     kKeyKP_9,            0x0039
-};
+}};
 
 //
 // KeyState
@@ -395,7 +396,7 @@ KeyState::KeyState(IEventQueue* events) :
 
 KeyState::KeyState(IEventQueue* events, barrier::KeyMap& keyMap) :
     IKeyState(events),
-    m_keyMapPtr(0),
+    m_keyMapPtr(nullptr),
     m_keyMap(keyMap),
     m_mask(0),
     m_events(events)
@@ -405,7 +406,7 @@ KeyState::KeyState(IEventQueue* events, barrier::KeyMap& keyMap) :
 
 KeyState::~KeyState()
 {
-    if (m_keyMapPtr)
+    if (m_keyMapPtr != nullptr)
         delete m_keyMapPtr;
 }
 
@@ -503,9 +504,8 @@ KeyState::updateKeyState()
     // get the current keyboard state
     KeyButtonSet keysDown;
     pollPressedKeys(keysDown);
-    for (KeyButtonSet::const_iterator i = keysDown.begin();
-                                i != keysDown.end(); ++i) {
-        m_keys[*i] = 1;
+    for (unsigned short i : keysDown) {
+        m_keys[i] = 1;
     }
 
     // get the current modifier state
@@ -523,7 +523,7 @@ void
 KeyState::addActiveModifierCB(KeyID, SInt32 group,
                 barrier::KeyMap::KeyItem& keyItem, void* vcontext)
 {
-    AddActiveModifierContext* context =
+    auto* context =
         static_cast<AddActiveModifierContext*>(vcontext);
     if (group == context->m_activeGroup &&
         (keyItem.m_generates & context->m_mask) != 0) {
@@ -570,7 +570,7 @@ KeyState::fakeKeyDown(KeyID id, KeyModifierMask mask, KeyButton serverID)
     const barrier::KeyMap::KeyItem* keyItem =
         m_keyMap.mapKey(keys, id, pollActiveGroup(), m_activeModifiers,
                                 getActiveModifiersRValue(), mask, false);
-    if (keyItem == NULL) {
+    if (keyItem == nullptr) {
         // a media key won't be mapped on mac, so we need to fake it in a
         // special way
         if (id == kKeyAudioDown || id == kKeyAudioUp ||
@@ -585,7 +585,7 @@ KeyState::fakeKeyDown(KeyID id, KeyModifierMask mask, KeyButton serverID)
         return;
     }
 
-    KeyButton localID = (KeyButton)(keyItem->m_button & kButtonMask);
+    auto localID = static_cast<KeyButton>(keyItem->m_button & kButtonMask);
     updateModifierKeyState(localID, oldActiveModifiers, m_activeModifiers);
     if (localID != 0) {
         // note keys down
@@ -618,10 +618,10 @@ KeyState::fakeKeyRepeat(
     const barrier::KeyMap::KeyItem* keyItem =
         m_keyMap.mapKey(keys, id, pollActiveGroup(), m_activeModifiers,
                                 getActiveModifiersRValue(), mask, true);
-    if (keyItem == NULL) {
+    if (keyItem == nullptr) {
         return false;
     }
-    KeyButton localID = (KeyButton)(keyItem->m_button & kButtonMask);
+    auto localID = static_cast<KeyButton>(keyItem->m_button & kButtonMask);
     if (localID == 0) {
         return false;
     }
@@ -635,11 +635,10 @@ KeyState::fakeKeyRepeat(
     if (localID != oldLocalID) {
         // replace key up with previous KeyButton but leave key down
         // alone so it uses the new KeyButton.
-        for (Keystrokes::iterator index = keys.begin();
-                                index != keys.end(); ++index) {
-            if (index->m_type == Keystroke::kButton &&
-                index->m_data.m_button.m_button == localID) {
-                index->m_data.m_button.m_button = oldLocalID;
+        for (auto & key : keys) {
+            if (key.m_type == Keystroke::kButton &&
+                key.m_data.m_button.m_button == localID) {
+                key.m_data.m_button.m_button = oldLocalID;
                 break;
             }
         }
@@ -680,13 +679,13 @@ KeyState::fakeKeyUp(KeyButton serverID)
     m_serverKeys[serverID] = 0;
 
     // check if this is a modifier
-    ModifierToKeys::iterator i = m_activeModifiers.begin();
+    auto i = m_activeModifiers.begin();
     while (i != m_activeModifiers.end()) {
         if (i->second.m_button == localID && !i->second.m_lock) {
             // modifier is no longer down
             KeyModifierMask mask = i->first;
 
-            ModifierToKeys::iterator tmp = i;
+            auto tmp = i;
             ++i;
             m_activeModifiers.erase(tmp);
 
@@ -772,12 +771,11 @@ KeyState::getButton(KeyID id, SInt32 group) const
 {
     const barrier::KeyMap::KeyItemList* items =
         m_keyMap.findCompatibleKey(id, group, 0, 0);
-    if (items == NULL) {
+    if (items == nullptr) {
         return 0;
     }
-    else {
-        return items->back().m_button;
-    }
+            return items->back().m_button;
+   
 }
 
 void
@@ -810,10 +808,9 @@ KeyState::addKeypadEntries()
     // map every numpad key to its equivalent non-numpad key if it's not
     // on the keyboard.
     for (SInt32 g = 0, n = m_keyMap.getNumGroups(); g < n; ++g) {
-        for (size_t i = 0; i < sizeof(s_numpadTable) /
-                                sizeof(s_numpadTable[0]); i += 2) {
+        for (size_t i = 0; i < s_numpadTable.size(); i += 2) {
             m_keyMap.addKeyCombinationEntry(s_numpadTable[i], g,
-                                s_numpadTable + i + 1, 1);
+                                s_numpadTable.data() + i + 1, 1);
         }
     }
 }
@@ -823,7 +820,7 @@ KeyState::addCombinationEntries()
 {
     for (SInt32 g = 0, n = m_keyMap.getNumGroups(); g < n; ++g) {
         // add dead and compose key composition sequences
-        for (const KeyID* i = s_decomposeTable; *i != 0; ++i) {
+        for (const KeyID* i = s_decomposeTable.data(); *i != 0; ++i) {
             // count the decomposed keys for this key
             UInt32 numKeys = 0;
             for (const KeyID* j = i; *++j != 0; ) {
@@ -849,11 +846,11 @@ KeyState::fakeKeys(const Keystrokes& keys, UInt32 count)
 
     // generate key events
     LOG((CLOG_DEBUG1 "keystrokes:"));
-    for (Keystrokes::const_iterator k = keys.begin(); k != keys.end(); ) {
+    for (auto k = keys.begin(); k != keys.end(); ) {
         if (k->m_type == Keystroke::kButton && k->m_data.m_button.m_repeat) {
             // repeat from here up to but not including the next key
             // with m_repeat == false count times.
-            Keystrokes::const_iterator start = k;
+            auto start = k;
             while (count-- > 0) {
                 // send repeating events
                 for (k = start; k != keys.end() &&
@@ -882,18 +879,18 @@ KeyState::updateModifierKeyState(KeyButton button,
                 const ModifierToKeys& newModifiers)
 {
     // get the pressed modifier buttons before and after
-    barrier::KeyMap::ButtonToKeyMap oldKeys, newKeys;
-    for (ModifierToKeys::const_iterator i = oldModifiers.begin();
-                                i != oldModifiers.end(); ++i) {
-        oldKeys.insert(std::make_pair(i->second.m_button, &i->second));
+    barrier::KeyMap::ButtonToKeyMap oldKeys;
+    barrier::KeyMap::ButtonToKeyMap newKeys;
+    for (const auto & oldModifier : oldModifiers) {
+        oldKeys.insert(std::make_pair(oldModifier.second.m_button, &oldModifier.second));
     }
-    for (ModifierToKeys::const_iterator i = newModifiers.begin();
-                                i != newModifiers.end(); ++i) {
-        newKeys.insert(std::make_pair(i->second.m_button, &i->second));
+    for (const auto & newModifier : newModifiers) {
+        newKeys.insert(std::make_pair(newModifier.second.m_button, &newModifier.second));
     }
 
     // get the modifier buttons that were pressed or released
-    barrier::KeyMap::ButtonToKeyMap pressed, released;
+    barrier::KeyMap::ButtonToKeyMap pressed;
+    barrier::KeyMap::ButtonToKeyMap released;
     std::set_difference(oldKeys.begin(), oldKeys.end(),
                         newKeys.begin(), newKeys.end(),
                         std::inserter(released, released.end()),

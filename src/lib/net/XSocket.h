@@ -41,7 +41,7 @@ public:
     };
 
     XSocketAddress(EError, const std::string& hostname, int port) noexcept;
-    virtual ~XSocketAddress() noexcept { }
+    virtual ~XSocketAddress() noexcept = default;
 
     //! @name accessors
     //@{

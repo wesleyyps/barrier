@@ -172,7 +172,7 @@ Screen::setClipboard(ClipboardID id, const IClipboard* clipboard)
 void
 Screen::grabClipboard(ClipboardID id)
 {
-    m_screen->setClipboard(id, NULL);
+    m_screen->setClipboard(id, nullptr);
 }
 
 void
@@ -272,7 +272,7 @@ Screen::setOptions(const OptionsList& options)
 {
     // update options
     bool oldScreenSaverSync = m_screenSaverSync;
-    for (UInt32 i = 0, n = (UInt32)options.size(); i < n; i += 2) {
+    for (UInt32 i = 0, n = static_cast<UInt32>(options.size()); i < n; i += 2) {
         if (options[i] == kOptionScreenSaverSync) {
             m_screenSaverSync = (options[i + 1] != 0);
             LOG((CLOG_DEBUG1 "screen saver synchronization %s", m_screenSaverSync ? "on" : "off"));
@@ -380,9 +380,8 @@ Screen::isLockedToScreen() const
         if (m_enableDragDrop) {
             return (buttonID == kButtonLeft) ? false : true;
         }
-        else {
-            return true;
-        }
+                    return true;
+       
     }
 
     // not locked
@@ -395,9 +394,8 @@ Screen::getJumpZoneSize() const
     if (!m_isPrimary) {
         return 0;
     }
-    else {
-        return m_screen->getJumpZoneSize();
-    }
+            return m_screen->getJumpZoneSize();
+   
 }
 
 void

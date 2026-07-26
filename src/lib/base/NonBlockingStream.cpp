@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#if !defined(_WIN32)
+#ifndef _WIN32
 
 #include "base/NonBlockingStream.h"
 
@@ -53,7 +53,8 @@ bool NonBlockingStream::try_read_char(char &ch) const
     int result = read(_fd, &ch, 1);
     if (result == 1)
         return true;
-    assert(result == -1 && (errno == EAGAIN || errno == EWOULDBLOCK));
+    if (result == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
+        return false;
     return false;
 }
 

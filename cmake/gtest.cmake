@@ -23,15 +23,8 @@ if (BARRIER_USE_EXTERNAL_GTEST)
         ${GMOCK_INCLUDE_DIRS}
     )
 else()
-    include_directories(
-        ../ext/gtest
-        ../ext/gtest/include
-        ../ext/gmock
-        ../ext/gmock/include
-    )
-
-    add_library(gtest STATIC ../ext/gtest/src/gtest-all.cc)
-    add_library(gmock STATIC ../ext/gmock/src/gmock-all.cc)
+    # Add the unified googletest directory which provides the gtest and gmock targets automatically
+    add_subdirectory(../ext/googletest ext_googletest)
 
     set(GTEST_LIBRARIES gtest)
     set(GMOCK_LIBRARIES gmock)

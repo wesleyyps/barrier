@@ -74,7 +74,7 @@ public:
     virtual void        listenOnSocket(ArchSocket s);
     virtual ArchSocket    acceptSocket(ArchSocket s, ArchNetAddress* addr);
     virtual bool        connectSocket(ArchSocket s, ArchNetAddress name);
-    virtual int            pollSocket(PollEntry[], int num, double timeout);
+    virtual int            pollSocket(PollEntry* pe, int num, double timeout);
     virtual void        unblockPollSocket(ArchThread thread);
     virtual size_t        readSocket(ArchSocket s, void* buf, size_t len);
     virtual size_t        writeSocket(ArchSocket s,

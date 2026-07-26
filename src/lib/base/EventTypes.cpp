@@ -22,7 +22,7 @@
 #include <stddef.h>
 
 EventTypes::EventTypes() :
-    m_events(NULL)
+    m_events(nullptr)
 {
 }
 

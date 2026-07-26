@@ -78,8 +78,8 @@ protected:
     void setJob(std::unique_ptr<ISocketMultiplexerJob>&& job);
     MultiplexerJobStatus newJobOrStopServicing();
 
-    bool                isReadable() { return m_readable; }
-    bool                isWritable() { return m_writable; }
+    bool                isReadable() const { return m_readable; }
+    bool                isWritable() const { return m_writable; }
 
     Mutex&                getMutex() { return m_mutex; }
 

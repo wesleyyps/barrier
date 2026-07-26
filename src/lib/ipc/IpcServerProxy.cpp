@@ -17,6 +17,7 @@
  */
 
 #include "ipc/IpcServerProxy.h"
+#include <array>
 
 #include "ipc/IpcMessage.h"
 #include "ipc/Ipc.h"
@@ -50,18 +51,18 @@ IpcServerProxy::handleData(const Event&, void*)
 {
     LOG((CLOG_DEBUG "start ipc handle data"));
 
-    UInt8 code[4];
-    UInt32 n = m_stream.read(code, 4);
+    std::array<UInt8, 4> code;
+    UInt32 n = m_stream.read(code.data(), 4);
     while (n != 0) {
 
         LOG((CLOG_DEBUG "ipc read: %c%c%c%c",
             code[0], code[1], code[2], code[3]));
 
         IpcMessage* m = nullptr;
-        if (memcmp(code, kIpcMsgLogLine, 4) == 0) {
+        if (memcmp(code.data(), kIpcMsgLogLine, 4) == 0) {
             m = parseLogLine();
         }
-        else if (memcmp(code, kIpcMsgShutdown, 4) == 0) {
+        else if (memcmp(code.data(), kIpcMsgShutdown, 4) == 0) {
             m = new IpcShutdownMessage();
         }
         else {
@@ -70,11 +71,11 @@ IpcServerProxy::handleData(const Event&, void*)
         }
 
         // don't delete with this event; the data is passed to a new event.
-        Event e(m_events->forIpcServerProxy().messageReceived(), this, NULL, Event::kDontFreeData);
+        Event e(m_events->forIpcServerProxy().messageReceived(), this, nullptr, Event::kDontFreeData);
         e.setDataObject(m);
         m_events->addEvent(e);
 
-        n = m_stream.read(code, 4);
+        n = m_stream.read(code.data(), 4);
     }
 
     LOG((CLOG_DEBUG "finished ipc handle data"));
@@ -87,13 +88,13 @@ IpcServerProxy::send(const IpcMessage& message)
 
     switch (message.type()) {
     case kIpcHello: {
-        const IpcHelloMessage& hm = static_cast<const IpcHelloMessage&>(message);
+        const auto& hm = static_cast<const IpcHelloMessage&>(message);
         ProtocolUtil::writef(&m_stream, kIpcMsgHello, hm.clientType());
         break;
     }
 
     case kIpcCommand: {
-        const IpcCommandMessage& cm = static_cast<const IpcCommandMessage&>(message);
+        const auto& cm = static_cast<const IpcCommandMessage&>(message);
         std::string command = cm.command();
         ProtocolUtil::writef(&m_stream, kIpcMsgCommand, &command);
         break;

@@ -47,33 +47,33 @@
 #include <QDesktopServices>
 #include <QDesktopWidget>
 
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
 #include <ApplicationServices/ApplicationServices.h>
 #endif
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #endif
 
 static const QString allFilesFilter(QObject::tr("All files (*.*)"));
-#if defined(Q_OS_WIN)
-static const char barrierConfigName[] = "barrier.sgc";
+#ifdef Q_OS_WIN
+static const QString barrierConfigName = "barrier.sgc";
 static const QString barrierConfigFilter(QObject::tr("Barrier Configurations (*.sgc)"));
 static QString bonjourBaseUrl = "http://binaries.symless.com/bonjour/";
-static const char bonjourFilename32[] = "Bonjour.msi";
-static const char bonjourFilename64[] = "Bonjour64.msi";
-static const char bonjourTargetFilename[] = "Bonjour.msi";
+static const QString bonjourFilename32 = "Bonjour.msi";
+static const QString bonjourFilename64 = "Bonjour64.msi";
+static const QString bonjourTargetFilename = "Bonjour.msi";
 #else
-static const char barrierConfigName[] = "barrier.conf";
+static const QString barrierConfigName = "barrier.conf";
 static const QString barrierConfigFilter(QObject::tr("Barrier Configurations (*.conf)"));
 #endif
 static const QString barrierConfigOpenFilter(barrierConfigFilter + ";;" + allFilesFilter);
 static const QString barrierConfigSaveFilter(barrierConfigFilter);
 
-static const char* barrierIconFiles[] =
+static const std::array<const char*, 4> barrierIconFiles =
 {
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
     ":/res/icons/32x32/barrier-disconnected-mask.png",
     ":/res/icons/32x32/barrier-disconnected-mask.png",
     ":/res/icons/32x32/barrier-connected-mask.png",
@@ -86,7 +86,7 @@ static const char* barrierIconFiles[] =
 #endif
 };
 
-static const char* barrierIconNames[] =
+static const std::array<const char*, 4> barrierIconNames =
 {
     "barrier-disconnected",
     "barrier-disconnected",
@@ -99,25 +99,25 @@ static const char* barrierLargeIcon = ":/res/icons/256x256/barrier.ico";
 MainWindow::MainWindow(QSettings& settings, AppConfig& appConfig) :
     m_Settings(settings),
     m_AppConfig(&appConfig),
-    m_pBarrier(NULL),
+    m_pBarrier(nullptr),
     m_BarrierState(barrierDisconnected),
     m_ServerConfig(&m_Settings, 5, 3, m_AppConfig->screenName(), this),
-    m_pTempConfigFile(NULL),
-    m_pTrayIcon(NULL),
-    m_pTrayIconMenu(NULL),
+    m_pTempConfigFile(nullptr),
+    m_pTrayIcon(nullptr),
+    m_pTrayIconMenu(nullptr),
     m_AlreadyHidden(false),
-    m_pMenuBar(NULL),
-    m_pMenuBarrier(NULL),
-    m_pMenuHelp(NULL),
-    m_pZeroconfService(NULL),
-    m_pDataDownloader(NULL),
-    m_DownloadMessageBox(NULL),
-    m_pCancelButton(NULL),
+    m_pMenuBar(nullptr),
+    m_pMenuBarrier(nullptr),
+    m_pMenuHelp(nullptr),
+    m_pZeroconfService(nullptr),
+    m_pDataDownloader(nullptr),
+    m_DownloadMessageBox(nullptr),
+    m_pCancelButton(nullptr),
     m_SuppressAutoConfigWarning(false),
-    m_BonjourInstall(NULL),
+    m_BonjourInstall(nullptr),
     m_SuppressEmptyServerWarning(false),
     m_ExpectedRunningState(kStopped),
-    m_pSslCertificate(NULL),
+    m_pSslCertificate(nullptr),
     m_pLogWindow(new LogWindow(nullptr))
 {
     // explicitly unset DeleteOnClose so the window can be show and hidden
@@ -136,7 +136,7 @@ MainWindow::MainWindow(QSettings& settings, AppConfig& appConfig) :
     m_pLabelScreenName->setText(getScreenName());
     m_pLabelIpAddresses->setText(getIPAddresses());
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     // ipc must always be enabled, so that we can disable command when switching to desktop mode.
     connect(&m_IpcClient, SIGNAL(readLogLine(const QString&)), this, SLOT(appendLogRaw(const QString&)));
     connect(&m_IpcClient, SIGNAL(errorMessage(const QString&)), this, SLOT(appendLogError(const QString&)));
@@ -145,7 +145,7 @@ MainWindow::MainWindow(QSettings& settings, AppConfig& appConfig) :
 #endif
 
     // change default size based on os
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
     resize(720, 550);
     setMinimumSize(720, 0);
 #elif defined(Q_OS_LINUX)
@@ -322,9 +322,9 @@ void MainWindow::saveSettings()
 
 void MainWindow::setIcon(qBarrierState state)
 {
-    if (m_pTrayIcon) {
+    if (m_pTrayIcon != nullptr) {
         QIcon icon = QIcon::fromTheme(barrierIconNames[state], QIcon(barrierIconFiles[state]));
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
         icon.setIsMask(true);
 #endif
         m_pTrayIcon->setIcon(icon);
@@ -349,7 +349,7 @@ void MainWindow::trayActivated(QSystemTrayIcon::ActivationReason reason)
 
 void MainWindow::logOutput()
 {
-    if (m_pBarrier)
+    if (m_pBarrier != nullptr)
     {
         QString text(m_pBarrier->readAllStandardOutput());
         for (QString line : text.split(QRegExp("\r|\n|\r\n"))) {
@@ -363,7 +363,7 @@ void MainWindow::logOutput()
 
 void MainWindow::logError()
 {
-    if (m_pBarrier)
+    if (m_pBarrier != nullptr)
     {
         appendLogRaw(m_pBarrier->readAllStandardError());
     }
@@ -495,7 +495,7 @@ void MainWindow::proofreadInfo()
 {
     int oldState = m_BarrierState;
     m_BarrierState = barrierDisconnected;
-    setBarrierState((qBarrierState)oldState);
+    setBarrierState(static_cast<qBarrierState>(oldState));
 }
 
 void MainWindow::startBarrier()
@@ -524,7 +524,7 @@ void MainWindow::startBarrier()
         // tell client/server to talk to daemon through ipc.
         args << "--ipc";
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
         // tell the client/server to shut down when a ms windows desk
         // is switched; this is because we may need to elevate or not
         // based on which desk the user is in (login always needs
@@ -552,7 +552,7 @@ void MainWindow::startBarrier()
         args << "--disable-crypto";
     }
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     // on windows, the profile directory changes depending on the user that
     // launched the process (e.g. when launched with elevation). setting the
     // profile dir on launch ensures it uses the same profile dir is used
@@ -618,7 +618,7 @@ bool MainWindow::clientArgs(QStringList& args, QString& app)
         return false;
     }
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     // wrap in quotes so a malicious user can't start \Program.exe as admin.
     app = QString("\"%1\"").arg(app);
 #endif
@@ -715,7 +715,7 @@ bool MainWindow::serverArgs(QStringList& args, QString& app)
         return false;
     }
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     // wrap in quotes so a malicious user can't start \Program.exe as admin.
     app = QString("\"%1\"").arg(app);
 #endif
@@ -732,7 +732,7 @@ bool MainWindow::serverArgs(QStringList& args, QString& app)
     }
 
     QString configFilename = this->configFilename();
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     // wrap in quotes in case username contains spaces.
     configFilename = QString("\"%1\"").arg(configFilename);
 #endif
@@ -760,10 +760,10 @@ void MainWindow::stopBarrier()
 
     // HACK: deleting the object deletes the physical file, which is
     // bad, since it could be in use by the Windows service!
-#if !defined(Q_OS_WIN)
+#ifndef Q_OS_WIN
     delete m_pTempConfigFile;
 #endif
-    m_pTempConfigFile = NULL;
+    m_pTempConfigFile = nullptr;
 
     // reset so that new connects cause auto-hide.
     m_AlreadyHidden = false;
@@ -778,7 +778,7 @@ void MainWindow::stopService()
 void MainWindow::stopDesktop()
 {
     QMutexLocker locker(&m_StopDesktopMutex);
-    if (!barrierProcess()) {
+    if (barrierProcess() == nullptr) {
         return;
     }
 
@@ -792,7 +792,7 @@ void MainWindow::stopDesktop()
     }
 
     delete barrierProcess();
-    setBarrierProcess(NULL);
+    setBarrierProcess(nullptr);
 }
 
 void MainWindow::barrierFinished(int exitCode, QProcess::ExitStatus)
@@ -898,11 +898,11 @@ QString MainWindow::getIPAddresses()
 
     bool hinted = false;
     QString result;
-    for (int i = 0; i < addresses.size(); i++) {
-        if (addresses[i].protocol() == QAbstractSocket::IPv4Protocol &&
-            addresses[i] != QHostAddress(QHostAddress::LocalHost)) {
+    for (const auto & addresse : addresses) {
+        if (addresse.protocol() == QAbstractSocket::IPv4Protocol &&
+            addresse != QHostAddress(QHostAddress::LocalHost)) {
 
-            QString address = addresses[i].toString();
+            QString address = addresse.toString();
             QString format = "%1, ";
 
             // usually 192.168.x.x is a useful ip for the user, so indicate
@@ -931,14 +931,13 @@ QString MainWindow::getScreenName()
     if (appConfig().screenName() == "") {
         return QHostInfo::localHostName();
     }
-    else {
-        return appConfig().screenName();
-    }
+            return appConfig().screenName();
+   
 }
 
 void MainWindow::changeEvent(QEvent* event)
 {
-    if (event != 0)
+    if (event != nullptr)
     {
         switch (event->type())
         {
@@ -980,9 +979,9 @@ void MainWindow::updateZeroconfService()
 
     if (isBonjourRunning()) {
         if (!m_AppConfig->wizardShouldRun()) {
-            if (m_pZeroconfService) {
+            if (m_pZeroconfService != nullptr) {
                 delete m_pZeroconfService;
-                m_pZeroconfService = NULL;
+                m_pZeroconfService = nullptr;
             }
 
             if (m_AppConfig->autoConfig() || barrier_type() == BarrierType::Server) {
@@ -1153,7 +1152,7 @@ void MainWindow::on_m_pButtonReload_clicked()
     restartBarrier();
 }
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
 bool MainWindow::isServiceRunning(QString name)
 {
     SC_HANDLE hSCManager;
@@ -1192,7 +1191,7 @@ bool MainWindow::isBonjourRunning()
 {
     bool result = false;
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     result = isServiceRunning("Bonjour Service");
 #else
     result = true;
@@ -1203,7 +1202,7 @@ bool MainWindow::isBonjourRunning()
 
 void MainWindow::downloadBonjour()
 {
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     QUrl url;
     int arch = getProcessorArch();
     if (arch == kProcessorArchWin32) {
@@ -1248,7 +1247,7 @@ void MainWindow::downloadBonjour()
 
 void MainWindow::installBonjour()
 {
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
 #if QT_VERSION >= 0x050000
     QString tempLocation = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
 #else

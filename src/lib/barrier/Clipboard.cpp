@@ -24,11 +24,14 @@
 
 Clipboard::Clipboard() :
     m_open(false),
-    m_owner(false)
+    m_time(0),
+    m_owner(true),
+    m_timeOwned(0)
 {
-    open(0);
-    empty();
-    close();
+    for (SInt32 index = 0; index < kNumFormats; ++index) {
+        m_data[index]  = "";
+        m_added[index] = false;
+    }
 }
 
 Clipboard::~Clipboard()

@@ -18,7 +18,7 @@
 
 #include "BaseConfig.h"
 
-const char* BaseConfig::m_ModifierNames[] =
+const std::array<const char*, 6> BaseConfig::m_ModifierNames =
 {
     "shift",
     "ctrl",
@@ -28,7 +28,7 @@ const char* BaseConfig::m_ModifierNames[] =
     "none"
 };
 
-const char* BaseConfig::m_FixNames[] =
+const std::array<const char*, 5> BaseConfig::m_FixNames =
 {
     "halfDuplexCapsLock",
     "halfDuplexNumLock",
@@ -37,7 +37,7 @@ const char* BaseConfig::m_FixNames[] =
     "preserveFocus"
 };
 
-const char* BaseConfig::m_SwitchCornerNames[] =
+const std::array<const char*, 4> BaseConfig::m_SwitchCornerNames =
 {
     "top-left",
     "top-right",

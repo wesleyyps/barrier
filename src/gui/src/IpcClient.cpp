@@ -21,6 +21,9 @@
 #include <QHostAddress>
 #include <iostream>
 #include <QTimer>
+#include <QEventLoop>
+#include <QThread>
+#include <array>
 #include "IpcReader.h"
 #include "Ipc.h"
 #include <QDataStream>
@@ -38,8 +41,7 @@ m_Enabled(false)
 }
 
 IpcClient::~IpcClient()
-{
-}
+= default;
 
 void IpcClient::connected()
 {
@@ -93,9 +95,9 @@ void IpcClient::sendHello()
     QDataStream stream(m_Socket);
     stream.writeRawData(kIpcMsgHello, 4);
 
-    char typeBuf[1];
+    std::array<char, 1> typeBuf;
     typeBuf[0] = kIpcClientGui;
-    stream.writeRawData(typeBuf, 1);
+    stream.writeRawData(typeBuf.data(), 1);
 }
 
 void IpcClient::sendCommand(const QString& command, ElevateMode const elevate)
@@ -106,17 +108,17 @@ void IpcClient::sendCommand(const QString& command, ElevateMode const elevate)
 
     std::string stdStringCommand = command.toStdString();
     const char* charCommand = stdStringCommand.c_str();
-    int length = (int)strlen(charCommand);
+    int length = static_cast<int>(strlen(charCommand));
 
-    char lenBuf[4];
-    intToBytes(length, lenBuf, 4);
-    stream.writeRawData(lenBuf, 4);
+    std::array<char, 4> lenBuf;
+    intToBytes(length, lenBuf.data(), 4);
+    stream.writeRawData(lenBuf.data(), 4);
     stream.writeRawData(charCommand, length);
 
-    char elevateBuf[1];
+    std::array<char, 1> elevateBuf;
     // Refer to enum ElevateMode documentation for why this flag is mapped this way
     elevateBuf[0] = (elevate == ElevateAlways) ? 1 : 0;
-    stream.writeRawData(elevateBuf, 1);
+    stream.writeRawData(elevateBuf.data(), 1);
 }
 
 void IpcClient::handleReadLogLine(const QString& text)

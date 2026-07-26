@@ -41,8 +41,8 @@ public:
     AddClientDialog(const QString& clientName, QWidget* parent = 0);
     ~AddClientDialog();
 
-    int addResult() { return m_AddResult; }
-    bool ignoreAutoConfigClient() { return m_IgnoreAutoConfigClient; }
+    int addResult() const { return m_AddResult; }
+    bool ignoreAutoConfigClient() const { return m_IgnoreAutoConfigClient; }
 
 protected:
     void changeEvent(QEvent *e);

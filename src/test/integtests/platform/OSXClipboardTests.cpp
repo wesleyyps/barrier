@@ -47,6 +47,7 @@ TEST(OSXClipboardTests, add_newValue_valueWasStored)
 {
     OSXClipboard clipboard;
     clipboard.open(0);
+    clipboard.empty();
 
     clipboard.add(IClipboard::kText, "barrier rocks!");
 
@@ -58,8 +59,11 @@ TEST(OSXClipboardTests, add_replaceValue_valueWasReplaced)
 {
     OSXClipboard clipboard;
     clipboard.open(0);
+    clipboard.empty();
 
     clipboard.add(IClipboard::kText, "barrier rocks!");
+    
+    clipboard.empty();
     clipboard.add(IClipboard::kText, "maxivista sucks"); // haha, just kidding.
 
     String actual = clipboard.get(IClipboard::kText);

@@ -25,7 +25,7 @@
 const QString ScreenSetupModel::m_MimeType = "application/x-qbarrier-screen";
 
 ScreenSetupModel::ScreenSetupModel(std::vector<Screen>& screens, int numColumns, int numRows) :
-    QAbstractTableModel(NULL),
+    QAbstractTableModel(nullptr),
     m_Screens(screens),
     m_NumColumns(numColumns),
     m_NumRows(numRows)
@@ -57,6 +57,8 @@ QVariant ScreenSetupModel::data(const QModelIndex& index, int role) const
                 if (screen(index).isNull())
                     break;
                 return screen(index).name();
+            default:
+                break;
         }
     }
 
@@ -66,7 +68,7 @@ QVariant ScreenSetupModel::data(const QModelIndex& index, int role) const
 Qt::ItemFlags ScreenSetupModel::flags(const QModelIndex& index) const
 {
     if (!index.isValid() || index.row() >= m_NumRows || index.column() >= m_NumColumns)
-        return 0;
+        return Qt::ItemFlags();
 
     if (!screen(index).isNull())
         return Qt::ItemIsEnabled | Qt::ItemIsDragEnabled | Qt::ItemIsSelectable | Qt::ItemIsDropEnabled;
@@ -86,7 +88,7 @@ QStringList ScreenSetupModel::mimeTypes() const
 
 QMimeData* ScreenSetupModel::mimeData(const QModelIndexList& indexes) const
 {
-    QMimeData* pMimeData = new QMimeData();
+    auto* pMimeData = new QMimeData();
     QByteArray encodedData;
 
     QDataStream stream(&encodedData, QIODevice::WriteOnly);

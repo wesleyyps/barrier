@@ -44,20 +44,19 @@ IDataSocket* TCPSocketFactory::create(IArchNetwork::EAddressFamily family,
                                       ConnectionSecurityLevel security_level) const
 {
     if (security_level != ConnectionSecurityLevel::PLAINTEXT) {
-        SecureSocket* secureSocket = new SecureSocket(m_events, m_socketMultiplexer, family,
+        auto* secureSocket = new SecureSocket(m_events, m_socketMultiplexer, family,
                                                       security_level);
         secureSocket->initSsl (false);
         return secureSocket;
     }
-    else {
-        return new TCPSocket(m_events, m_socketMultiplexer, family);
-    }
+            return new TCPSocket(m_events, m_socketMultiplexer, family);
+   
 }
 
 IListenSocket* TCPSocketFactory::createListen(IArchNetwork::EAddressFamily family,
                                               ConnectionSecurityLevel security_level) const
 {
-    IListenSocket* socket = NULL;
+    IListenSocket* socket = nullptr;
     if (security_level != ConnectionSecurityLevel::PLAINTEXT) {
         socket = new SecureListenSocket(m_events, m_socketMultiplexer, family, security_level);
     }

@@ -23,6 +23,7 @@
 // XBadClient
 //
 
+// NOLINTNEXTLINE(bugprone-exception-escape)
 String XBadClient::getWhat() const noexcept
 {
     return "XBadClient";

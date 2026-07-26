@@ -20,15 +20,17 @@
 
 #include <QtCore>
 #include <QtGui>
+#include <array>
 
 // this table originally comes from Qt sources (gui/kernel/qkeysequence.cpp)
 // and is heavily modified
-static const struct
+struct KeyNameStruct
 {
     int key;
     const char* name;
-} keyname[] =
-{
+};
+static const std::array<KeyNameStruct, 49> keyname =
+{{
     { Qt::Key_Space,        "Space" },
     { Qt::Key_Escape,       "Escape" },
     { Qt::Key_Tab,          "Tab" },
@@ -79,8 +81,8 @@ static const struct
     { Qt::Key_Launch1,      "AppUser2" },
     { Qt::Key_Select,       "Select" },
 
-    { 0, 0 }
-};
+    { 0, nullptr }
+}};
 
 KeySequence::KeySequence() :
     m_Sequence(),
@@ -131,7 +133,7 @@ bool KeySequence::appendKey(int key, int modifiers)
         case Qt::Key_Menu:
             {
                 int mod = modifiers & (~m_Modifiers);
-                if (mod)
+                if (mod != 0)
                 {
                     m_Sequence.append(mod);
                     m_Modifiers |= mod;
@@ -191,23 +193,24 @@ QString KeySequence::keyToString(int key)
         {
             case Qt::LeftButton: return "1";
             case Qt::RightButton: return "2";
-            case Qt::MidButton: return "3";
+            case Qt::MiddleButton: return "3";
+            default: break;
         }
 
         return "4"; // qt only knows three mouse buttons, so assume it's an unknown fourth one
     }
 
     // modifiers?
-    if (key & Qt::ShiftModifier)
+    if ((key & Qt::ShiftModifier) != 0u)
         return "Shift";
 
-    if (key & Qt::ControlModifier)
+    if ((key & Qt::ControlModifier) != 0u)
         return "Control";
 
-    if (key & Qt::AltModifier)
+    if ((key & Qt::AltModifier) != 0u)
         return "Alt";
 
-    if (key & Qt::MetaModifier)
+    if ((key & Qt::MetaModifier) != 0u)
         return "Meta";
 
     // treat key pad like normal keys (FIXME: we should have another lookup table for keypad keys instead)
@@ -215,7 +218,7 @@ QString KeySequence::keyToString(int key)
 
     // a special key?
     int i = 0;
-    while (keyname[i].name) {
+    while (keyname[i].name != nullptr) {
         if (key == keyname[i].key)
             return QString::fromUtf8(keyname[i].name);
         i++;

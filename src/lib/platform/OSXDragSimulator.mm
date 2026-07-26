@@ -20,11 +20,11 @@
 #import <CoreData/CoreData.h>
 #import <Cocoa/Cocoa.h>
 
-#if defined(MAC_OS_X_VERSION_10_7)
+#ifdef MAC_OS_X_VERSION_10_7
 
-NSWindow* g_dragWindow = NULL;
-OSXDragView* g_dragView = NULL;
-NSString* g_ext = NULL;
+NSWindow* g_dragWindow = nullptr;
+OSXDragView* g_dragView = nullptr;
+NSString* g_ext = nullptr;
 
 void
 runCocoaApp()
@@ -48,8 +48,16 @@ runCocoaApp()
 	g_dragView = dragView;
 	[window setContentView: dragView];
 
+	id activity = [[NSProcessInfo processInfo] beginActivityWithOptions:
+					NSActivityUserInitiated | NSActivityLatencyCritical
+					reason:@"Barrier Client Main Loop"];
+	[activity retain];
+
 	NSLog(@"starting cocoa loop");
 	[NSApp run];
+
+	[[NSProcessInfo processInfo] endActivity:activity];
+	[activity release];
 
 	NSLog(@"cocoa: release");
 	[pool release];
@@ -86,8 +94,11 @@ fakeDragging(const char* str, int cursorX, int cursorY)
 
 	[g_dragView setFileExt:g_ext];
 
-	CGEventRef down = CGEventCreateMouseEvent(CGEventSourceCreate(kCGEventSourceStateHIDSystemState), kCGEventLeftMouseDown, CGPointMake(cursorX, cursorY), kCGMouseButtonLeft);
+	CGEventSourceRef source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
+	CGEventRef down = CGEventCreateMouseEvent(source, kCGEventLeftMouseDown, CGPointMake(cursorX, cursorY), kCGMouseButtonLeft);
 	CGEventPost(kCGHIDEventTap, down);
+	CFRelease(down);
+	CFRelease(source);
 	});
 }
 

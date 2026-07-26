@@ -19,6 +19,7 @@
 #pragma once
 
 #include "common/basic_types.h"
+#include <array>
 
 //! Key ID
 /*!
@@ -315,11 +316,11 @@ A table of key names to the corresponding KeyID.  Only the keys listed
 above plus non-alphanumeric ASCII characters are in the table.  The end
 of the table is the first pair with a NULL m_name.
 */
-extern const struct KeyNameMapEntry kKeyNameMap[];
+extern const std::array<KeyNameMapEntry, 182> kKeyNameMap;
 
 //! Modifier key name to KeyModifierMask table
 /*!
 A table of modifier key names to the corresponding KeyModifierMask.
 The end of the table is the first pair with a NULL m_name.
 */
-extern const struct KeyModifierNameMapEntry kModifierNameMap[];
+extern const std::array<KeyModifierNameMapEntry, 7> kModifierNameMap;

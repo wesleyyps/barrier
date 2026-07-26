@@ -18,8 +18,9 @@
 
 #include "barrier/key_types.h"
 #include <cstddef>
+#include <array>
 
-const KeyNameMapEntry kKeyNameMap[] = {
+const std::array<KeyNameMapEntry, 182> kKeyNameMap = {{
     { "AltGr",            kKeyAltGr },
     { "Alt_L",            kKeyAlt_L },
     { "Alt_R",            kKeyAlt_R },
@@ -201,10 +202,10 @@ const KeyNameMapEntry kKeyNameMap[] = {
     { "Paste",          kKeyPaste },
     { "Props",          kKeyProps },
     { "Front",          kKeyFront },
-    { NULL, 0 },
-};
+    { nullptr, 0 },
+}};
 
-const KeyModifierNameMapEntry kModifierNameMap[] = {
+const std::array<KeyModifierNameMapEntry, 7> kModifierNameMap = {{
     { "Alt",            KeyModifierAlt },
     { "AltGr",            KeyModifierAltGr },
 //    { "CapsLock",        KeyModifierCapsLock },
@@ -214,5 +215,5 @@ const KeyModifierNameMapEntry kModifierNameMap[] = {
 //    { "ScrollLock",        KeyModifierScrollLock },
     { "Shift",            KeyModifierShift },
     { "Super",            KeyModifierSuper },
-    { NULL, 0 },
-};
+    { nullptr, 0 },
+}};

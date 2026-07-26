@@ -61,7 +61,7 @@ execSelfNonDaemonized()
 }
 
 bool alreadyDaemonized() {
-    return std::getenv("_BARRIER_DAEMONIZED") != NULL;
+    return std::getenv("_BARRIER_DAEMONIZED") != nullptr;
 }
 
 #endif

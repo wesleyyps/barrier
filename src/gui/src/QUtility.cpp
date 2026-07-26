@@ -20,11 +20,11 @@
 #include "ProcessorArch.h"
 #include "CommandProcess.h"
 
-#if defined(Q_OS_LINUX)
+#ifdef Q_OS_LINUX
 #include <QProcess>
 #endif
 
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #endif
@@ -63,7 +63,7 @@ QString getFirstMacAddress()
 
 qProcessorArch getProcessorArch()
 {
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     SYSTEM_INFO systemInfo;
     GetNativeSystemInfo(&systemInfo);
 
@@ -79,7 +79,7 @@ qProcessorArch getProcessorArch()
     }
 #endif
 
-#if defined(Q_OS_LINUX)
+#ifdef Q_OS_LINUX
 #ifdef __i386__
     return kProcessorArchLinux32;
 #else
@@ -94,7 +94,7 @@ QString getOSInformation()
 {
     QString result;
 
-#if defined(Q_OS_LINUX)
+#ifdef Q_OS_LINUX
     result = "Linux";
     try {
         QStringList arguments;

@@ -22,11 +22,11 @@
 #include <QtCore>
 #include <QtGui>
 
-QBarrierApplication* QBarrierApplication::s_Instance = NULL;
+QBarrierApplication* QBarrierApplication::s_Instance = nullptr;
 
 QBarrierApplication::QBarrierApplication(int& argc, char** argv) :
     QApplication(argc, argv),
-    m_Translator(NULL)
+    m_Translator(nullptr)
 {
     s_Instance = this;
 }
@@ -39,8 +39,8 @@ QBarrierApplication::~QBarrierApplication()
 void QBarrierApplication::commitData(QSessionManager&)
 {
     for (QWidget* widget : topLevelWidgets()) {
-        MainWindow* mainWindow = qobject_cast<MainWindow*>(widget);
-        if (mainWindow)
+        auto* mainWindow = qobject_cast<MainWindow*>(widget);
+        if (mainWindow != nullptr)
             mainWindow->saveSettings();
     }
 }
@@ -52,7 +52,7 @@ QBarrierApplication* QBarrierApplication::getInstance()
 
 void QBarrierApplication::switchTranslator(QString lang)
 {
-    if (m_Translator != NULL)
+    if (m_Translator != nullptr)
     {
         removeTranslator(m_Translator);
         delete m_Translator;

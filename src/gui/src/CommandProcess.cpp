@@ -34,7 +34,8 @@ QString CommandProcess::run()
     process.start(m_Command, m_Arguments);
     bool success = process.waitForStarted();
 
-    QString output, error;
+    QString output;
+    QString error;
     if (success)
     {
         if (!m_Input.isEmpty()) {

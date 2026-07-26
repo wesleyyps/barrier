@@ -28,7 +28,7 @@ SetupWizard::SetupWizard(MainWindow& mainWindow, bool startMain) :
 {
     setupUi(this);
 
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
 
     // the mac style needs a little more room because of the
     // graphic on the left.
@@ -54,8 +54,7 @@ SetupWizard::SetupWizard(MainWindow& mainWindow, bool startMain) :
 }
 
 SetupWizard::~SetupWizard()
-{
-}
+= default;
 
 bool SetupWizard::validateCurrentPage()
 {
@@ -81,7 +80,7 @@ bool SetupWizard::validateCurrentPage()
 
 void SetupWizard::changeEvent(QEvent* event)
 {
-    if (event != 0)
+    if (event != nullptr)
     {
         switch (event->type())
         {

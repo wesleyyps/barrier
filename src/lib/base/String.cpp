@@ -22,6 +22,7 @@
 
 #include <cctype>
 #include <cstdio>
+#include <array>
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
@@ -95,7 +96,7 @@ vformat(const char* fmt, va_list args)
             if (*scan == '\0') {
                 break;
             }
-            else if (*scan == '%') {
+            if (*scan == '%') {
                 // literal
                 index.push_back(0);
                 pos.push_back(static_cast<size_t>((scan - 1) - fmt));
@@ -163,11 +164,11 @@ vformat(const char* fmt, va_list args)
 std::string
 sprintf(const char* fmt, ...)
 {
-    char tmp[1024];
-    char* buffer = tmp;
-    int len      = (int)(sizeof(tmp) / sizeof(tmp[0]));
+    std::array<char, 1024> tmp;
+    char* buffer = tmp.data();
+    int len      = static_cast<int>(tmp.size());
     std::string result;
-    while (buffer != NULL) {
+    while (buffer != nullptr) {
         // try printing into the buffer
         va_list args;
         va_start(args, fmt);
@@ -176,7 +177,7 @@ sprintf(const char* fmt, ...)
 
         // if the buffer wasn't big enough then make it bigger and try again
         if (n < 0 || n > len) {
-            if (buffer != tmp) {
+            if (buffer != tmp.data()) {
                 delete[] buffer;
             }
             len   *= 2;
@@ -186,10 +187,10 @@ sprintf(const char* fmt, ...)
         // if it was big enough then save the string and don't try again
         else {
             result = buffer;
-            if (buffer != tmp) {
+            if (buffer != tmp.data()) {
                 delete[] buffer;
             }
-            buffer = NULL;
+            buffer = nullptr;
         }
     }
 
@@ -225,8 +226,8 @@ std::string to_hex(const std::vector<std::uint8_t>& subject, int width, const ch
 {
     std::stringstream ss;
     ss << std::hex;
-    for (unsigned int i = 0; i < subject.size(); i++) {
-        ss << std::setw(width) << std::setfill(fill) << static_cast<int>(subject[i]);
+    for (unsigned char i : subject) {
+        ss << std::setw(width) << std::setfill(fill) << static_cast<int>(i);
     }
 
     return ss.str();

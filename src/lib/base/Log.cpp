@@ -26,9 +26,10 @@
 #include <cstring>
 #include <iostream>
 #include <ctime>
+#include <array>
 
 // names of priorities
-static const char*        g_priority[] = {
+static const std::array<const char*, 11> g_priority = {{
     "FATAL",
     "ERROR",
     "WARNING",
@@ -40,10 +41,10 @@ static const char*        g_priority[] = {
     "DEBUG3",
     "DEBUG4",
     "DEBUG5"
-};
+}};
 
 // number of priorities
-static const int g_numPriority = (int)(sizeof(g_priority) / sizeof(g_priority[0]));
+static const int g_numPriority = static_cast<int>(g_priority.size());
 
 // the default priority
 #ifndef NDEBUG
@@ -56,7 +57,7 @@ static const int        g_defaultMaxPriority = kINFO;
 // Log
 //
 
-Log*                 Log::s_log = NULL;
+Log*                 Log::s_log = nullptr;
 
 Log::Log()
 {
@@ -78,13 +79,11 @@ Log::Log(Log* src)
 Log::~Log()
 {
     // clean up
-    for (OutputterList::iterator index    = m_outputters.begin();
-                                    index != m_outputters.end(); ++index) {
-        delete *index;
+    for (auto & m_outputter : m_outputters) {
+        delete m_outputter;
     }
-    for (OutputterList::iterator index    = m_alwaysOutputters.begin();
-                                    index != m_alwaysOutputters.end(); ++index) {
-        delete *index;
+    for (auto & m_alwaysOutputter : m_alwaysOutputters) {
+        delete m_alwaysOutputter;
     }
 }
 
@@ -120,7 +119,7 @@ Log::print(const char* file, int line, const char* fmt, ...)
         // 060 in octal is 0 (48 in decimal), so subtracting this converts ascii
         // number it a true number. we could use atoi instead, but this is how
         // it was done originally.
-        priority = (ELevel)(fmt[2] - '\060');
+        priority = static_cast<ELevel>(fmt[2] - '\060');
 
         // move the pointer on past the debug priority char
         fmt += 3;
@@ -132,15 +131,15 @@ Log::print(const char* file, int line, const char* fmt, ...)
     }
 
     // compute prefix padding length
-    char stack[1024];
+    std::array<char, 1024> stack;
 
     // compute suffix padding length
     int sPad = m_maxNewlineLength;
 
     // print to buffer, leaving space for a newline at the end and prefix
     // at the beginning.
-    char* buffer = stack;
-    int len            = (int)(sizeof(stack) / sizeof(stack[0]));
+    char* buffer = stack.data();
+    int len            = static_cast<int>(stack.size());
     while (true) {
         // try printing into the buffer
         va_list args;
@@ -149,8 +148,8 @@ Log::print(const char* file, int line, const char* fmt, ...)
         va_end(args);
 
         // if the buffer wasn't big enough then make it bigger and try again
-        if (n < 0 || n > (int)len) {
-            if (buffer != stack) {
+        if (n < 0 || n > len) {
+            if (buffer != stack.data()) {
                 delete[] buffer;
             }
             len     *= 2;
@@ -168,15 +167,15 @@ Log::print(const char* file, int line, const char* fmt, ...)
     if (priority != kPRINT) {
 
         struct tm *tm;
-        char timestamp[50];
+        std::array<char, 50> timestamp;
         time_t t;
         time(&t);
         tm = localtime(&t);
-        sprintf(timestamp, "%04i-%02i-%02iT%02i:%02i:%02i", tm->tm_year + 1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
+        snprintf(timestamp.data(), timestamp.size(), "%04i-%02i-%02iT%02i:%02i:%02i", tm->tm_year + 1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
 
         // square brackets, spaces, comma and null terminator take about 10
         size_t size = 10;
-        size += strlen(timestamp);
+        size += strlen(timestamp.data());
         size += strlen(g_priority[priority]);
         size += strlen(buffer);
 #ifndef NDEBUG
@@ -187,9 +186,9 @@ Log::print(const char* file, int line, const char* fmt, ...)
         char* message = new char[size];
 
 #ifndef NDEBUG
-        sprintf(message, "[%s] %s: %s\n\t%s,%d", timestamp, g_priority[priority], buffer, file, line);
+        snprintf(message, size, "[%s] %s: %s\n\t%s,%d", timestamp.data(), g_priority[priority], buffer, file, line);
 #else
-        sprintf(message, "[%s] %s: %s", timestamp, g_priority[priority], buffer);
+        snprintf(message, size, "[%s] %s: %s", timestamp, g_priority[priority], buffer);
 #endif
 
         output(priority, message);
@@ -199,7 +198,7 @@ Log::print(const char* file, int line, const char* fmt, ...)
     }
 
     // clean up
-    if (buffer != stack) {
+    if (buffer != stack.data()) {
         delete[] buffer;
     }
 }
@@ -251,7 +250,7 @@ Log::pop_front(bool alwaysAtHead)
 bool
 Log::setFilter(const char* maxPriority)
 {
-    if (maxPriority != NULL) {
+    if (maxPriority != nullptr) {
         for (int i = 0; i < g_numPriority; ++i) {
             if (strcmp(maxPriority, g_priority[i]) == 0) {
                 setFilter(i);
@@ -282,7 +281,7 @@ Log::output(ELevel priority, char* msg)
 {
     assert(priority >= -1 && priority < g_numPriority);
     assert(msg != NULL);
-    if (!msg) return;
+    if (msg == nullptr) return;
 
     std::lock_guard<std::mutex> lock(m_mutex);
 

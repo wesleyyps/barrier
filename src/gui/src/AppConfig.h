@@ -77,7 +77,7 @@ class AppConfig: public QObject
         bool startedBefore() const;
         bool autoConfig() const;
         void setAutoConfig(bool autoConfig);
-        bool autoConfigPrompted();
+        bool autoConfigPrompted() const;
         void setAutoConfigPrompted(bool prompted);
 
         QString barriersName() const;
@@ -85,7 +85,7 @@ class AppConfig: public QObject
         QString barrierProgramDir() const;
         QString barrierLogDir() const;
 
-        void persistLogDir();
+        void persistLogDir() const;
         ElevateMode elevateMode();
 
         void setCryptoEnabled(bool e);
@@ -95,13 +95,13 @@ class AppConfig: public QObject
         bool getRequireClientCertificate() const;
 
         void setAutoHide(bool b);
-        bool getAutoHide();
+        bool getAutoHide() const;
 
         void setAutoStart(bool b);
-        bool getAutoStart();
+        bool getAutoStart() const;
 
         void setMinimizeToTray(bool b);
-        bool getMinimizeToTray();
+        bool getMinimizeToTray() const;
 
         void saveSettings();
 
@@ -140,9 +140,9 @@ protected:
         bool m_AutoStart;
         bool m_MinimizeToTray;
 
-        static const char m_BarriersName[];
-        static const char m_BarriercName[];
-        static const char m_BarrierLogDir[];
+        static const QString m_BarriersName;
+        static const QString m_BarriercName;
+        static const QString m_BarrierLogDir;
 };
 
 #endif

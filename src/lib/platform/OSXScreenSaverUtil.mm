@@ -79,5 +79,5 @@ screenSaverUtilDeactivate(void* controller, int isEnabled)
 int
 screenSaverUtilIsActive(void* controller)
 {
-	return [(ScreenSaverController*)controller screenSaverIsRunning];
+	return static_cast<int>([(ScreenSaverController*)controller screenSaverIsRunning]);
 }

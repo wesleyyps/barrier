@@ -41,7 +41,7 @@
 
 ClientProxyUnknown::ClientProxyUnknown(barrier::IStream* stream, double timeout, Server* server, IEventQueue* events) :
     m_stream(stream),
-    m_proxy(NULL),
+    m_proxy(nullptr),
     m_ready(false),
     m_server(server),
     m_events(events)
@@ -50,7 +50,7 @@ ClientProxyUnknown::ClientProxyUnknown(barrier::IStream* stream, double timeout,
 
     m_events->adoptHandler(Event::kTimer, this,
                             new TMethodEventJob<ClientProxyUnknown>(this,
-                                &ClientProxyUnknown::handleTimeout, NULL));
+                                &ClientProxyUnknown::handleTimeout, nullptr));
     m_timer = m_events->newOneShotTimer(timeout, this);
     addStreamHandlers();
 
@@ -74,12 +74,11 @@ ClientProxyUnknown::orphanClientProxy()
     if (m_ready) {
         removeHandlers();
         ClientProxy* proxy = m_proxy;
-        m_proxy = NULL;
+        m_proxy = nullptr;
         return proxy;
     }
-    else {
-        return NULL;
-    }
+            return nullptr;
+   
 }
 
 void
@@ -94,7 +93,7 @@ void
 ClientProxyUnknown::sendFailure()
 {
     delete m_proxy;
-    m_proxy = NULL;
+    m_proxy = nullptr;
     m_ready = false;
     removeHandlers();
     removeTimer();
@@ -146,7 +145,7 @@ ClientProxyUnknown::addProxyHandlers()
 void
 ClientProxyUnknown::removeHandlers()
 {
-    if (m_stream != NULL) {
+    if (m_stream != nullptr) {
         m_events->removeHandler(m_events->forIStream().inputReady(),
                             m_stream->getEventTarget());
         m_events->removeHandler(m_events->forIStream().outputError(),
@@ -158,7 +157,7 @@ ClientProxyUnknown::removeHandlers()
         m_events->removeHandler(m_events->forIStream().outputShutdown(),
                             m_stream->getEventTarget());
     }
-    if (m_proxy != NULL) {
+    if (m_proxy != nullptr) {
         m_events->removeHandler(m_events->forClientProxy().ready(),
                             m_proxy);
         m_events->removeHandler(m_events->forClientProxy().disconnected(),
@@ -169,10 +168,10 @@ ClientProxyUnknown::removeHandlers()
 void
 ClientProxyUnknown::removeTimer()
 {
-    if (m_timer != NULL) {
+    if (m_timer != nullptr) {
         m_events->deleteTimer(m_timer);
         m_events->removeHandler(Event::kTimer, this);
-        m_timer = NULL;
+        m_timer = nullptr;
     }
 }
 
@@ -191,7 +190,8 @@ ClientProxyUnknown::handleData(const Event&, void*)
         }
 
         // parse the reply to hello
-        SInt16 major, minor;
+        SInt16 major;
+        SInt16 minor;
         if (!ProtocolUtil::readf(m_stream, kMsgHelloBack,
                                     &major, &minor, &name)) {
             throw XBadClient();
@@ -241,13 +241,13 @@ ClientProxyUnknown::handleData(const Event&, void*)
         }
 
         // hangup (with error) if version isn't supported
-        if (m_proxy == NULL) {
+        if (m_proxy == nullptr) {
             throw XIncompatibleClient(major, minor);
         }
 
         // the proxy is created and now proxy now owns the stream
         LOG((CLOG_DEBUG1 "created proxy for client \"%s\" version %d.%d", name.c_str(), major, minor));
-        m_stream = NULL;
+        m_stream = nullptr;
 
         // wait until the proxy signals that it's ready or has disconnected
         addProxyHandlers();

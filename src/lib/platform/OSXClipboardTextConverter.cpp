@@ -48,7 +48,7 @@ std::string OSXClipboardTextConverter::convertString(const std::string& data,
         CFStringCreateWithCString(kCFAllocatorDefault,
                             data.c_str(), fromEncoding);
 
-    if (stringRef == NULL) {
+    if (stringRef == nullptr) {
         return {};
     }
 
@@ -56,17 +56,17 @@ std::string OSXClipboardTextConverter::convertString(const std::string& data,
     CFRange entireString = CFRangeMake(0, CFStringGetLength(stringRef));
 
     CFStringGetBytes(stringRef, entireString, toEncoding,
-                            0, false, NULL, 0, &buffSize);
+                            0, 0u, nullptr, 0, &buffSize);
 
     char* buffer = new char[buffSize];
 
-    if (buffer == NULL) {
+    if (buffer == nullptr) {
         CFRelease(stringRef);
         return {};
     }
 
     CFStringGetBytes(stringRef, entireString, toEncoding,
-                            0, false, (UInt8*)buffer, buffSize, NULL);
+                            0, 0u, reinterpret_cast<UInt8*>(buffer), buffSize, nullptr);
 
     std::string result(buffer, buffSize);
 

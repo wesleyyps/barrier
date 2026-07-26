@@ -48,7 +48,7 @@
 #include "platform/OSXScreen.h"
 #endif
 
-#if defined(__APPLE__)
+#ifdef __APPLE__
 #include "platform/OSXDragSimulator.h"
 #endif
 
@@ -60,15 +60,14 @@
 
 ClientApp::ClientApp(IEventQueue* events, CreateTaskBarReceiverFunc createTaskBarReceiver) :
     App(events, createTaskBarReceiver, new ClientArgs()),
-    m_client(NULL),
-    m_clientScreen(NULL),
-    m_serverAddress(NULL)
+    m_client(nullptr),
+    m_clientScreen(nullptr),
+    m_serverAddress(nullptr)
 {
 }
 
 ClientApp::~ClientApp()
-{
-}
+= default;
 
 void
 ClientApp::parseArgs(int argc, const char* const* argv)
@@ -183,7 +182,7 @@ ClientApp::updateStatus()
 void
 ClientApp::updateStatus(const String& msg)
 {
-    if (m_taskBarReceiver)
+    if (m_taskBarReceiver != nullptr)
     {
         m_taskBarReceiver->updateStatus(m_client, msg);
     }
@@ -248,7 +247,7 @@ ClientApp::openClientScreen()
 void
 ClientApp::closeClientScreen(barrier::Screen* screen)
 {
-    if (screen != NULL) {
+    if (screen != nullptr) {
         m_events->removeHandler(m_events->forIScreen().error(),
             screen->getEventTarget());
         delete screen;
@@ -260,7 +259,7 @@ void
 ClientApp::handleClientRestart(const Event&, void* vtimer)
 {
     // discard old timer
-    EventQueueTimer* timer = static_cast<EventQueueTimer*>(vtimer);
+    auto* timer = static_cast<EventQueueTimer*>(vtimer);
     m_events->deleteTimer(timer);
     m_events->removeHandler(Event::kTimer, timer);
 
@@ -274,7 +273,7 @@ ClientApp::scheduleClientRestart(double retryTime)
 {
     // install a timer and handler to retry later
     LOG((CLOG_DEBUG "retry in %.0f seconds", retryTime));
-    EventQueueTimer* timer = m_events->newOneShotTimer(retryTime, NULL);
+    EventQueueTimer* timer = m_events->newOneShotTimer(retryTime, nullptr);
     m_events->adoptHandler(Event::kTimer, timer,
         new TMethodEventJob<ClientApp>(this, &ClientApp::handleClientRestart, timer));
 }
@@ -294,7 +293,7 @@ ClientApp::handleClientConnected(const Event&, void*)
 void
 ClientApp::handleClientFailed(const Event& e, void*)
 {
-    Client::FailInfo* info =
+    auto* info =
         static_cast<Client::FailInfo*>(e.getData());
 
     updateStatus(String("Failed to connect to server: ") + info->m_what);
@@ -329,7 +328,7 @@ Client*
 ClientApp::openClient(const String& name, const NetworkAddress& address,
                 barrier::Screen* screen)
 {
-    Client* client = new Client(
+    auto* client = new Client(
         m_events,
         name,
         address,
@@ -365,7 +364,7 @@ ClientApp::openClient(const String& name, const NetworkAddress& address,
 void
 ClientApp::closeClient(Client* client)
 {
-    if (client == NULL) {
+    if (client == nullptr) {
         return;
     }
 
@@ -388,9 +387,9 @@ bool
 ClientApp::startClient()
 {
     double retryTime;
-    barrier::Screen* clientScreen = NULL;
+    barrier::Screen* clientScreen = nullptr;
     try {
-        if (m_clientScreen == NULL) {
+        if (m_clientScreen == nullptr) {
             clientScreen = openClientScreen();
             m_client     = openClient(args().m_name,
                 *m_serverAddress, clientScreen);
@@ -424,10 +423,9 @@ ClientApp::startClient()
         scheduleClientRestart(retryTime);
         return true;
     }
-    else {
-        // don't try again
+            // don't try again
         return false;
-    }
+   
 }
 
 
@@ -436,8 +434,8 @@ ClientApp::stopClient()
 {
     closeClient(m_client);
     closeClientScreen(m_clientScreen);
-    m_client       = NULL;
-    m_clientScreen = NULL;
+    m_client       = nullptr;
+    m_clientScreen = nullptr;
 }
 
 
@@ -462,12 +460,12 @@ ClientApp::mainLoop()
     // that.
     DAEMON_RUNNING(true);
 
-#if defined(MAC_OS_X_VERSION_10_7)
+#ifdef MAC_OS_X_VERSION_10_7
 
     Thread thread([this](){ run_events_loop(); });
 
     // wait until carbon loop is ready
-    OSXScreen* screen = dynamic_cast<OSXScreen*>(
+    auto* screen = dynamic_cast<OSXScreen*>(
         m_clientScreen->getPlatformScreen());
     screen->waitForCarbonLoop();
 
@@ -507,9 +505,8 @@ ClientApp::standardStartup(int argc, char** argv)
     if (args().m_daemon) {
         return ARCH->daemonize(daemonName(), &daemonMainLoopStatic);
     }
-    else {
-        return mainLoop();
-    }
+            return mainLoop();
+   
 }
 
 int
@@ -520,7 +517,7 @@ ClientApp::runInner(int argc, char** argv, ILogOutputter* outputter, StartupFunc
     argsBase().m_exename = ArgParser::parse_exename(argv[0]);
 
     // install caller's output filter
-    if (outputter != NULL) {
+    if (outputter != nullptr) {
         CLOG->insert(outputter);
     }
 
@@ -532,7 +529,7 @@ ClientApp::runInner(int argc, char** argv, ILogOutputter* outputter, StartupFunc
     }
     catch (...)
     {
-        if (m_taskBarReceiver)
+        if (m_taskBarReceiver != nullptr)
         {
             // done with task bar receiver
             delete m_taskBarReceiver;

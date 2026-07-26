@@ -15,13 +15,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-cmake_minimum_required (VERSION 3.4)
+cmake_minimum_required (VERSION 3.10)
 project (barrier C CXX)
 
 option (BARRIER_BUILD_GUI "Build the GUI" ON)
 option (BARRIER_BUILD_INSTALLER "Build the installer" ON)
 option (BARRIER_BUILD_TESTS "Build the tests" ON)
 option (BARRIER_USE_EXTERNAL_GTEST "Use external installation of Google Test framework" OFF)
+option (BARRIER_ENABLE_SANITIZERS "Enable Address and Undefined Behavior Sanitizers" OFF)
+option (BARRIER_BUILD_FUZZERS "Build libFuzzer targets (requires Clang)" OFF)
 
 set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set (CMAKE_CXX_STANDARD 14)
@@ -32,6 +34,16 @@ set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
 if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions (-DNDEBUG)
+endif()
+
+if (BARRIER_ENABLE_SANITIZERS)
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+        set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined -fno-omit-frame-pointer")
+        set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,undefined -fno-omit-frame-pointer")
+    elseif (MSVC)
+        set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fsanitize=address")
+        set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /fsanitize=address")
+    endif()
 endif()
 
 include (cmake/Version.cmake)

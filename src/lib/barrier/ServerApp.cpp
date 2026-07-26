@@ -54,7 +54,7 @@
 #include "platform/OSXScreen.h"
 #endif
 
-#if defined(__APPLE__)
+#ifdef __APPLE__
 #include "platform/OSXDragSimulator.h"
 #endif
 
@@ -69,19 +69,18 @@
 
 ServerApp::ServerApp(IEventQueue* events, CreateTaskBarReceiverFunc createTaskBarReceiver) :
     App(events, createTaskBarReceiver, new ServerArgs()),
-    m_server(NULL),
+    m_server(nullptr),
     m_serverState(kUninitialized),
-    m_serverScreen(NULL),
-    m_primaryClient(NULL),
-    m_listener(NULL),
-    m_timer(NULL),
-    m_barrierAddress(NULL)
+    m_serverScreen(nullptr),
+    m_primaryClient(nullptr),
+    m_listener(nullptr),
+    m_timer(nullptr),
+    m_barrierAddress(nullptr)
 {
 }
 
 ServerApp::~ServerApp()
-{
-}
+= default;
 
 void
 ServerApp::parseArgs(int argc, const char* const* argv)
@@ -182,7 +181,7 @@ ServerApp::reloadConfig(const Event&, void*)
 {
     LOG((CLOG_DEBUG "reload configuration"));
     if (loadConfig(args().m_configFile)) {
-        if (m_server != NULL) {
+        if (m_server != nullptr) {
             m_server->setConfig(*args().m_config);
         }
         LOG((CLOG_NOTE "reloaded configuration"));
@@ -261,7 +260,7 @@ ServerApp::loadConfig(const String& pathname)
 void
 ServerApp::forceReconnect(const Event&, void*)
 {
-    if (m_server != NULL) {
+    if (m_server != nullptr) {
         m_server->disconnect();
     }
 }
@@ -269,9 +268,9 @@ ServerApp::forceReconnect(const Event&, void*)
 void
 ServerApp::handleClientConnected(const Event&, void* vlistener)
 {
-    ClientListener* listener = static_cast<ClientListener*>(vlistener);
+    auto* listener = static_cast<ClientListener*>(vlistener);
     ClientProxy* client = listener->getNextClient();
-    if (client != NULL) {
+    if (client != nullptr) {
         m_server->adoptClient(client);
         updateStatus();
     }
@@ -286,7 +285,7 @@ ServerApp::handleClientsDisconnected(const Event&, void*)
 void
 ServerApp::closeServer(Server* server)
 {
-    if (server == NULL) {
+    if (server == nullptr) {
         return;
     }
 
@@ -295,7 +294,7 @@ ServerApp::closeServer(Server* server)
 
     // wait for clients to disconnect for up to timeout seconds
     double timeout = 3.0;
-    EventQueueTimer* timer = m_events->newOneShotTimer(timeout, NULL);
+    EventQueueTimer* timer = m_events->newOneShotTimer(timeout, nullptr);
     m_events->adoptHandler(Event::kTimer, timer,
         new TMethodEventJob<ServerApp>(this, &ServerApp::handleClientsDisconnected));
     m_events->adoptHandler(m_events->forServer().disconnected(), server,
@@ -314,10 +313,10 @@ ServerApp::closeServer(Server* server)
 void
 ServerApp::stopRetryTimer()
 {
-    if (m_timer != NULL) {
+    if (m_timer != nullptr) {
         m_events->removeHandler(Event::kTimer, m_timer);
         m_events->deleteTimer(m_timer);
-        m_timer = NULL;
+        m_timer = nullptr;
     }
 }
 
@@ -338,7 +337,7 @@ void ServerApp::updateStatus(const String& msg)
 void
 ServerApp::closeClientListener(ClientListener* listen)
 {
-    if (listen != NULL) {
+    if (listen != nullptr) {
         m_events->removeHandler(m_events->forClientListener().connected(), listen);
         delete listen;
     }
@@ -350,8 +349,8 @@ ServerApp::stopServer()
     if (m_serverState == kStarted) {
         closeServer(m_server);
         closeClientListener(m_listener);
-        m_server      = NULL;
-        m_listener    = NULL;
+        m_server      = nullptr;
+        m_listener    = nullptr;
         m_serverState = kInitialized;
     }
     else if (m_serverState == kStarting) {
@@ -371,7 +370,7 @@ ServerApp::closePrimaryClient(PrimaryClient* primaryClient)
 void
 ServerApp::closeServerScreen(barrier::Screen* screen)
 {
-    if (screen != NULL) {
+    if (screen != nullptr) {
         m_events->removeHandler(m_events->forIScreen().error(),
             screen->getEventTarget());
         m_events->removeHandler(m_events->forIScreen().suspend(),
@@ -388,8 +387,8 @@ void ServerApp::cleanupServer()
     if (m_serverState == kInitialized) {
         closePrimaryClient(m_primaryClient);
         closeServerScreen(m_serverScreen);
-        m_primaryClient = NULL;
-        m_serverScreen  = NULL;
+        m_primaryClient = nullptr;
+        m_serverScreen  = nullptr;
         m_serverState   = kUninitialized;
     }
     else if (m_serverState == kInitializing ||
@@ -457,8 +456,8 @@ bool ServerApp::initServer()
     }
 
     double retryTime;
-    barrier::Screen* serverScreen         = NULL;
-    PrimaryClient* primaryClient = NULL;
+    barrier::Screen* serverScreen         = nullptr;
+    PrimaryClient* primaryClient = nullptr;
     try {
         String name    = args().m_config->getCanonicalName(args().m_name);
         serverScreen    = openServerScreen();
@@ -493,16 +492,15 @@ bool ServerApp::initServer()
         // install a timer and handler to retry later
         assert(m_timer == NULL);
         LOG((CLOG_DEBUG "retry in %.0f seconds", retryTime));
-        m_timer = m_events->newOneShotTimer(retryTime, NULL);
+        m_timer = m_events->newOneShotTimer(retryTime, nullptr);
         m_events->adoptHandler(Event::kTimer, m_timer,
             new TMethodEventJob<ServerApp>(this, &ServerApp::retryHandler));
         m_serverState = kInitializing;
         return true;
     }
-    else {
-        // don't try again
+            // don't try again
         return false;
-    }
+   
 }
 
 barrier::Screen*
@@ -561,7 +559,7 @@ ServerApp::startServer()
     }
 
     double retryTime;
-    ClientListener* listener = NULL;
+    ClientListener* listener = nullptr;
     try {
         auto listenAddress = args().m_config->getBarrierAddress();
         auto family = family_string(ARCH->getAddrFamily(listenAddress.getAddress()));
@@ -594,16 +592,15 @@ ServerApp::startServer()
         // install a timer and handler to retry later
         assert(m_timer == NULL);
         LOG((CLOG_DEBUG "retry in %.0f seconds", retryTime));
-        m_timer = m_events->newOneShotTimer(retryTime, NULL);
+        m_timer = m_events->newOneShotTimer(retryTime, nullptr);
         m_events->adoptHandler(Event::kTimer, m_timer,
             new TMethodEventJob<ServerApp>(this, &ServerApp::retryHandler));
         m_serverState = kStarting;
         return true;
     }
-    else {
-        // don't try again
+            // don't try again
         return false;
-    }
+   
 }
 
 barrier::Screen*
@@ -667,7 +664,7 @@ ServerApp::openClientListener(const NetworkAddress& address)
         }
     }
 
-    ClientListener* listen = new ClientListener(
+    auto* listen = new ClientListener(
         address,
         new TCPSocketFactory(m_events, getSocketMultiplexer()),
         m_events, security_level);
@@ -683,7 +680,7 @@ ServerApp::openClientListener(const NetworkAddress& address)
 Server*
 ServerApp::openServer(Config& config, PrimaryClient* primaryClient)
 {
-    Server* server = new Server(config, primaryClient, m_serverScreen, m_events, args());
+    auto* server = new Server(config, primaryClient, m_serverScreen, m_events, args());
     try {
         m_events->adoptHandler(
             m_events->forServer().disconnected(), server,
@@ -774,7 +771,7 @@ ServerApp::mainLoop()
     }
 
     // handle hangup signal by reloading the server's configuration
-    ARCH->setSignalHandler(Arch::kHANGUP, &reloadSignalHandler, NULL);
+    ARCH->setSignalHandler(Arch::kHANGUP, &reloadSignalHandler, nullptr);
     m_events->adoptHandler(m_events->forServerApp().reloadConfig(),
         m_events->getSystemTarget(),
         new TMethodEventJob<ServerApp>(this, &ServerApp::reloadConfig));
@@ -796,12 +793,12 @@ ServerApp::mainLoop()
     // that.
     DAEMON_RUNNING(true);
 
-#if defined(MAC_OS_X_VERSION_10_7)
+#ifdef MAC_OS_X_VERSION_10_7
 
     Thread thread([this](){ run_events_loop(); });
 
     // wait until carbon loop is ready
-    OSXScreen* screen = dynamic_cast<OSXScreen*>(
+    auto* screen = dynamic_cast<OSXScreen*>(
         m_serverScreen->getPlatformScreen());
     screen->waitForCarbonLoop();
 
@@ -846,7 +843,7 @@ ServerApp::runInner(int argc, char** argv, ILogOutputter* outputter, StartupFunc
     args().m_exename = ArgParser::parse_exename(argv[0]);
 
     // install caller's output filter
-    if (outputter != NULL) {
+    if (outputter != nullptr) {
         CLOG->insert(outputter);
     }
 
@@ -877,9 +874,8 @@ ServerApp::standardStartup(int argc, char** argv)
     if (args().m_daemon) {
         return ARCH->daemonize(daemonName(), daemonMainLoopStatic);
     }
-    else {
-        return mainLoop();
-    }
+            return mainLoop();
+   
 }
 
 int

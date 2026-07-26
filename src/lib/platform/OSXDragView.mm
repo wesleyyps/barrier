@@ -80,7 +80,9 @@ mouseDown:(NSEvent *)theEvent
 namesOfPromisedFilesDroppedAtDestination:(NSURL *)dropDestination
 {
 	[m_dropTarget setString:@""];
-	[m_dropTarget appendString:dropDestination.path];
+	if ((dropDestination != nullptr) && (dropDestination.path != nullptr)) {
+		[m_dropTarget appendString:dropDestination.path];
+	}
 	NSLog ( @"cocoa drop target: %@", m_dropTarget);
 	return nil;
 }
@@ -146,7 +148,7 @@ draggingSourceOperationMask
 
 - (NSPasteboard *)draggingPasteboard
 {
-	return nil;
+	return [NSPasteboard pasteboardWithName:NSDragPboard];
 }
 
 - (id)draggingSource

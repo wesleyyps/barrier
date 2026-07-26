@@ -25,8 +25,7 @@ IpcMessage::IpcMessage(UInt8 type) :
 }
 
 IpcMessage::~IpcMessage()
-{
-}
+= default;
 
 IpcHelloMessage::IpcHelloMessage(EIpcClientType clientType) :
     IpcMessage(kIpcHello),
@@ -35,8 +34,7 @@ IpcHelloMessage::IpcHelloMessage(EIpcClientType clientType) :
 }
 
 IpcHelloMessage::~IpcHelloMessage()
-{
-}
+= default;
 
 IpcShutdownMessage::IpcShutdownMessage() :
 IpcMessage(kIpcShutdown)
@@ -44,8 +42,7 @@ IpcMessage(kIpcShutdown)
 }
 
 IpcShutdownMessage::~IpcShutdownMessage()
-{
-}
+= default;
 
 IpcLogLineMessage::IpcLogLineMessage(const std::string& logLine) :
     IpcMessage(kIpcLogLine),
@@ -54,8 +51,7 @@ IpcLogLineMessage::IpcLogLineMessage(const std::string& logLine) :
 }
 
 IpcLogLineMessage::~IpcLogLineMessage()
-{
-}
+= default;
 
 IpcCommandMessage::IpcCommandMessage(const std::string& command, bool elevate) :
     IpcMessage(kIpcCommand),
@@ -65,5 +61,4 @@ IpcCommandMessage::IpcCommandMessage(const std::string& command, bool elevate) :
 }
 
 IpcCommandMessage::~IpcCommandMessage()
-{
-}
+= default;

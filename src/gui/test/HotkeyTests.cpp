@@ -161,7 +161,8 @@ void doHotkeyLoadSaveTest(const TestHotKey& test_hotkey)
 {
     auto filename = getTemporaryFilename();
 
-    Hotkey hotkey_before, hotkey_after;
+    Hotkey hotkey_before;
+    Hotkey hotkey_after;
     {
         QSettings settings(filename, QSettings::NativeFormat);
 

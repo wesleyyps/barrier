@@ -43,7 +43,7 @@
 #include <ApplicationServices/ApplicationServices.h>
 #endif
 
-#if defined(__APPLE__)
+#ifdef __APPLE__
 #include "platform/OSXDragSimulator.h"
 #endif
 
@@ -55,7 +55,7 @@ App* App::s_instance = nullptr;
 
 App::App(IEventQueue* events, CreateTaskBarReceiverFunc createTaskBarReceiver, ArgsBase* args) :
     m_bye(&exit),
-    m_taskBarReceiver(NULL),
+    m_taskBarReceiver(nullptr),
     m_suspended(false),
     m_events(events),
     m_args(args),
@@ -139,7 +139,7 @@ App::daemonMainLoop(int, const char**)
 void
 App::setupFileLogging()
 {
-    if (argsBase().m_logFile != NULL) {
+    if (argsBase().m_logFile != nullptr) {
         m_fileLog = new FileLogOutputter(argsBase().m_logFile);
         CLOG->insert(m_fileLog);
         LOG((CLOG_DEBUG1 "logging to file (%s) enabled", argsBase().m_logFile));
@@ -147,10 +147,10 @@ App::setupFileLogging()
 }
 
 void
-App::loggingFilterWarning()
+App::loggingFilterWarning() const
 {
     if (CLOG->getFilter() > CLOG->getConsoleMaxLevel()) {
-        if (argsBase().m_logFile == NULL) {
+        if (argsBase().m_logFile == nullptr) {
             LOG((CLOG_WARN "log messages above %s are NOT sent to console (use file logging)",
                 CLOG->getFilterName(CLOG->getConsoleMaxLevel())));
         }
@@ -190,7 +190,7 @@ App::initApp(int argc, const char** argv)
 
         // create a log buffer so we can show the latest message
         // as a tray icon tooltip
-        BufferedLogOutputter* logBuffer = new BufferedLogOutputter(1000);
+        auto* logBuffer = new BufferedLogOutputter(1000);
         CLOG->insert(logBuffer, true);
 
         // make the task bar receiver.  the user can control this app
@@ -221,7 +221,7 @@ App::cleanupIpcClient()
 void
 App::handleIpcMessage(const Event& e, void*)
 {
-    IpcMessage* m = static_cast<IpcMessage*>(e.getDataObject());
+    auto* m = static_cast<IpcMessage*>(e.getDataObject());
     if (m->type() == kIpcShutdown) {
         LOG((CLOG_INFO "got ipc shutdown message"));
         m_events->addEvent(Event(Event::kQuit));
@@ -232,7 +232,7 @@ void App::run_events_loop()
 {
     m_events->loop();
 
-#if defined(MAC_OS_X_VERSION_10_7)
+#ifdef MAC_OS_X_VERSION_10_7
 
     stopCocoaLoop();
 
@@ -244,15 +244,14 @@ void App::run_events_loop()
 //
 
 MinimalApp::MinimalApp() :
-    App(NULL, NULL, new ArgsBase())
+    App(nullptr, nullptr, new ArgsBase())
 {
     m_arch.init();
     setEvents(m_events);
 }
 
 MinimalApp::~MinimalApp()
-{
-}
+= default;
 
 int
 MinimalApp::standardStartup(int argc, char** argv)
@@ -286,7 +285,7 @@ MinimalApp::foregroundStartup(int argc, char** argv)
 barrier::Screen*
 MinimalApp::createScreen()
 {
-    return NULL;
+    return nullptr;
 }
 
 void

@@ -100,7 +100,7 @@ isMediaKeyEvent(CGEventRef event) {
 			return false;
 		}
 		uint32_t const nxKeyId = ([nsEvent data1] & 0xFFFF0000) >> 16;
-		if (convertNXKeyTypeToKeyID (nxKeyId)) {
+		if (convertNXKeyTypeToKeyID (nxKeyId) != 0u) {
 			return true;
 		}
 	} @catch (NSException* e) {
@@ -117,14 +117,14 @@ getMediaKeyEventInfo(CGEventRef event, KeyID* const keyId,
 	} @catch (NSException* e) {
 		return false;
 	}
-	if (keyId) {
+	if (keyId != nullptr) {
 		*keyId = convertNXKeyTypeToKeyID (([nsEvent data1] & 0xFFFF0000) >> 16);
 	}
-	if (down) {
-		*down = !([nsEvent data1] & 0x100);
+	if (down != nullptr) {
+		*down = (([nsEvent data1] & 0x100) == 0);
 	}
-	if (isRepeat) {
-		*isRepeat = [nsEvent data1] & 0x1;
+	if (isRepeat != nullptr) {
+		*isRepeat = (([nsEvent data1] & 0x1) != 0);
 	}
 	return true;
 }
@@ -135,14 +135,14 @@ fakeNativeMediaKey(KeyID id)
 	
 	NSEvent* downRef = [NSEvent otherEventWithType:NSSystemDefined
 					location: NSMakePoint(0, 0) modifierFlags:0xa00
-					timestamp:0 windowNumber:0 context:0 subtype:8
+					timestamp:0 windowNumber:0 context:nullptr subtype:8
 					data1:(convertKeyIDToNXKeyType(id) << 16) | ((0xa) << 8)
 					data2:-1];
 	CGEventRef downEvent = [downRef CGEvent];
 	
 	NSEvent* upRef = [NSEvent otherEventWithType:NSSystemDefined
 					location: NSMakePoint(0, 0) modifierFlags:0xa00
-					timestamp:0 windowNumber:0 context:0 subtype:8
+					timestamp:0 windowNumber:0 context:nullptr subtype:8
 					data1:(convertKeyIDToNXKeyType(id) << 16) | ((0xb) << 8)
 					data2:-1];
 	CGEventRef upEvent = [upRef CGEvent];

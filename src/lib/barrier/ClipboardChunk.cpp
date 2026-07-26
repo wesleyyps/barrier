@@ -38,10 +38,10 @@ ClipboardChunk::start(
                     const String& size)
 {
     size_t sizeLength = size.size();
-    ClipboardChunk* start = new ClipboardChunk(sizeLength + CLIPBOARD_CHUNK_META_SIZE);
+    auto* start = new ClipboardChunk(sizeLength + CLIPBOARD_CHUNK_META_SIZE);
     char* chunk = start->m_chunk;
 
-    chunk[0] = id;
+    chunk[0] = static_cast<char>(id);
     std::memcpy (&chunk[1], &sequence, 4);
     chunk[5] = kDataStart;
     memcpy(&chunk[6], size.c_str(), sizeLength);
@@ -57,10 +57,10 @@ ClipboardChunk::data(
                     const String& data)
 {
     size_t dataSize = data.size();
-    ClipboardChunk* chunk = new ClipboardChunk(dataSize + CLIPBOARD_CHUNK_META_SIZE);
+    auto* chunk = new ClipboardChunk(dataSize + CLIPBOARD_CHUNK_META_SIZE);
     char* chunkData = chunk->m_chunk;
 
-    chunkData[0] = id;
+    chunkData[0] = static_cast<char>(id);
     std::memcpy (&chunkData[1], &sequence, 4);
     chunkData[5] = kDataChunk;
     memcpy(&chunkData[6], data.c_str(), dataSize);
@@ -72,7 +72,7 @@ ClipboardChunk::data(
 ClipboardChunk*
 ClipboardChunk::end(ClipboardID id, UInt32 sequence)
 {
-    ClipboardChunk* end = new ClipboardChunk(CLIPBOARD_CHUNK_META_SIZE);
+    auto* end = new ClipboardChunk(CLIPBOARD_CHUNK_META_SIZE);
     char* chunk = end->m_chunk;
 
     chunk[0] = id;
@@ -102,7 +102,7 @@ ClipboardChunk::assemble(barrier::IStream* stream,
         dataCached.clear();
         return kStart;
     }
-    else if (mark == kDataChunk) {
+    if (mark == kDataChunk) {
         dataCached.append(data);
         return kNotFinish;
     }
@@ -125,7 +125,7 @@ ClipboardChunk::assemble(barrier::IStream* stream,
 void
 ClipboardChunk::send(barrier::IStream* stream, void* data)
 {
-    ClipboardChunk* clipboardData = static_cast<ClipboardChunk*>(data);
+    auto* clipboardData = static_cast<ClipboardChunk*>(data);
 
     LOG((CLOG_DEBUG1 "sending clipboard chunk"));
 
@@ -147,6 +147,9 @@ ClipboardChunk::send(barrier::IStream* stream, void* data)
 
     case kDataEnd:
         LOG((CLOG_DEBUG2 "sending clipboard finished"));
+        break;
+
+    default:
         break;
     }
 

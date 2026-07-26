@@ -21,22 +21,23 @@
 
 #include <QtCore>
 #include <QtNetwork>
+#include <array>
 
-#if defined(Q_OS_WIN)
-const char AppConfig::m_BarriersName[] = "barriers.exe";
-const char AppConfig::m_BarriercName[] = "barrierc.exe";
-const char AppConfig::m_BarrierLogDir[] = "log/";
+#ifdef Q_OS_WIN
+const QString AppConfig::m_BarriersName = "barriers.exe";
+const QString AppConfig::m_BarriercName = "barrierc.exe";
+const QString AppConfig::m_BarrierLogDir = "log/";
 #define DEFAULT_PROCESS_MODE Service
 #else
-const char AppConfig::m_BarriersName[] = "barriers";
-const char AppConfig::m_BarriercName[] = "barrierc";
-const char AppConfig::m_BarrierLogDir[] = "/var/log/";
+const QString AppConfig::m_BarriersName = "barriers";
+const QString AppConfig::m_BarriercName = "barrierc";
+const QString AppConfig::m_BarrierLogDir = "/var/log/";
 #define DEFAULT_PROCESS_MODE Desktop
 #endif
 
 const ElevateMode defaultElevateMode = ElevateAsNeeded;
 
-static const char* logLevelNames[] =
+static const std::array<const char*, 7> logLevelNames =
 {
     "ERROR",
     "WARNING",
@@ -87,7 +88,7 @@ const QString &AppConfig::logFilename() const { return m_LogFilename; }
 
 QString AppConfig::barrierLogDir() const
 {
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     // on windows, we want to log to program files
     return barrierProgramDir() + "log/";
 #else
@@ -102,7 +103,7 @@ QString AppConfig::barrierProgramDir() const
     return QCoreApplication::applicationDirPath() + "/";
 }
 
-void AppConfig::persistLogDir()
+void AppConfig::persistLogDir() const
 {
     QDir dir = barrierLogDir();
 
@@ -116,7 +117,7 @@ void AppConfig::persistLogDir()
 const QString AppConfig::logFilenameCmd() const
 {
     QString filename = m_LogFilename;
-#if defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     // wrap in quotes in case username contains spaces.
     filename = QString("\"%1\"").arg(filename);
 #endif
@@ -214,7 +215,7 @@ void AppConfig::setElevateMode(ElevateMode em) { m_ElevateMode = em; }
 
 void AppConfig::setAutoConfig(bool autoConfig) { m_AutoConfig = autoConfig; }
 
-bool AppConfig::autoConfigPrompted() { return m_AutoConfigPrompted; }
+bool AppConfig::autoConfigPrompted() const { return m_AutoConfigPrompted; }
 
 void AppConfig::setAutoConfigPrompted(bool prompted) { m_AutoConfigPrompted = prompted; }
 
@@ -234,12 +235,12 @@ bool AppConfig::getRequireClientCertificate() const { return m_RequireClientCert
 
 void AppConfig::setAutoHide(bool b) { m_AutoHide = b; }
 
-bool AppConfig::getAutoHide() { return m_AutoHide; }
+bool AppConfig::getAutoHide() const { return m_AutoHide; }
 
 void AppConfig::setAutoStart(bool b) { m_AutoStart = b; }
 
-bool AppConfig::getAutoStart() { return m_AutoStart; }
+bool AppConfig::getAutoStart() const { return m_AutoStart; }
 
 void AppConfig::setMinimizeToTray(bool b) { m_MinimizeToTray = b; }
 
-bool AppConfig::getMinimizeToTray() { return m_MinimizeToTray; }
+bool AppConfig::getMinimizeToTray() const { return m_MinimizeToTray; }

@@ -309,6 +309,8 @@ private:
     CondVar<bool>*            m_pmThreadReady;
     CFRunLoopRef            m_pmRunloop;
     io_connect_t            m_pmRootPort;
+    IOPMAssertionID            m_powerAssertion;
+    bool                    m_hasPowerAssertion;
 
     // hot key stuff
     HotKeyMap                m_hotKeys;

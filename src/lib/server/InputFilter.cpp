@@ -17,6 +17,7 @@
  */
 
 #include "server/InputFilter.h"
+#include <array>
 #include "server/Server.h"
 #include "server/PrimaryClient.h"
 #include "barrier/KeyMap.h"
@@ -119,7 +120,7 @@ InputFilter::KeystrokeCondition::match(const Event& event)
     }
 
     // check if it's our hotkey
-    IPrimaryScreen::HotKeyInfo* kinfo =
+    auto* kinfo =
         static_cast<IPlatformScreen::HotKeyInfo*>(event.getData());
     if (kinfo->m_id != m_id) {
         return kNoMatch;
@@ -214,7 +215,7 @@ InputFilter::MouseButtonCondition::match(const Event& event)
 
     // check if it's the right button and modifiers.  ignore modifiers
     // that cannot be combined with a mouse button.
-    IPlatformScreen::ButtonInfo* minfo =
+    auto* minfo =
         static_cast<IPlatformScreen::ButtonInfo*>(event.getData());
     if (minfo->m_button != m_button ||
         (minfo->m_mask & ~s_ignoreMask) != m_mask) {
@@ -252,7 +253,7 @@ InputFilter::EFilterStatus
 InputFilter::ScreenConnectedCondition::match(const Event& event)
 {
     if (event.getType() == m_events->forServer().connected()) {
-        Server::ScreenConnectedInfo* info =
+        auto* info =
             static_cast<Server::ScreenConnectedInfo*>(event.getData());
         if (m_screen == info->m_screen || m_screen.empty()) {
             return kActivate;
@@ -297,7 +298,7 @@ InputFilter::LockCursorToScreenAction::clone() const
 
 std::string InputFilter::LockCursorToScreenAction::format() const
 {
-    static const char* s_mode[] = { "off", "on", "toggle" };
+    static const std::array<const char*, 3> s_mode = {{ "off", "on", "toggle" }};
 
     return barrier::string::sprintf("lockCursorToScreen(%s)", s_mode[m_mode]);
 }
@@ -305,11 +306,11 @@ std::string InputFilter::LockCursorToScreenAction::format() const
 void
 InputFilter::LockCursorToScreenAction::perform(const Event& event)
 {
-    static const Server::LockCursorToScreenInfo::State s_state[] = {
+    static const std::array<Server::LockCursorToScreenInfo::State, 3> s_state = {{
         Server::LockCursorToScreenInfo::kOff,
         Server::LockCursorToScreenInfo::kOn,
         Server::LockCursorToScreenInfo::kToggle
-    };
+    }};
 
     // send event
     Server::LockCursorToScreenInfo* info =
@@ -350,7 +351,7 @@ InputFilter::SwitchToScreenAction::perform(const Event& event)
     // event if it has one.
     std::string screen = m_screen;
     if (screen.empty() && event.getType() == m_events->forServer().connected()) {
-        Server::ScreenConnectedInfo* info =
+        auto* info =
             static_cast<Server::ScreenConnectedInfo*>(event.getData());
         screen = info->m_screen;
     }
@@ -385,7 +386,7 @@ void
 InputFilter::ToggleScreenAction::perform(const Event& event)
 {
     m_events->addEvent(Event(m_events->forServer().toggleScreen(),
-                             event.getTarget(), NULL,
+                             event.getTarget(), nullptr,
                              Event::kDeliverImmediately));
 }
 
@@ -411,13 +412,13 @@ InputFilter::SwitchInDirectionAction::clone() const
 
 std::string InputFilter::SwitchInDirectionAction::format() const
 {
-    static const char* s_names[] = {
+    static const std::array<const char*, 5> s_names = {{
         "",
         "left",
         "right",
         "up",
         "down"
-    };
+    }};
 
     return barrier::string::sprintf("switchInDirection(%s)", s_names[m_direction]);
 }
@@ -470,27 +471,26 @@ InputFilter::KeyboardBroadcastAction::clone() const
 
 std::string InputFilter::KeyboardBroadcastAction::format() const
 {
-    static const char* s_mode[] = { "off", "on", "toggle" };
+    static const std::array<const char*, 3> s_mode = {{ "off", "on", "toggle" }};
     static const char* s_name = "keyboardBroadcast";
 
     if (m_screens.empty() || m_screens[0] == '*') {
         return barrier::string::sprintf("%s(%s)", s_name, s_mode[m_mode]);
     }
-    else {
-        return barrier::string::sprintf("%s(%s,%.*s)", s_name, s_mode[m_mode],
+            return barrier::string::sprintf("%s(%s,%.*s)", s_name, s_mode[m_mode],
                             m_screens.size() - 2,
                             m_screens.c_str() + 1);
-    }
+   
 }
 
 void
 InputFilter::KeyboardBroadcastAction::perform(const Event& event)
 {
-    static const Server::KeyboardBroadcastInfo::State s_state[] = {
+    static const std::array<Server::KeyboardBroadcastInfo::State, 3> s_state = {{
         Server::KeyboardBroadcastInfo::kOff,
         Server::KeyboardBroadcastInfo::kOn,
         Server::KeyboardBroadcastInfo::kToggle
-    };
+    }};
 
     // send event
     Server::KeyboardBroadcastInfo* info =
@@ -549,7 +549,7 @@ std::string InputFilter::KeystrokeAction::format() const
                             barrier::KeyMap::formatKey(m_keyInfo->m_key,
                                 m_keyInfo->m_mask).c_str());
     }
-    else if (m_keyInfo->m_screens[0] == '*') {
+    if (m_keyInfo->m_screens[0] == '*') {
         return barrier::string::sprintf("%s(%s,*)", type,
                             barrier::KeyMap::formatKey(m_keyInfo->m_key,
                                 m_keyInfo->m_mask).c_str());
@@ -571,13 +571,13 @@ InputFilter::KeystrokeAction::perform(const Event& event)
         m_events->forIKeyState().keyUp();
 
     m_events->addEvent(Event(m_events->forIPrimaryScreen().fakeInputBegin(),
-                                event.getTarget(), NULL,
+                                event.getTarget(), nullptr,
                                 Event::kDeliverImmediately));
     m_events->addEvent(Event(type, event.getTarget(), m_keyInfo,
                                 Event::kDeliverImmediately |
                                 Event::kDontFreeData));
     m_events->addEvent(Event(m_events->forIPrimaryScreen().fakeInputEnd(),
-                                event.getTarget(), NULL,
+                                event.getTarget(), nullptr,
                                 Event::kDeliverImmediately));
 }
 
@@ -636,7 +636,7 @@ InputFilter::MouseButtonAction::perform(const Event& event)
 
 {
     // send modifiers
-    IPlatformScreen::KeyInfo* modifierInfo = NULL;
+    IPlatformScreen::KeyInfo* modifierInfo = nullptr;
     if (m_buttonInfo->m_mask != 0) {
         KeyID key = m_press ? kKeySetModifiers : kKeyClearModifiers;
         modifierInfo =
@@ -665,7 +665,7 @@ InputFilter::MouseButtonAction::formatName() const
 //
 
 InputFilter::Rule::Rule() :
-    m_condition(NULL)
+    m_condition(nullptr)
 {
     // do nothing
 }
@@ -677,7 +677,7 @@ InputFilter::Rule::Rule(Condition* adoptedCondition) :
 }
 
 InputFilter::Rule::Rule(const Rule& rule) :
-    m_condition(NULL)
+    m_condition(nullptr)
 {
     copy(rule);
 }
@@ -700,16 +700,14 @@ void
 InputFilter::Rule::clear()
 {
     delete m_condition;
-    for (ActionList::iterator i = m_activateActions.begin();
-                                i != m_activateActions.end(); ++i) {
-        delete *i;
+    for (auto & m_activateAction : m_activateActions) {
+        delete m_activateAction;
     }
-    for (ActionList::iterator i = m_deactivateActions.begin();
-                                i != m_deactivateActions.end(); ++i) {
-        delete *i;
+    for (auto & m_deactivateAction : m_deactivateActions) {
+        delete m_deactivateAction;
     }
 
-    m_condition = NULL;
+    m_condition = nullptr;
     m_activateActions.clear();
     m_deactivateActions.clear();
 }
@@ -718,16 +716,14 @@ void
 InputFilter::Rule::copy(const Rule& rule)
 {
     clear();
-    if (rule.m_condition != NULL) {
+    if (rule.m_condition != nullptr) {
         m_condition = rule.m_condition->clone();
     }
-    for (ActionList::const_iterator i = rule.m_activateActions.begin();
-                                i != rule.m_activateActions.end(); ++i) {
-        m_activateActions.push_back((*i)->clone());
+    for (auto m_activateAction : rule.m_activateActions) {
+        m_activateActions.push_back(m_activateAction->clone());
     }
-    for (ActionList::const_iterator i = rule.m_deactivateActions.begin();
-                                i != rule.m_deactivateActions.end(); ++i) {
-        m_deactivateActions.push_back((*i)->clone());
+    for (auto m_deactivateAction : rule.m_deactivateActions) {
+        m_deactivateActions.push_back(m_deactivateAction->clone());
     }
 }
 
@@ -741,7 +737,7 @@ InputFilter::Rule::setCondition(Condition* adopted)
 void
 InputFilter::Rule::adoptAction(Action* action, bool onActivation)
 {
-    if (action != NULL) {
+    if (action != nullptr) {
         if (onActivation) {
             m_activateActions.push_back(action);
         }
@@ -768,7 +764,7 @@ void
 InputFilter::Rule::replaceAction(Action* adopted,
                 bool onActivation, UInt32 index)
 {
-    if (adopted == NULL) {
+    if (adopted == nullptr) {
         removeAction(onActivation, index);
     }
     else if (onActivation) {
@@ -784,7 +780,7 @@ InputFilter::Rule::replaceAction(Action* adopted,
 void
 InputFilter::Rule::enable(PrimaryClient* primaryClient)
 {
-    if (m_condition != NULL) {
+    if (m_condition != nullptr) {
         m_condition->enablePrimary(primaryClient);
     }
 }
@@ -792,7 +788,7 @@ InputFilter::Rule::enable(PrimaryClient* primaryClient)
 void
 InputFilter::Rule::disable(PrimaryClient* primaryClient)
 {
-    if (m_condition != NULL) {
+    if (m_condition != nullptr) {
         m_condition->disablePrimary(primaryClient);
     }
 }
@@ -801,7 +797,7 @@ bool
 InputFilter::Rule::handleEvent(const Event& event)
 {
     // NULL condition never matches
-    if (m_condition == NULL) {
+    if (m_condition == nullptr) {
         return false;
     }
 
@@ -824,10 +820,9 @@ InputFilter::Rule::handleEvent(const Event& event)
     }
 
     // perform actions
-    for (ActionList::const_iterator i = actions->begin();
-                                i != actions->end(); ++i) {
-        LOG((CLOG_DEBUG1 "hotkey: %s", (*i)->format().c_str()));
-        (*i)->perform(event);
+    for (auto action : *actions) {
+        LOG((CLOG_DEBUG1 "hotkey: %s", action->format().c_str()));
+        action->perform(event);
     }
 
     return true;
@@ -836,13 +831,13 @@ InputFilter::Rule::handleEvent(const Event& event)
 std::string InputFilter::Rule::format() const
 {
     std::string s;
-    if (m_condition != NULL) {
+    if (m_condition != nullptr) {
         // condition
         s += m_condition->format();
         s += " = ";
 
         // activate actions
-        ActionList::const_iterator i = m_activateActions.begin();
+        auto i = m_activateActions.begin();
         if (i != m_activateActions.end()) {
             s += (*i)->format();
             while (++i != m_activateActions.end()) {
@@ -879,9 +874,8 @@ InputFilter::Rule::getNumActions(bool onActivation) const
     if (onActivation) {
         return static_cast<UInt32>(m_activateActions.size());
     }
-    else {
-        return static_cast<UInt32>(m_deactivateActions.size());
-    }
+            return static_cast<UInt32>(m_deactivateActions.size());
+   
 }
 
 const InputFilter::Action&
@@ -890,9 +884,8 @@ InputFilter::Rule::getAction(bool onActivation, UInt32 index) const
     if (onActivation) {
         return *m_activateActions[index];
     }
-    else {
-        return *m_deactivateActions[index];
-    }
+            return *m_deactivateActions[index];
+   
 }
 
 
@@ -900,7 +893,7 @@ InputFilter::Rule::getAction(bool onActivation, UInt32 index) const
 // Input Filter Class
 // -----------------------------------------------------------------------------
 InputFilter::InputFilter(IEventQueue* events) :
-    m_primaryClient(NULL),
+    m_primaryClient(nullptr),
     m_events(events)
 {
     // do nothing
@@ -908,7 +901,7 @@ InputFilter::InputFilter(IEventQueue* events) :
 
 InputFilter::InputFilter(const InputFilter& x) :
     m_ruleList(x.m_ruleList),
-    m_primaryClient(NULL),
+    m_primaryClient(nullptr),
     m_events(x.m_events)
 {
     setPrimaryClient(x.m_primaryClient);
@@ -916,7 +909,7 @@ InputFilter::InputFilter(const InputFilter& x) :
 
 InputFilter::~InputFilter()
 {
-    setPrimaryClient(NULL);
+    setPrimaryClient(nullptr);
 }
 
 InputFilter&
@@ -924,7 +917,7 @@ InputFilter::operator=(const InputFilter& x)
 {
     if (&x != this) {
         PrimaryClient* oldClient = m_primaryClient;
-        setPrimaryClient(NULL);
+        setPrimaryClient(nullptr);
 
         m_ruleList = x.m_ruleList;
 
@@ -937,7 +930,7 @@ void
 InputFilter::addFilterRule(const Rule& rule)
 {
     m_ruleList.push_back(rule);
-    if (m_primaryClient != NULL) {
+    if (m_primaryClient != nullptr) {
         m_ruleList.back().enable(m_primaryClient);
     }
 }
@@ -945,7 +938,7 @@ InputFilter::addFilterRule(const Rule& rule)
 void
 InputFilter::removeFilterRule(UInt32 index)
 {
-    if (m_primaryClient != NULL) {
+    if (m_primaryClient != nullptr) {
         m_ruleList[index].disable(m_primaryClient);
     }
     m_ruleList.erase(m_ruleList.begin() + index);
@@ -964,10 +957,9 @@ InputFilter::setPrimaryClient(PrimaryClient* client)
         return;
     }
 
-    if (m_primaryClient != NULL) {
-        for (RuleList::iterator rule  = m_ruleList.begin();
-                                 rule != m_ruleList.end(); ++rule) {
-            rule->disable(m_primaryClient);
+    if (m_primaryClient != nullptr) {
+        for (auto & rule : m_ruleList) {
+            rule.disable(m_primaryClient);
         }
 
         m_events->removeHandler(m_events->forIKeyState().keyDown(),
@@ -990,7 +982,7 @@ InputFilter::setPrimaryClient(PrimaryClient* client)
 
     m_primaryClient = client;
 
-    if (m_primaryClient != NULL) {
+    if (m_primaryClient != nullptr) {
         m_events->adoptHandler(m_events->forIKeyState().keyDown(),
                             m_primaryClient->getEventTarget(),
                             new TMethodEventJob<InputFilter>(this,
@@ -1024,9 +1016,8 @@ InputFilter::setPrimaryClient(PrimaryClient* client)
                             new TMethodEventJob<InputFilter>(this,
                                 &InputFilter::handleEvent));
 
-        for (RuleList::iterator rule  = m_ruleList.begin();
-                                 rule != m_ruleList.end(); ++rule) {
-            rule->enable(m_primaryClient);
+        for (auto & rule : m_ruleList) {
+            rule.enable(m_primaryClient);
         }
     }
 }
@@ -1034,10 +1025,9 @@ InputFilter::setPrimaryClient(PrimaryClient* client)
 std::string InputFilter::format(const std::string& linePrefix) const
 {
     std::string s;
-    for (RuleList::const_iterator i = m_ruleList.begin();
-                                i != m_ruleList.end(); ++i) {
+    for (const auto & i : m_ruleList) {
         s += linePrefix;
-        s += i->format();
+        s += i.format();
         s += "\n";
     }
     return s;
@@ -1059,14 +1049,13 @@ InputFilter::operator==(const InputFilter& x) const
 
     // compare rule lists.  the easiest way to do that is to format each
     // rule into a string, sort the strings, then compare the results.
-    std::vector<std::string> aList, bList;
-    for (RuleList::const_iterator i = m_ruleList.begin();
-                                i != m_ruleList.end(); ++i) {
-        aList.push_back(i->format());
+    std::vector<std::string> aList;
+    std::vector<std::string> bList;
+    for (const auto & i : m_ruleList) {
+        aList.push_back(i.format());
     }
-    for (RuleList::const_iterator i = x.m_ruleList.begin();
-                                i != x.m_ruleList.end(); ++i) {
-        bList.push_back(i->format());
+    for (const auto & i : x.m_ruleList) {
+        bList.push_back(i.format());
     }
     std::partial_sort(aList.begin(), aList.end(), aList.end());
     std::partial_sort(bList.begin(), bList.end(), bList.end());
@@ -1088,9 +1077,8 @@ InputFilter::handleEvent(const Event& event, void*)
                                 Event::kDeliverImmediately);
 
     // let each rule try to match the event until one does
-    for (RuleList::iterator rule  = m_ruleList.begin();
-                             rule != m_ruleList.end(); ++rule) {
-        if (rule->handleEvent(myEvent)) {
+    for (auto & rule : m_ruleList) {
+        if (rule.handleEvent(myEvent)) {
             // handled
             return;
         }

@@ -274,10 +274,10 @@ TEST(ClipboardTests, unmarshall_emptyData_hasTextIsFalse)
     Clipboard clipboard;
 
     String data;
-    data += (char)0;
-    data += (char)0;
-    data += (char)0;
-    data += (char)0; // 0 formats added
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(0); // 0 formats added
 
     clipboard.unmarshall(data, 0);
 
@@ -299,18 +299,18 @@ TEST(ClipboardTests, unmarshall_withTextSize285_getTextIsValid)
     text.append("network. Barrier is supported on Windows, Mac OS X and Linux.");
 
     String data;
-    data += (char)0;
-    data += (char)0;
-    data += (char)0;
-    data += (char)1; // 1 format added
-    data += (char)0;
-    data += (char)0;
-    data += (char)0;
-    data += (char)IClipboard::kText;
-    data += (char)0; // 285 >> 24 = 285 / (256^3) = 0
-    data += (char)0; // 285 >> 16 = 285 / (256^2) = 0
-    data += (char)1; // 285 >> 8 = 285 / (256^1) = 1(.11328125)
-    data += (char)29; // 285 - 256 = 29
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(1); // 1 format added
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(IClipboard::kText);
+    data += static_cast<char>(0); // 285 >> 24 = 285 / (256^3) = 0
+    data += static_cast<char>(0); // 285 >> 16 = 285 / (256^2) = 0
+    data += static_cast<char>(1); // 285 >> 8 = 285 / (256^1) = 1(.11328125)
+    data += static_cast<char>(29); // 285 - 256 = 29
     data += text;
 
     clipboard.unmarshall(data, 0);
@@ -324,27 +324,27 @@ TEST(ClipboardTests, unmarshall_withTextAndHtml_getTextIsValid)
 {
     Clipboard clipboard;
     String data;
-    data += (char)0;
-    data += (char)0;
-    data += (char)0;
-    data += (char)2; // 2 formats added
-    data += (char)0;
-    data += (char)0;
-    data += (char)0;
-    data += (char)IClipboard::kText;
-    data += (char)0;
-    data += (char)0;
-    data += (char)0;
-    data += (char)14;
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(2); // 2 formats added
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(IClipboard::kText);
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(14);
     data += "barrier rocks!";
-    data += (char)0;
-    data += (char)0;
-    data += (char)0;
-    data += (char)IClipboard::kHTML;
-    data += (char)0;
-    data += (char)0;
-    data += (char)0;
-    data += (char)10;
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(IClipboard::kHTML);
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(10);
     data += "html sucks";
 
     clipboard.unmarshall(data, 0);
@@ -358,27 +358,27 @@ TEST(ClipboardTests, unmarshall_withTextAndHtml_getHtmlIsValid)
 {
     Clipboard clipboard;
     String data;
-    data += (char)0;
-    data += (char)0;
-    data += (char)0;
-    data += (char)2; // 2 formats added
-    data += (char)0;
-    data += (char)0;
-    data += (char)0;
-    data += (char)IClipboard::kText;
-    data += (char)0;
-    data += (char)0;
-    data += (char)0;
-    data += (char)14;
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(2); // 2 formats added
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(IClipboard::kText);
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(14);
     data += "barrier rocks!";
-    data += (char)0;
-    data += (char)0;
-    data += (char)0;
-    data += (char)IClipboard::kHTML;
-    data += (char)0;
-    data += (char)0;
-    data += (char)0;
-    data += (char)10;
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(IClipboard::kHTML);
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(0);
+    data += static_cast<char>(10);
     data += "html sucks";
 
     clipboard.unmarshall(data, 0);

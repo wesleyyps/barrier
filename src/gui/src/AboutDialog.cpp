@@ -41,7 +41,7 @@ AboutDialog::AboutDialog(QWidget* parent, const QString& barrierApp) :
 	m_pLabelBuildDate->setText(buildDate.toString(Qt::SystemLocaleLongDate));
 
 	// change default size based on os
-#if defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
 	QSize size(600, 380);
 	setMaximumSize(size);
 	setMinimumSize(size);

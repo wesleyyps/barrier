@@ -32,3 +32,10 @@ CMakeCache.txt
 # Transient in-project-directory dependencies
 /deps/
 /out/build/x64-Debug
+.cache
+.history
+.env
+cov-int
+build-fuzz-homebrew
+build-fuzz-final
+build-fuzz

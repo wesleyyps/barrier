@@ -18,6 +18,8 @@
 
 #include "client/ServerProxy.h"
 
+#include "common/Version.h"
+#include <array>
 #include "client/Client.h"
 #include "barrier/FileChunk.h"
 #include "barrier/ClipboardChunk.h"
@@ -51,7 +53,7 @@ ServerProxy::ServerProxy(Client* client, barrier::IStream* stream, IEventQueue* 
     m_dyMouse(0),
     m_ignoreMouse(false),
     m_keepAliveAlarm(0.0),
-    m_keepAliveAlarmTimer(NULL),
+    m_keepAliveAlarmTimer(nullptr),
     m_parser(&ServerProxy::parseHandshakeMessage),
     m_events(events)
 {
@@ -88,14 +90,14 @@ ServerProxy::~ServerProxy()
 void
 ServerProxy::resetKeepAliveAlarm()
 {
-    if (m_keepAliveAlarmTimer != NULL) {
+    if (m_keepAliveAlarmTimer != nullptr) {
         m_events->removeHandler(Event::kTimer, m_keepAliveAlarmTimer);
         m_events->deleteTimer(m_keepAliveAlarmTimer);
-        m_keepAliveAlarmTimer = NULL;
+        m_keepAliveAlarmTimer = nullptr;
     }
     if (m_keepAliveAlarm > 0.0) {
         m_keepAliveAlarmTimer =
-            m_events->newOneShotTimer(m_keepAliveAlarm, NULL);
+            m_events->newOneShotTimer(m_keepAliveAlarm, nullptr);
         m_events->adoptHandler(Event::kTimer, m_keepAliveAlarmTimer,
                             new TMethodEventJob<ServerProxy>(this,
                                 &ServerProxy::handleKeepAliveAlarm));
@@ -113,8 +115,8 @@ void
 ServerProxy::handleData(const Event&, void*)
 {
     // handle messages until there are no more.  first read message code.
-    UInt8 code[4];
-    UInt32 n = m_stream->read(code, 4);
+    std::array<UInt8, 4> code;
+    UInt32 n = m_stream->read(code.data(), 4);
     while (n != 0) {
         // verify we got an entire code
         if (n != 4) {
@@ -126,7 +128,7 @@ ServerProxy::handleData(const Event&, void*)
         // parse message
         LOG((CLOG_DEBUG2 "msg from server: %c%c%c%c", code[0], code[1], code[2], code[3]));
         try {
-            switch ((this->*m_parser)(code)) {
+            switch ((this->*m_parser)(code.data())) {
             case kOkay:
                 break;
 
@@ -149,7 +151,7 @@ ServerProxy::handleData(const Event&, void*)
         }
 
         // next message
-        n = m_stream->read(code, 4);
+        n = m_stream->read(code.data(), 4);
     }
 
     flushCompressedMouse();
@@ -191,12 +193,13 @@ ServerProxy::parseHandshakeMessage(const UInt8* code)
     else if (memcmp(code, kMsgCClose, 4) == 0) {
         // server wants us to hangup
         LOG((CLOG_DEBUG1 "recv close"));
-        m_client->disconnect(NULL);
+        m_client->disconnect(nullptr);
         return kDisconnect;
     }
 
     else if (memcmp(code, kMsgEIncompatible, 4) == 0) {
-        SInt32 major, minor;
+        SInt32 major;
+        SInt32 minor;
         ProtocolUtil::readf(m_stream,
                         kMsgEIncompatible + 4, &major, &minor);
         LOG((CLOG_ERR "server has incompatible version %d.%d", major, minor));
@@ -319,7 +322,7 @@ ServerProxy::parseMessage(const UInt8* code)
     else if (memcmp(code, kMsgCClose, 4) == 0) {
         // server wants us to hangup
         LOG((CLOG_DEBUG1 "recv close"));
-        m_client->disconnect(NULL);
+        m_client->disconnect(nullptr);
         return kDisconnect;
     }
     else if (memcmp(code, kMsgEBad, 4) == 0) {
@@ -406,15 +409,15 @@ ServerProxy::sendInfo(const ClientInfo& info)
 KeyID
 ServerProxy::translateKey(KeyID id) const
 {
-    static const KeyID s_translationTable[kKeyModifierIDLast][2] = {
-        { kKeyNone,      kKeyNone },
-        { kKeyShift_L,   kKeyShift_R },
-        { kKeyControl_L, kKeyControl_R },
-        { kKeyAlt_L,     kKeyAlt_R },
-        { kKeyMeta_L,    kKeyMeta_R },
-        { kKeySuper_L,   kKeySuper_R },
-        { kKeyAltGr,     kKeyAltGr}
-    };
+    static const std::array<std::array<KeyID, 2>, kKeyModifierIDLast> s_translationTable = {{
+        {{ kKeyNone,      kKeyNone }},
+        {{ kKeyShift_L,   kKeyShift_R }},
+        {{ kKeyControl_L, kKeyControl_R }},
+        {{ kKeyAlt_L,     kKeyAlt_R }},
+        {{ kKeyMeta_L,    kKeyMeta_R }},
+        {{ kKeySuper_L,   kKeySuper_R }},
+        {{ kKeyAltGr,     kKeyAltGr }}
+    }};
 
     KeyModifierID id2 = kKeyModifierIDNull;
     UInt32 side      = 0;
@@ -478,15 +481,14 @@ ServerProxy::translateKey(KeyID id) const
     if (id2 != kKeyModifierIDNull) {
         return s_translationTable[m_modifierTranslationTable[id2]][side];
     }
-    else {
-        return id;
-    }
+            return id;
+   
 }
 
 KeyModifierMask
 ServerProxy::translateModifierMask(KeyModifierMask mask) const
 {
-    static const KeyModifierMask s_masks[kKeyModifierIDLast] = {
+    static const std::array<KeyModifierMask, kKeyModifierIDLast> s_masks = {{
         0x0000,
         KeyModifierShift,
         KeyModifierControl,
@@ -494,7 +496,7 @@ ServerProxy::translateModifierMask(KeyModifierMask mask) const
         KeyModifierMeta,
         KeyModifierSuper,
         KeyModifierAltGr
-    };
+    }};
 
     KeyModifierMask newMask = mask & ~(KeyModifierShift |
                                         KeyModifierControl |
@@ -527,7 +529,8 @@ void
 ServerProxy::enter()
 {
     // parse
-    SInt16 x, y;
+    SInt16 x;
+    SInt16 y;
     UInt16 mask;
     UInt32 seqNum;
     ProtocolUtil::readf(m_stream, kMsgCEnter + 4, &x, &y, &seqNum, &mask);
@@ -608,7 +611,9 @@ ServerProxy::keyDown()
     flushCompressedMouse();
 
     // parse
-    UInt16 id, mask, button;
+    UInt16 id;
+    UInt16 mask;
+    UInt16 button;
     ProtocolUtil::readf(m_stream, kMsgDKeyDown + 4, &id, &mask, &button);
     LOG((CLOG_DEBUG1 "recv key down id=0x%08x, mask=0x%04x, button=0x%04x", id, mask, button));
 
@@ -631,7 +636,10 @@ ServerProxy::keyRepeat()
     flushCompressedMouse();
 
     // parse
-    UInt16 id, mask, count, button;
+    UInt16 id;
+    UInt16 mask;
+    UInt16 count;
+    UInt16 button;
     ProtocolUtil::readf(m_stream, kMsgDKeyRepeat + 4,
                                 &id, &mask, &count, &button);
     LOG((CLOG_DEBUG1 "recv key repeat id=0x%08x, mask=0x%04x, count=%d, button=0x%04x", id, mask, count, button));
@@ -655,7 +663,9 @@ ServerProxy::keyUp()
     flushCompressedMouse();
 
     // parse
-    UInt16 id, mask, button;
+    UInt16 id;
+    UInt16 mask;
+    UInt16 button;
     ProtocolUtil::readf(m_stream, kMsgDKeyUp + 4, &id, &mask, &button);
     LOG((CLOG_DEBUG1 "recv key up id=0x%08x, mask=0x%04x, button=0x%04x", id, mask, button));
 
@@ -706,7 +716,8 @@ ServerProxy::mouseMove()
 {
     // parse
     bool ignore;
-    SInt16 x, y;
+    SInt16 x;
+    SInt16 y;
     ProtocolUtil::readf(m_stream, kMsgDMouseMove + 4, &x, &y);
 
     // note if we should ignore the move
@@ -739,7 +750,8 @@ ServerProxy::mouseRelativeMove()
 {
     // parse
     bool ignore;
-    SInt16 dx, dy;
+    SInt16 dx;
+    SInt16 dy;
     ProtocolUtil::readf(m_stream, kMsgDMouseRelMove + 4, &dx, &dy);
 
     // note if we should ignore the move
@@ -771,7 +783,8 @@ ServerProxy::mouseWheel()
     flushCompressedMouse();
 
     // parse
-    SInt16 xDelta, yDelta;
+    SInt16 xDelta;
+    SInt16 yDelta;
     ProtocolUtil::readf(m_stream, kMsgDMouseWheel + 4, &xDelta, &yDelta);
     LOG((CLOG_DEBUG2 "recv mouse wheel %+d,%+d", xDelta, yDelta));
 
@@ -821,7 +834,7 @@ ServerProxy::setOptions()
     m_client->setOptions(options);
 
     // update modifier table
-    for (UInt32 i = 0, n = (UInt32)options.size(); i < n; i += 2) {
+    for (UInt32 i = 0, n = static_cast<UInt32>(options.size()); i < n; i += 2) {
         KeyModifierID id = kKeyModifierIDNull;
         if (options[i] == kOptionModifierMapForShift) {
             id = kKeyModifierIDShift;

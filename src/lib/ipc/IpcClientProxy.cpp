@@ -17,6 +17,7 @@
  */
 
 #include "ipc/IpcClientProxy.h"
+#include <array>
 
 #include "ipc/Ipc.h"
 #include "ipc/IpcMessage.h"
@@ -98,18 +99,18 @@ IpcClientProxy::handleData(const Event&, void*)
 
     LOG((CLOG_DEBUG "start ipc handle data"));
 
-    UInt8 code[4];
-    UInt32 n = m_stream.read(code, 4);
+    std::array<UInt8, 4> code;
+    UInt32 n = m_stream.read(code.data(), 4);
     while (n != 0) {
 
         LOG((CLOG_DEBUG "ipc read: %c%c%c%c",
             code[0], code[1], code[2], code[3]));
 
         IpcMessage* m = nullptr;
-        if (memcmp(code, kIpcMsgHello, 4) == 0) {
+        if (memcmp(code.data(), kIpcMsgHello, 4) == 0) {
             m = parseHello();
         }
-        else if (memcmp(code, kIpcMsgCommand, 4) == 0) {
+        else if (memcmp(code.data(), kIpcMsgCommand, 4) == 0) {
             m = parseCommand();
         }
         else {
@@ -118,11 +119,11 @@ IpcClientProxy::handleData(const Event&, void*)
         }
 
         // don't delete with this event; the data is passed to a new event.
-        Event e(m_events->forIpcClientProxy().messageReceived(), this, NULL, Event::kDontFreeData);
+        Event e(m_events->forIpcClientProxy().messageReceived(), this, nullptr, Event::kDontFreeData);
         e.setDataObject(m);
         m_events->addEvent(e);
 
-        n = m_stream.read(code, 4);
+        n = m_stream.read(code.data(), 4);
     }
 
     LOG((CLOG_DEBUG "finished ipc handle data"));
@@ -140,7 +141,7 @@ IpcClientProxy::send(const IpcMessage& message)
 
     switch (message.type()) {
     case kIpcLogLine: {
-        const IpcLogLineMessage& llm = static_cast<const IpcLogLineMessage&>(message);
+        const auto& llm = static_cast<const IpcLogLineMessage&>(message);
         const std::string logLine = llm.logLine();
         ProtocolUtil::writef(&m_stream, kIpcMsgLogLine, &logLine);
         break;

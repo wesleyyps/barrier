@@ -43,9 +43,9 @@ public:
     typedef typename Container::const_iterator const_iterator;
     typedef Container container_type;
 
-    PriorityQueue() { }
+    PriorityQueue() = default;
     PriorityQueue(Container& swappedIn) { swap(swappedIn); }
-    ~PriorityQueue() { }
+    ~PriorityQueue() = default;
 
     //! @name manipulators
     //@{

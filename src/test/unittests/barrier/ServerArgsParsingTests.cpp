@@ -20,9 +20,9 @@
 #include "test/mock/barrier/MockArgParser.h"
 
 #include "test/global/gtest.h"
+#include <array>
 
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::NiceMock;
 
 bool
@@ -40,13 +40,13 @@ server_stubCheckUnexpectedArgs()
 TEST(ServerArgsParsingTests, parseServerArgs_addressArg_setBarrierAddress)
 {
     NiceMock<MockArgParser> argParser;
-    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(Invoke(server_stubParseGenericArgs));
-    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(Invoke(server_stubCheckUnexpectedArgs));
+    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(server_stubParseGenericArgs);
+    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(server_stubCheckUnexpectedArgs);
     ServerArgs serverArgs;
-    const int argc = 3;
-    const char* kAddressCmd[argc] = { "stub", "--address", "mock_address" };
+    constexpr int argc = 3;
+    std::array<const char*, argc> kAddressCmd = { "stub", "--address", "mock_address" };
 
-    argParser.parseServerArgs(serverArgs, argc, kAddressCmd);
+    argParser.parseServerArgs(serverArgs, argc, kAddressCmd.data());
 
     EXPECT_EQ("mock_address", serverArgs.m_barrierAddress);
 }
@@ -54,13 +54,13 @@ TEST(ServerArgsParsingTests, parseServerArgs_addressArg_setBarrierAddress)
 TEST(ServerArgsParsingTests, parseServerArgs_configArg_setConfigFile)
 {
     NiceMock<MockArgParser> argParser;
-    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(Invoke(server_stubParseGenericArgs));
-    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(Invoke(server_stubCheckUnexpectedArgs));
+    ON_CALL(argParser, parseGenericArgs(_, _, _)).WillByDefault(server_stubParseGenericArgs);
+    ON_CALL(argParser, checkUnexpectedArgs()).WillByDefault(server_stubCheckUnexpectedArgs);
     ServerArgs serverArgs;
-    const int argc = 3;
-    const char* kConfigCmd[argc] = { "stub", "--config", "mock_configFile" };
+    constexpr int argc = 3;
+    std::array<const char*, argc> kConfigCmd = { "stub", "--config", "mock_configFile" };
 
-    argParser.parseServerArgs(serverArgs, argc, kConfigCmd);
+    argParser.parseServerArgs(serverArgs, argc, kConfigCmd.data());
 
     EXPECT_EQ("mock_configFile", serverArgs.m_configFile);
 }

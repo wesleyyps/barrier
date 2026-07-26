@@ -47,7 +47,7 @@ void VersionChecker::checkLatest()
 
 void VersionChecker::replyFinished(QNetworkReply* reply)
 {
-    if (reply->error()) {
+    if (reply->error() != QNetworkReply::NoError) {
         // TODO: handle me
     } else {
         QString newestVersion = QString(reply->readAll());

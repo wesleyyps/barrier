@@ -18,6 +18,7 @@
 
 #include "server/ClientProxy1_0.h"
 
+#include <array>
 #include "barrier/ProtocolUtil.h"
 #include "barrier/XBarrier.h"
 #include "io/IStream.h"
@@ -34,7 +35,7 @@
 ClientProxy1_0::ClientProxy1_0(const std::string& name, barrier::IStream* stream,
                                IEventQueue* events) :
     ClientProxy(name, stream),
-    m_heartbeatTimer(NULL),
+    m_heartbeatTimer(nullptr),
     m_parser(&ClientProxy1_0::parseHandshakeMessage),
     m_events(events)
 {
@@ -42,28 +43,28 @@ ClientProxy1_0::ClientProxy1_0(const std::string& name, barrier::IStream* stream
     m_events->adoptHandler(m_events->forIStream().inputReady(),
                             stream->getEventTarget(),
                             new TMethodEventJob<ClientProxy1_0>(this,
-                                &ClientProxy1_0::handleData, NULL));
+                                &ClientProxy1_0::handleData, nullptr));
     m_events->adoptHandler(m_events->forIStream().outputError(),
                             stream->getEventTarget(),
                             new TMethodEventJob<ClientProxy1_0>(this,
-                                &ClientProxy1_0::handleWriteError, NULL));
+                                &ClientProxy1_0::handleWriteError, nullptr));
     m_events->adoptHandler(m_events->forIStream().inputShutdown(),
                             stream->getEventTarget(),
                             new TMethodEventJob<ClientProxy1_0>(this,
-                                &ClientProxy1_0::handleDisconnect, NULL));
+                                &ClientProxy1_0::handleDisconnect, nullptr));
     m_events->adoptHandler(m_events->forIStream().inputFormatError(),
                            stream->getEventTarget(),
                            new TMethodEventJob<ClientProxy1_0>(this,
-                                &ClientProxy1_0::handleDisconnect, NULL));
+                                &ClientProxy1_0::handleDisconnect, nullptr));
     m_events->adoptHandler(m_events->forIStream().outputShutdown(),
                             stream->getEventTarget(),
                             new TMethodEventJob<ClientProxy1_0>(this,
-                                &ClientProxy1_0::handleWriteError, NULL));
+                                &ClientProxy1_0::handleWriteError, nullptr));
     m_events->adoptHandler(Event::kTimer, this,
                             new TMethodEventJob<ClientProxy1_0>(this,
-                                &ClientProxy1_0::handleFlatline, NULL));
+                                &ClientProxy1_0::handleFlatline, nullptr));
 
-    setHeartbeatRate(kHeartRate, kHeartRate * kHeartBeatsUntilDeath);
+    ClientProxy1_0::setHeartbeatRate(kHeartRate, kHeartRate * kHeartBeatsUntilDeath);
 
     LOG((CLOG_DEBUG1 "querying client \"%s\" info", getName().c_str()));
     ProtocolUtil::writef(getStream(), kMsgQInfo);
@@ -99,7 +100,7 @@ ClientProxy1_0::removeHandlers()
     m_events->removeHandler(Event::kTimer, this);
 
     // remove timer
-    removeHeartbeatTimer();
+    ClientProxy1_0::removeHeartbeatTimer();
 }
 
 void
@@ -113,9 +114,9 @@ ClientProxy1_0::addHeartbeatTimer()
 void
 ClientProxy1_0::removeHeartbeatTimer()
 {
-    if (m_heartbeatTimer != NULL) {
+    if (m_heartbeatTimer != nullptr) {
         m_events->deleteTimer(m_heartbeatTimer);
-        m_heartbeatTimer = NULL;
+        m_heartbeatTimer = nullptr;
     }
 }
 
@@ -143,8 +144,8 @@ void
 ClientProxy1_0::handleData(const Event&, void*)
 {
     // handle messages until there are no more.  first read message code.
-    UInt8 code[4];
-    UInt32 n = getStream()->read(code, 4);
+    std::array<UInt8, 4> code;
+    UInt32 n = getStream()->read(code.data(), 4);
     while (n != 0) {
         // verify we got an entire code
         if (n != 4) {
@@ -156,7 +157,7 @@ ClientProxy1_0::handleData(const Event&, void*)
         // parse message
         try {
             LOG((CLOG_DEBUG2 "msg from \"%s\": %c%c%c%c", getName().c_str(), code[0], code[1], code[2], code[3]));
-            if (!(this->*m_parser)(code)) {
+            if (!(this->*m_parser)(code.data())) {
                 LOG((CLOG_ERR "invalid message from client \"%s\": %c%c%c%c", getName().c_str(), code[0], code[1], code[2], code[3]));
                 disconnect();
                 return;
@@ -171,7 +172,7 @@ ClientProxy1_0::handleData(const Event&, void*)
         }
 
         // next message
-        n = getStream()->read(code, 4);
+        n = getStream()->read(code.data(), 4);
     }
 
     // restart heartbeat timer
@@ -186,7 +187,7 @@ ClientProxy1_0::parseHandshakeMessage(const UInt8* code)
         LOG((CLOG_DEBUG2 "no-op from", getName().c_str()));
         return true;
     }
-    else if (memcmp(code, kMsgDInfo, 4) == 0) {
+    if (memcmp(code, kMsgDInfo, 4) == 0) {
         // future messages get parsed by parseMessage
         // NOTE: we're taking address of virtual function here,
         // not ClientProxy1_0 implementation of it.
@@ -211,7 +212,7 @@ ClientProxy1_0::parseMessage(const UInt8* code)
         }
         return false;
     }
-    else if (memcmp(code, kMsgCNoop, 4) == 0) {
+    if (memcmp(code, kMsgCNoop, 4) == 0) {
         // discard no-ops
         LOG((CLOG_DEBUG2 "no-op from", getName().c_str()));
         return true;
@@ -409,7 +410,7 @@ ClientProxy1_0::setOptions(const OptionsList& options)
     ProtocolUtil::writef(getStream(), kMsgDSetOptions, &options);
 
     // check options
-    for (UInt32 i = 0, n = (UInt32)options.size(); i < n; i += 2) {
+    for (UInt32 i = 0, n = static_cast<UInt32>(options.size()); i < n; i += 2) {
         if (options[i] == kOptionHeartbeat) {
             double rate = 1.0e-3 * static_cast<double>(options[i + 1]);
             if (rate <= 0.0) {
@@ -426,7 +427,13 @@ bool
 ClientProxy1_0::recvInfo()
 {
     // parse the message
-    SInt16 x, y, w, h, dummy1, mx, my;
+    SInt16 x;
+    SInt16 y;
+    SInt16 w;
+    SInt16 h;
+    SInt16 dummy1;
+    SInt16 mx;
+    SInt16 my;
     if (!ProtocolUtil::readf(getStream(), kMsgDInfo + 4,
                             &x, &y, &w, &h, &dummy1, &mx, &my)) {
         return false;
@@ -480,7 +487,7 @@ ClientProxy1_0::recvGrabClipboard()
     }
 
     // notify
-    ClipboardInfo* info   = new ClipboardInfo;
+    auto* info   = new ClipboardInfo;
     info->m_id             = id;
     info->m_sequenceNumber = seqNum;
     m_events->addEvent(Event(m_events->forClipboard().clipboardGrabbed(),

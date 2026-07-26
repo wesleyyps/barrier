@@ -32,9 +32,9 @@ class EventQueueTimer { };
 //
 
 OSXEventQueueBuffer::OSXEventQueueBuffer(IEventQueue* events) :
-    m_event(NULL),
+    m_event(nullptr),
     m_eventQueue(events),
-    m_carbonEventQueue(NULL)
+    m_carbonEventQueue(nullptr)
 {
     // do nothing
 }
@@ -42,7 +42,7 @@ OSXEventQueueBuffer::OSXEventQueueBuffer(IEventQueue* events) :
 OSXEventQueueBuffer::~OSXEventQueueBuffer()
 {
     // release the last event
-    if (m_event != NULL) {
+    if (m_event != nullptr) {
         ReleaseEvent(m_event);
     }
 }
@@ -53,31 +53,45 @@ OSXEventQueueBuffer::init()
     m_carbonEventQueue = GetCurrentEventQueue();
 }
 
+#include <unistd.h>
+#include "base/Stopwatch.h"
+
 void
 OSXEventQueueBuffer::waitForEvent(double timeout)
 {
     EventRef event;
-    ReceiveNextEvent(0, NULL, timeout, false, &event);
+    if (timeout > 0.0) {
+        Stopwatch timer(true);
+        while (timer.getTime() < timeout) {
+            OSStatus status = ReceiveNextEvent(0, nullptr, 0.0, 0u, &event);
+            if (status != eventLoopTimedOutErr) {
+                break;
+            }
+            usleep(1000); // 1 ms sleep
+        }
+    } else {
+        ReceiveNextEvent(0, nullptr, 0.0, 0u, &event);
+    }
 }
 
 IEventQueueBuffer::Type
 OSXEventQueueBuffer::getEvent(Event& event, UInt32& dataID)
 {
     // release the previous event
-    if (m_event != NULL) {
+    if (m_event != nullptr) {
         ReleaseEvent(m_event);
-        m_event = NULL;
+        m_event = nullptr;
     }
 
     // get the next event
-    OSStatus error = ReceiveNextEvent(0, NULL, 0.0, true, &m_event);
+    OSStatus error = ReceiveNextEvent(0, nullptr, 0.0, 1u, &m_event);
 
     // handle the event
     if (error == eventLoopQuitErr) {
         event = Event(Event::kQuit);
         return kSystem;
     }
-    else if (error != noErr) {
+    if (error != noErr) {
         return kNone;
     }
     else {
@@ -126,7 +140,7 @@ bool
 OSXEventQueueBuffer::isEmpty() const
 {
     EventRef event;
-    OSStatus status = ReceiveNextEvent(0, NULL, 0.0, false, &event);
+    OSStatus status = ReceiveNextEvent(0, nullptr, 0.0, 0u, &event);
     return (status == eventLoopTimedOutErr);
 }
 

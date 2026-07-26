@@ -21,27 +21,27 @@
 
 ZeroconfBrowser::ZeroconfBrowser(QObject* parent) :
     QObject(parent),
-    m_DnsServiceRef(0),
-    m_pSocket(0)
+    m_DnsServiceRef(nullptr),
+    m_pSocket(nullptr)
 {
 }
 
 ZeroconfBrowser::~ZeroconfBrowser()
 {
-    if (m_pSocket) {
+    if (m_pSocket != nullptr) {
         delete m_pSocket;
     }
 
-    if (m_DnsServiceRef) {
+    if (m_DnsServiceRef != nullptr) {
         DNSServiceRefDeallocate(m_DnsServiceRef);
-        m_DnsServiceRef = 0;
+        m_DnsServiceRef = nullptr;
     }
 }
 
 void ZeroconfBrowser::browseForType(const QString& type)
 {
     DNSServiceErrorType err = DNSServiceBrowse(&m_DnsServiceRef, 0, 0,
-        type.toUtf8().constData(), 0, browseReply, this);
+        type.toUtf8().constData(), nullptr, browseReply, this);
 
     if (err != kDNSServiceErr_NoError) {
         emit error(err);
@@ -71,13 +71,13 @@ void ZeroconfBrowser::browseReply(DNSServiceRef, DNSServiceFlags flags,
             quint32, DNSServiceErrorType errorCode, const char* serviceName,
             const char* regType, const char* replyDomain, void* context)
 {
-    ZeroconfBrowser* browser = static_cast<ZeroconfBrowser*>(context);
+    auto* browser = static_cast<ZeroconfBrowser*>(context);
     if (errorCode != kDNSServiceErr_NoError) {
         emit browser->error(errorCode);
     }
     else {
         ZeroconfRecord record(serviceName, regType, replyDomain);
-        if (flags & kDNSServiceFlagsAdd) {
+        if ((flags & kDNSServiceFlagsAdd) != 0) {
             if (!browser->m_Records.contains(record)) {
                 browser->m_Records.append(record);
             }
@@ -85,7 +85,7 @@ void ZeroconfBrowser::browseReply(DNSServiceRef, DNSServiceFlags flags,
         else {
             browser->m_Records.removeAll(record);
         }
-        if (!(flags & kDNSServiceFlagsMoreComing)) {
+        if ((flags & kDNSServiceFlagsMoreComing) == 0) {
             emit browser->currentRecordsChanged(browser->m_Records);
         }
     }

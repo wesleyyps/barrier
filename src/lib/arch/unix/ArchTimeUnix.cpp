@@ -47,6 +47,6 @@ double
 ArchTimeUnix::time()
 {
     struct timeval t;
-    gettimeofday(&t, NULL);
-    return (double)t.tv_sec + 1.0e-6 * (double)t.tv_usec;
+    gettimeofday(&t, nullptr);
+    return static_cast<double>(t.tv_sec) + 1.0e-6 * static_cast<double>(t.tv_usec);
 }

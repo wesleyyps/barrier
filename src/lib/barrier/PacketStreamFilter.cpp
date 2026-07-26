@@ -17,6 +17,7 @@
  */
 
 #include "barrier/PacketStreamFilter.h"
+#include <array>
 #include "barrier/protocol_types.h"
 #include "base/IEventQueue.h"
 #include "mt/Lock.h"
@@ -72,7 +73,7 @@ PacketStreamFilter::read(void* buffer, UInt32 n)
     }
 
     // read it
-    if (buffer != NULL) {
+    if (buffer != nullptr) {
         memcpy(buffer, m_buffer.peek(n), n);
     }
     m_buffer.pop(n);
@@ -84,7 +85,7 @@ PacketStreamFilter::read(void* buffer, UInt32 n)
 
     if (m_inputShutdown && m_size == 0) {
         m_events->addEvent(Event(m_events->forIStream().inputShutdown(),
-                        getEventTarget(), NULL));
+                        getEventTarget(), nullptr));
     }
 
     return n;
@@ -94,12 +95,12 @@ void
 PacketStreamFilter::write(const void* buffer, UInt32 count)
 {
     // write the length of the payload
-    UInt8 length[4];
-    length[0] = (UInt8)((count >> 24) & 0xff);
-    length[1] = (UInt8)((count >> 16) & 0xff);
-    length[2] = (UInt8)((count >>  8) & 0xff);
-    length[3] = (UInt8)( count        & 0xff);
-    getStream()->write(length, sizeof(length));
+    std::array<UInt8, 4> length;
+    length[0] = static_cast<UInt8>((count >> 24) & 0xff);
+    length[1] = static_cast<UInt8>((count >> 16) & 0xff);
+    length[2] = static_cast<UInt8>((count >>  8) & 0xff);
+    length[3] = static_cast<UInt8>( count        & 0xff);
+    getStream()->write(length.data(), length.size());
 
     // write the payload
     getStream()->write(buffer, count);
@@ -139,13 +140,13 @@ bool PacketStreamFilter::readPacketSize()
     // note -- m_mutex must be locked on entry
 
     if (m_size == 0 && m_buffer.getSize() >= 4) {
-        UInt8 buffer[4];
-        memcpy(buffer, m_buffer.peek(sizeof(buffer)), sizeof(buffer));
-        m_buffer.pop(sizeof(buffer));
-        m_size = ((UInt32)buffer[0] << 24) |
-                 ((UInt32)buffer[1] << 16) |
-                 ((UInt32)buffer[2] <<  8) |
-                  (UInt32)buffer[3];
+        std::array<UInt8, 4> buffer;
+        memcpy(buffer.data(), m_buffer.peek(buffer.size()), buffer.size());
+        m_buffer.pop(buffer.size());
+        m_size = (static_cast<UInt32>(buffer[0]) << 24) |
+                 (static_cast<UInt32>(buffer[1]) << 16) |
+                 (static_cast<UInt32>(buffer[2]) <<  8) |
+                  static_cast<UInt32>(buffer[3]);
 
         if (m_size > PROTOCOL_MAX_MESSAGE_LENGTH) {
             m_events->addEvent(Event(m_events->forIStream().inputFormatError(), getEventTarget()));
@@ -162,10 +163,10 @@ PacketStreamFilter::readMore()
     bool wasReady = isReadyNoLock();
 
     // read more data
-    char buffer[4096];
-    UInt32 n = getStream()->read(buffer, sizeof(buffer));
+    std::array<char, 4096> buffer;
+    UInt32 n = getStream()->read(buffer.data(), buffer.size());
     while (n > 0) {
-        m_buffer.write(buffer, n);
+        m_buffer.write(buffer.data(), n);
 
         // if we don't yet have the next packet size then get it, if possible.
         // Note that we can't wait for whole pending data to arrive because it may be huge in
@@ -174,7 +175,7 @@ PacketStreamFilter::readMore()
             break;
         }
 
-        n = getStream()->read(buffer, sizeof(buffer));
+        n = getStream()->read(buffer.data(), buffer.size());
     }
 
     // note if we now have a whole packet

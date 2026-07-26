@@ -32,8 +32,8 @@ PrimaryClient::PrimaryClient(const std::string& name, barrier::Screen* screen) :
     m_fakeInputCount(0)
 {
     // all clipboards are clean
-    for (UInt32 i = 0; i < kClipboardEnd; ++i) {
-        m_clipboardDirty[i] = false;
+    for (bool & i : m_clipboardDirty) {
+        i = false;
     }
 }
 

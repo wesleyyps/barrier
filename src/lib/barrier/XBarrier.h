@@ -69,7 +69,7 @@ a client that is already connected.
 class XDuplicateClient : public XBarrier {
 public:
     XDuplicateClient(const std::string& name);
-    virtual ~XDuplicateClient() noexcept { }
+    virtual ~XDuplicateClient() noexcept = default;
 
     //! @name accessors
     //@{
@@ -94,7 +94,7 @@ unknown to the server.
 class XUnknownClient : public XBarrier {
 public:
     XUnknownClient(const std::string& name);
-    virtual ~XUnknownClient() noexcept { }
+    virtual ~XUnknownClient() noexcept = default;
 
     //! @name accessors
     //@{
@@ -120,7 +120,7 @@ exit(int).
 class XExitApp : public XBarrier {
 public:
     XExitApp(int code);
-    virtual ~XExitApp() noexcept { }
+    virtual ~XExitApp() noexcept = default;
 
     //! Get the exit code
     int getCode() const noexcept;

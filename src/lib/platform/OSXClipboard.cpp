@@ -32,7 +32,7 @@
 
 OSXClipboard::OSXClipboard() :
     m_time(0),
-    m_pboard(NULL)
+    m_pboard(nullptr)
 {
     m_converters.push_back(new OSXClipboardHTMLConverter);
     m_converters.push_back(new OSXClipboardBMPConverter);
@@ -45,7 +45,7 @@ OSXClipboard::OSXClipboard() :
     if (createErr != noErr) {
         LOG((CLOG_DEBUG "failed to create clipboard reference: error %i", createErr));
         LOG((CLOG_ERR "unable to connect to pasteboard, clipboard sharing disabled", createErr));
-        m_pboard = NULL;
+        m_pboard = nullptr;
         return;
 
     }
@@ -65,7 +65,7 @@ OSXClipboard::~OSXClipboard()
 OSXClipboard::empty()
 {
     LOG((CLOG_DEBUG "emptying clipboard"));
-    if (m_pboard == NULL)
+    if (m_pboard == nullptr)
         return false;
 
     OSStatus err = PasteboardClear(m_pboard);
@@ -80,13 +80,13 @@ OSXClipboard::empty()
     bool
 OSXClipboard::synchronize()
 {
-    if (m_pboard == NULL)
+    if (m_pboard == nullptr)
         return false;
 
     PasteboardSyncFlags flags = PasteboardSynchronize(m_pboard);
     LOG((CLOG_DEBUG2 "flags: %x", flags));
 
-    if (flags & kPasteboardModified) {
+    if ((flags & kPasteboardModified) != 0u) {
         return true;
     }
     return false;
@@ -94,7 +94,7 @@ OSXClipboard::synchronize()
 
 void OSXClipboard::add(EFormat format, const std::string& data)
 {
-    if (m_pboard == NULL)
+    if (m_pboard == nullptr)
         return;
 
     LOG((CLOG_DEBUG "add %d bytes to clipboard format: %d", data.size(), format));
@@ -108,17 +108,14 @@ void OSXClipboard::add(EFormat format, const std::string& data)
         LOG((CLOG_DEBUG " format of data to be added to clipboard was kHTML"));
     }
 
-    for (ConverterList::const_iterator index = m_converters.begin();
-            index != m_converters.end(); ++index) {
-
-        IOSXClipboardConverter* converter = *index;
+    for (auto converter : m_converters) {
 
         // skip converters for other formats
         if (converter->getFormat() == format) {
             std::string osXData = converter->fromIClipboard(data);
             CFStringRef flavorType = converter->getOSXFormat();
             CFDataRef dataRef = CFDataCreate(kCFAllocatorDefault, (UInt8 *)osXData.data(), osXData.size());
-            PasteboardItemID itemID = 0;
+            auto itemID = (PasteboardItemID)1;
 
             PasteboardPutItemFlavor(
                 m_pboard,
@@ -136,7 +133,7 @@ void OSXClipboard::add(EFormat format, const std::string& data)
 bool
 OSXClipboard::open(Time time) const
 {
-    if (m_pboard == NULL)
+    if (m_pboard == nullptr)
         return false;
 
     LOG((CLOG_DEBUG "opening clipboard"));
@@ -160,22 +157,18 @@ OSXClipboard::getTime() const
 bool
 OSXClipboard::has(EFormat format) const
 {
-    if (m_pboard == NULL)
+    if (m_pboard == nullptr)
         return false;
 
     PasteboardItemID item;
-    PasteboardGetItemIdentifier(m_pboard, (CFIndex) 1, &item);
+    PasteboardGetItemIdentifier(m_pboard, static_cast<CFIndex>(1), &item);
 
-    for (ConverterList::const_iterator index = m_converters.begin();
-            index != m_converters.end(); ++index) {
-        IOSXClipboardConverter* converter = *index;
+    for (auto converter : m_converters) {
         if (converter->getFormat() == format) {
             PasteboardFlavorFlags flags;
             CFStringRef type = converter->getOSXFormat();
 
-            OSStatus res;
-
-            if ((res = PasteboardGetItemFlavorFlags(m_pboard, item, type, &flags)) == noErr) {
+            if (PasteboardGetItemFlavorFlags(m_pboard, item, type, &flags) == noErr) {
                 return true;
             }
         }
@@ -190,17 +183,16 @@ std::string OSXClipboard::get(EFormat format) const
     PasteboardItemID item;
     std::string result;
 
-    if (m_pboard == NULL)
+    if (m_pboard == nullptr)
         return result;
 
-    PasteboardGetItemIdentifier(m_pboard, (CFIndex) 1, &item);
+    PasteboardGetItemIdentifier(m_pboard, static_cast<CFIndex>(1), &item);
 
 
     // find the converter for the first clipboard format we can handle
-    IOSXClipboardConverter* converter = NULL;
-    for (ConverterList::const_iterator index = m_converters.begin();
-            index != m_converters.end(); ++index) {
-        converter = *index;
+    IOSXClipboardConverter* converter = nullptr;
+    for (auto m_converter : m_converters) {
+        converter = m_converter;
 
         PasteboardFlavorFlags flags;
         type = converter->getOSXFormat();
@@ -209,17 +201,17 @@ std::string OSXClipboard::get(EFormat format) const
                 PasteboardGetItemFlavorFlags(m_pboard, item, type, &flags) == noErr) {
             break;
         }
-        converter = NULL;
+        converter = nullptr;
     }
 
     // if no converter then we don't recognize any formats
-    if (converter == NULL) {
+    if (converter == nullptr) {
         LOG((CLOG_DEBUG "Unable to find converter for data"));
         return result;
     }
 
     // get the clipboard data.
-    CFDataRef buffer = NULL;
+    CFDataRef buffer = nullptr;
     try {
         OSStatus err = PasteboardCopyItemFlavorData(m_pboard, item, type, &buffer);
 
@@ -237,7 +229,7 @@ std::string OSXClipboard::get(EFormat format) const
         RETHROW_XTHREAD
     }
 
-    if (buffer != NULL)
+    if (buffer != nullptr)
         CFRelease(buffer);
 
     return converter->toIClipboard(result);
@@ -246,12 +238,11 @@ std::string OSXClipboard::get(EFormat format) const
     void
 OSXClipboard::clearConverters()
 {
-    if (m_pboard == NULL)
+    if (m_pboard == nullptr)
         return;
 
-    for (ConverterList::iterator index = m_converters.begin();
-            index != m_converters.end(); ++index) {
-        delete *index;
+    for (auto & m_converter : m_converters) {
+        delete m_converter;
     }
     m_converters.clear();
 }

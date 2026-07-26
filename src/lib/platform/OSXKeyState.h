@@ -98,7 +98,7 @@ public:
     virtual SInt32        pollActiveGroup() const;
     virtual void        pollPressedKeys(KeyButtonSet& pressedKeys) const;
 
-    CGEventFlags getModifierStateAsOSXFlags();
+    CGEventFlags getModifierStateAsOSXFlags() const;
 protected:
     // KeyState overrides
     virtual void        getKeyMap(barrier::KeyMap& keyMap);

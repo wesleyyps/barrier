@@ -27,6 +27,7 @@
 #include "common/stdostream.h"
 
 #include <cstdlib>
+#include <array>
 
 using namespace barrier::string;
 
@@ -68,7 +69,7 @@ bool Config::renameScreen(const std::string& oldName, const std::string& newName
 {
 	// get canonical name and find cell
     std::string oldCanonical = getCanonicalName(oldName);
-	CellMap::iterator index = m_map.find(oldCanonical);
+	auto index = m_map.find(oldCanonical);
 	if (index == m_map.end()) {
 		return false;
 	}
@@ -97,11 +98,10 @@ bool Config::renameScreen(const std::string& oldName, const std::string& newName
 
 	// update alias targets
 	if (CaselessCmp::equal(oldName, oldCanonical)) {
-		for (NameMap::iterator iter = m_nameToCanonicalName.begin();
-							iter != m_nameToCanonicalName.end(); ++iter) {
+		for (auto & iter : m_nameToCanonicalName) {
 			if (CaselessCmp::equal(
-							iter->second, oldCanonical)) {
-				iter->second = newName;
+							iter.second, oldCanonical)) {
+				iter.second = newName;
 			}
 		}
 	}
@@ -113,7 +113,7 @@ void Config::removeScreen(const std::string& name)
 {
 	// get canonical name and find cell
     std::string canonical = getCanonicalName(name);
-	CellMap::iterator index = m_map.find(canonical);
+	auto index = m_map.find(canonical);
 	if (index == m_map.end()) {
 		return;
 	}
@@ -128,7 +128,7 @@ void Config::removeScreen(const std::string& name)
 	}
 
 	// remove aliases (and canonical name)
-	for (NameMap::iterator iter = m_nameToCanonicalName.begin();
+	for (auto iter = m_nameToCanonicalName.begin();
 								iter != m_nameToCanonicalName.end(); ) {
 		if (iter->second == canonical) {
 			m_nameToCanonicalName.erase(iter++);
@@ -172,7 +172,7 @@ bool Config::removeAlias(const std::string& alias)
 	}
 
 	// find alias
-	NameMap::iterator index = m_nameToCanonicalName.find(alias);
+	auto index = m_nameToCanonicalName.find(alias);
 	if (index == m_nameToCanonicalName.end()) {
 		return false;
 	}
@@ -191,7 +191,7 @@ bool Config::removeAliases(const std::string& canonical)
 	}
 
 	// find and removing matching aliases
-	for (NameMap::iterator index = m_nameToCanonicalName.begin();
+	for (auto index = m_nameToCanonicalName.begin();
 							index != m_nameToCanonicalName.end(); ) {
 		if (index->second == canonical && index->first != canonical) {
 			m_nameToCanonicalName.erase(index++);
@@ -211,10 +211,9 @@ Config::removeAllAliases()
 	m_nameToCanonicalName.clear();
 
 	// put the canonical names back in
-	for (CellMap::iterator index = m_map.begin();
-								index != m_map.end(); ++index) {
+	for (auto & index : m_map) {
 		m_nameToCanonicalName.insert(
-								std::make_pair(index->first, index->first));
+								std::make_pair(index.first, index.first));
 	}
 }
 
@@ -225,7 +224,7 @@ bool Config::connect(const std::string& srcName, EDirection srcSide,
 	assert(srcSide >= kFirstDirection && srcSide <= kLastDirection);
 
 	// find source cell
-	CellMap::iterator index = m_map.find(getCanonicalName(srcName));
+	auto index = m_map.find(getCanonicalName(srcName));
 	if (index == m_map.end()) {
 		return false;
 	}
@@ -241,7 +240,7 @@ bool Config::disconnect(const std::string& srcName, EDirection srcSide)
 	assert(srcSide >= kFirstDirection && srcSide <= kLastDirection);
 
 	// find source cell
-	CellMap::iterator index = m_map.find(srcName);
+	auto index = m_map.find(srcName);
 	if (index == m_map.end()) {
 		return false;
 	}
@@ -257,7 +256,7 @@ bool Config::disconnect(const std::string& srcName, EDirection srcSide, float po
 	assert(srcSide >= kFirstDirection && srcSide <= kLastDirection);
 
 	// find source cell
-	CellMap::iterator index = m_map.find(srcName);
+	auto index = m_map.find(srcName);
 	if (index == m_map.end()) {
 		return false;
 	}
@@ -277,17 +276,17 @@ Config::setBarrierAddress(const NetworkAddress& addr)
 bool Config::addOption(const std::string& name, OptionID option, OptionValue value)
 {
 	// find options
-	ScreenOptions* options = NULL;
+	ScreenOptions* options = nullptr;
 	if (name.empty()) {
 		options = &m_globalOptions;
 	}
 	else {
-		CellMap::iterator index = m_map.find(name);
+		auto index = m_map.find(name);
 		if (index != m_map.end()) {
 			options = &index->second.m_options;
 		}
 	}
-	if (options == NULL) {
+	if (options == nullptr) {
 		return false;
 	}
 
@@ -299,17 +298,17 @@ bool Config::addOption(const std::string& name, OptionID option, OptionValue val
 bool Config::removeOption(const std::string& name, OptionID option)
 {
 	// find options
-	ScreenOptions* options = NULL;
+	ScreenOptions* options = nullptr;
 	if (name.empty()) {
 		options = &m_globalOptions;
 	}
 	else {
-		CellMap::iterator index = m_map.find(name);
+		auto index = m_map.find(name);
 		if (index != m_map.end()) {
 			options = &index->second.m_options;
 		}
 	}
-	if (options == NULL) {
+	if (options == nullptr) {
 		return false;
 	}
 
@@ -321,17 +320,17 @@ bool Config::removeOption(const std::string& name, OptionID option)
 bool Config::removeOptions(const std::string& name)
 {
 	// find options
-	ScreenOptions* options = NULL;
+	ScreenOptions* options = nullptr;
 	if (name.empty()) {
 		options = &m_globalOptions;
 	}
 	else {
-		CellMap::iterator index = m_map.find(name);
+		auto index = m_map.find(name);
 		if (index != m_map.end()) {
 			options = &index->second.m_options;
 		}
 	}
-	if (options == NULL) {
+	if (options == nullptr) {
 		return false;
 	}
 
@@ -374,14 +373,14 @@ bool Config::isValidScreenName(const std::string& name) const
 		}
 
 		// check first and last characters
-		if (!(isalnum(name[b]) || name[b] == '_') ||
-			!(isalnum(name[e - 1]) || name[e - 1] == '_')) {
+		if (!((isalnum(name[b]) != 0) || name[b] == '_') ||
+			!((isalnum(name[e - 1]) != 0) || name[e - 1] == '_')) {
 			return false;
 		}
 
 		// check interior characters
         for (std::string::size_type i = b; i < e; ++i) {
-			if (!isalnum(name[i]) && name[i] != '_' && name[i] != '-') {
+			if ((isalnum(name[i]) == 0) && name[i] != '_' && name[i] != '-') {
 				return false;
 			}
 		}
@@ -436,13 +435,12 @@ Config::isCanonicalName(const std::string& name) const
 
 std::string Config::getCanonicalName(const std::string& name) const
 {
-	NameMap::const_iterator index = m_nameToCanonicalName.find(name);
+	auto index = m_nameToCanonicalName.find(name);
 	if (index == m_nameToCanonicalName.end()) {
         return std::string();
 	}
-	else {
-		return index->second;
-	}
+			return index->second;
+
 }
 
 std::string Config::getNeighbor(const std::string& srcName, EDirection srcSide,
@@ -451,32 +449,32 @@ std::string Config::getNeighbor(const std::string& srcName, EDirection srcSide,
 	assert(srcSide >= kFirstDirection && srcSide <= kLastDirection);
 
 	// find source cell
-	CellMap::const_iterator index = m_map.find(getCanonicalName(srcName));
+	auto index = m_map.find(getCanonicalName(srcName));
 	if (index == m_map.end()) {
         return std::string();
 	}
 
 	// find edge
-	const CellEdge* srcEdge, *dstEdge;
+	const CellEdge * srcEdge;
+	const CellEdge *dstEdge;
 	if (!index->second.getLink(srcSide, position, srcEdge, dstEdge)) {
 		// no neighbor
 		return "";
 	}
-	else {
-		// compute position on neighbor
-		if (positionOut != NULL) {
+			// compute position on neighbor
+		if (positionOut != nullptr) {
 			*positionOut =
 				dstEdge->inverseTransform(srcEdge->transform(position));
 		}
 
 		// return neighbor's name
 		return getCanonicalName(dstEdge->getName());
-	}
+
 }
 
 bool Config::hasNeighbor(const std::string& srcName, EDirection srcSide) const
 {
-	return hasNeighbor(srcName, srcSide, 0.0f, 1.0f);
+	return hasNeighbor(srcName, srcSide, 0.0F, 1.0F);
 }
 
 bool Config::hasNeighbor(const std::string& srcName, EDirection srcSide,
@@ -485,7 +483,7 @@ bool Config::hasNeighbor(const std::string& srcName, EDirection srcSide,
 	assert(srcSide >= kFirstDirection && srcSide <= kLastDirection);
 
 	// find source cell
-	CellMap::const_iterator index = m_map.find(getCanonicalName(srcName));
+	auto index = m_map.find(getCanonicalName(srcName));
 	if (index == m_map.end()) {
 		return false;
 	}
@@ -495,14 +493,14 @@ bool Config::hasNeighbor(const std::string& srcName, EDirection srcSide,
 
 Config::link_const_iterator Config::beginNeighbor(const std::string& srcName) const
 {
-	CellMap::const_iterator index = m_map.find(getCanonicalName(srcName));
+	auto index = m_map.find(getCanonicalName(srcName));
 	assert(index != m_map.end());
 	return index->second.begin();
 }
 
 Config::link_const_iterator Config::endNeighbor(const std::string& srcName) const
 {
-	CellMap::const_iterator index = m_map.find(getCanonicalName(srcName));
+	auto index = m_map.find(getCanonicalName(srcName));
 	assert(index != m_map.end());
 	return index->second.end();
 }
@@ -516,12 +514,12 @@ Config::getBarrierAddress() const
 const Config::ScreenOptions* Config::getOptions(const std::string& name) const
 {
 	// find options
-	const ScreenOptions* options = NULL;
+	const ScreenOptions* options = nullptr;
 	if (name.empty()) {
 		options = &m_globalOptions;
 	}
 	else {
-		CellMap::const_iterator index = m_map.find(name);
+		auto index = m_map.find(name);
 		if (index != m_map.end()) {
 			options = &index->second.m_options;
 		}
@@ -555,7 +553,7 @@ Config::operator==(const Config& x) const
 		return false;
 	}
 
-	for (CellMap::const_iterator index1 = m_map.begin(),
+	for (auto index1 = m_map.begin(),
 								index2 = x.m_map.begin();
 								index1 != m_map.end(); ++index1, ++index2) {
 		// compare names
@@ -569,7 +567,7 @@ Config::operator==(const Config& x) const
 		}
 	}
 
-	for (NameMap::const_iterator index1 = m_nameToCanonicalName.begin(),
+	for (auto index1 = m_nameToCanonicalName.begin(),
 								index2 = x.m_nameToCanonicalName.begin();
 								index1 != m_nameToCanonicalName.end();
 								++index1, ++index2) {
@@ -606,7 +604,7 @@ Config::read(ConfigReadContext& context)
 const char*
 Config::dirName(EDirection dir)
 {
-	static const char* s_name[] = { "left", "right", "up", "down" };
+	static const std::array<const char*, 4> s_name = { "left", "right", "up", "down" };
 
 	assert(dir >= kFirstDirection && dir <= kLastDirection);
 
@@ -621,21 +619,21 @@ Config::getInputFilter()
 
 std::string Config::formatInterval(const Interval& x)
 {
-	if (x.first == 0.0f && x.second == 1.0f) {
+	if (x.first == 0.0F && x.second == 1.0F) {
 		return "";
 	}
-	return barrier::string::sprintf("(%d,%d)", (int)(x.first * 100.0f + 0.5f),
-										(int)(x.second * 100.0f + 0.5f));
+	return barrier::string::sprintf("(%d,%d)", static_cast<int>(x.first * 100.0F + 0.5F),
+										static_cast<int>(x.second * 100.0F + 0.5F));
 }
 
 void
 Config::readSection(ConfigReadContext& s)
 {
-	static const char s_section[] = "section:";
-	static const char s_options[] = "options";
-	static const char s_screens[] = "screens";
-	static const char s_links[]   = "links";
-	static const char s_aliases[] = "aliases";
+	static const std::string s_section = "section:";
+	static const std::string s_options = "options";
+	static const std::string s_screens = "screens";
+	static const std::string s_links   = "links";
+	static const std::string s_aliases = "aliases";
 
     std::string line;
 	if (!s.readLine(line)) {
@@ -649,7 +647,7 @@ Config::readSection(ConfigReadContext& s)
 	}
 
 	// get section name
-    std::string::size_type i = line.find_first_not_of(" \t", sizeof(s_section) - 1);
+    std::string::size_type i = line.find_first_not_of(" \t", s_section.length());
     if (i == std::string::npos) {
 		throw XConfigRead(s, "section name is missing");
 	}
@@ -692,8 +690,10 @@ Config::readSectionOptions(ConfigReadContext& s)
 		//   values       := valueAndArgs[,valueAndArgs]...
 		//   valueAndArgs := <value>[(arg[,...])]
         std::string::size_type i = 0;
-        std::string name, value;
-		ConfigReadContext::ArgList nameArgs, valueArgs;
+        std::string name;
+        std::string value;
+		ConfigReadContext::ArgList nameArgs;
+		ConfigReadContext::ArgList valueArgs;
 		s.parseNameWithArgs("name", line, "=", i, name, nameArgs);
 		++i;
 		s.parseNameWithArgs("value", line, ",;\n", i, value, valueArgs);
@@ -942,8 +942,12 @@ Config::readSectionLinks(ConfigReadContext& s)
 			// in the range [0,100] and start < end.  if not given the
 			// interval is taken to be (0,100).
             std::string::size_type i = 0;
-            std::string side, dstScreen, srcArgString, dstArgString;
-			ConfigReadContext::ArgList srcArgs, dstArgs;
+            std::string side;
+            std::string dstScreen;
+            std::string srcArgString;
+            std::string dstArgString;
+			ConfigReadContext::ArgList srcArgs;
+			ConfigReadContext::ArgList dstArgs;
 			s.parseNameWithArgs("link", line, "=", i, side, srcArgs);
 			++i;
 			s.parseNameWithArgs("screen", line, "", i, dstScreen, dstArgs);
@@ -1360,7 +1364,7 @@ Config::getOptionName(OptionID id)
 	if (id == kOptionClipboardSharing) {
 		return "clipboardSharing";
 	}
-	return NULL;
+	return nullptr;
 }
 
 std::string Config::getOptionValue(OptionID id, OptionValue value)
@@ -1555,7 +1559,7 @@ Config::CellEdge::operator<(const CellEdge& o) const
 	if (static_cast<int>(m_side) < static_cast<int>(o.m_side)) {
 		return true;
 	}
-	else if (static_cast<int>(m_side) > static_cast<int>(o.m_side)) {
+	if (static_cast<int>(m_side) > static_cast<int>(o.m_side)) {
 		return false;
 	}
 
@@ -1596,7 +1600,7 @@ Config::Cell::add(const CellEdge& src, const CellEdge& dst)
 void
 Config::Cell::remove(EDirection side)
 {
-	for (EdgeLinks::iterator j = m_neighbors.begin();
+	for (auto j = m_neighbors.begin();
 							j != m_neighbors.end(); ) {
 		if (j->first.getSide() == side) {
 			m_neighbors.erase(j++);
@@ -1610,7 +1614,7 @@ Config::Cell::remove(EDirection side)
 void
 Config::Cell::remove(EDirection side, float position)
 {
-	for (EdgeLinks::iterator j = m_neighbors.begin();
+	for (auto j = m_neighbors.begin();
 							j != m_neighbors.end(); ++j) {
 		if (j->first.getSide() == side && j->first.isInside(position)) {
 			m_neighbors.erase(j);
@@ -1621,7 +1625,7 @@ Config::Cell::remove(EDirection side, float position)
 void
 Config::Cell::remove(const Name& name)
 {
-	for (EdgeLinks::iterator j = m_neighbors.begin();
+	for (auto j = m_neighbors.begin();
 							j != m_neighbors.end(); ) {
 		if (name == j->second.getName()) {
 			m_neighbors.erase(j++);
@@ -1634,10 +1638,9 @@ Config::Cell::remove(const Name& name)
 
 void Config::Cell::rename(const Name& oldName, const std::string& newName)
 {
-	for (EdgeLinks::iterator j = m_neighbors.begin();
-							j != m_neighbors.end(); ++j) {
-		if (oldName == j->second.getName()) {
-			j->second.setName(newName);
+	for (auto & m_neighbor : m_neighbors) {
+		if (oldName == m_neighbor.second.getName()) {
+			m_neighbor.second.setName(newName);
 		}
 	}
 }
@@ -1645,14 +1648,14 @@ void Config::Cell::rename(const Name& oldName, const std::string& newName)
 bool
 Config::Cell::hasEdge(const CellEdge& edge) const
 {
-	EdgeLinks::const_iterator i = m_neighbors.find(edge);
+	auto i = m_neighbors.find(edge);
 	return (i != m_neighbors.end() && i->first == edge);
 }
 
 bool
 Config::Cell::overlaps(const CellEdge& edge) const
 {
-	EdgeLinks::const_iterator i = m_neighbors.upper_bound(edge);
+	auto i = m_neighbors.upper_bound(edge);
 	if (i != m_neighbors.end() && i->first.overlaps(edge)) {
 		return true;
 	}
@@ -1667,7 +1670,7 @@ Config::Cell::getLink(EDirection side, float position,
 				const CellEdge*& src, const CellEdge*& dst) const
 {
 	CellEdge edge(side, position);
-	EdgeLinks::const_iterator i = m_neighbors.upper_bound(edge);
+	auto i = m_neighbors.upper_bound(edge);
 	if (i == m_neighbors.begin()) {
 		return false;
 	}
@@ -1692,7 +1695,7 @@ Config::Cell::operator==(const Cell& x) const
 	if (m_neighbors.size() != x.m_neighbors.size()) {
 		return false;
 	}
-	for (EdgeLinks::const_iterator index1 = m_neighbors.begin(),
+	for (auto index1 = m_neighbors.begin(),
 								index2 = x.m_neighbors.begin();
 								index1 != m_neighbors.end();
 								++index1, ++index2) {
@@ -1753,13 +1756,11 @@ operator<<(std::ostream& s, const Config& config)
 								screen != config.end(); ++screen) {
         s << "\t" << screen->c_str() << ":\n";
 		const Config::ScreenOptions* options = config.getOptions(*screen);
-		if (options != NULL && options->size() > 0) {
-			for (Config::ScreenOptions::const_iterator
-								option  = options->begin();
-								option != options->end(); ++option) {
-				const char* name = Config::getOptionName(option->first);
-                std::string value = Config::getOptionValue(option->first, option->second);
-				if (name != NULL && !value.empty()) {
+		if (options != nullptr && options->size() > 0) {
+			for (auto option : *options) {
+				const char* name = Config::getOptionName(option.first);
+                std::string value = Config::getOptionValue(option.first, option.second);
+				if (name != nullptr && !value.empty()) {
                     s << "\t\t" << name << " = " << value << "\n";
 				}
 			}
@@ -1774,7 +1775,7 @@ operator<<(std::ostream& s, const Config& config)
 								screen != config.end(); ++screen) {
         s << "\t" << screen->c_str() << ":\n";
 
-		for (Config::link_const_iterator
+		for (auto
 				link = config.beginNeighbor(*screen),
 				nend = config.endNeighbor(*screen); link != nend; ++link) {
 			s << "\t\t" << Config::dirName(link->first.getSide()) <<
@@ -1791,12 +1792,9 @@ operator<<(std::ostream& s, const Config& config)
 		// map canonical to alias
         typedef std::multimap<std::string, std::string, CaselessCmp> CMNameMap;
 		CMNameMap aliases;
-		for (Config::NameMap::const_iterator
-								index = config.m_nameToCanonicalName.begin();
-								index != config.m_nameToCanonicalName.end();
-								++index) {
-			if (index->first != index->second) {
-				aliases.insert(std::make_pair(index->second, index->first));
+		for (const auto & index : config.m_nameToCanonicalName) {
+			if (index.first != index.second) {
+				aliases.insert(std::make_pair(index.second, index.first));
 			}
 		}
 
@@ -1817,13 +1815,11 @@ operator<<(std::ostream& s, const Config& config)
 	// options section
     s << "section: options\n";
 	const Config::ScreenOptions* options = config.getOptions("");
-	if (options != NULL && options->size() > 0) {
-		for (Config::ScreenOptions::const_iterator
-							option  = options->begin();
-							option != options->end(); ++option) {
-			const char* name = Config::getOptionName(option->first);
-            std::string value = Config::getOptionValue(option->first, option->second);
-			if (name != NULL && !value.empty()) {
+	if (options != nullptr && options->size() > 0) {
+		for (auto option : *options) {
+			const char* name = Config::getOptionName(option.first);
+            std::string value = Config::getOptionValue(option.first, option.second);
+			if (name != nullptr && !value.empty()) {
                 s << "\t" << name << " = " << value << "\n";
 			}
 		}
@@ -1879,7 +1875,7 @@ bool ConfigReadContext::readLine(std::string& line)
 		if (!line.empty()) {
 			// make sure there are no invalid characters
 			for (i = 0; i < line.length(); ++i) {
-				if (!isgraph(line[i]) && line[i] != ' ' && line[i] != '\t') {
+				if ((isgraph(line[i]) == 0) && line[i] != ' ' && line[i] != '\t') {
 					throw XConfigRead(*this,
 								"invalid character %{1}",
 								barrier::string::sprintf("%#2x", line[i]));
@@ -1927,7 +1923,7 @@ OptionValue ConfigReadContext::parseInt(const std::string& arg) const
 		// invalid characters
 		throw XConfigRead(*this, "invalid integer argument \"%{1}\"", arg);
 	}
-	OptionValue value = static_cast<OptionValue>(tmp);
+	auto value = static_cast<OptionValue>(tmp);
 	if (value != tmp) {
 		// out of range
 		throw XConfigRead(*this, "integer argument \"%{1}\" out of range", arg);
@@ -1966,7 +1962,7 @@ OptionValue ConfigReadContext::parseCorner(const std::string& arg) const
 	if (CaselessCmp::equal(arg, "left")) {
 		return kTopLeftMask | kBottomLeftMask;
 	}
-	else if (CaselessCmp::equal(arg, "right")) {
+	if (CaselessCmp::equal(arg, "right")) {
 		return kTopRightMask | kBottomRightMask;
 	}
 	else if (CaselessCmp::equal(arg, "top")) {
@@ -2048,7 +2044,7 @@ Config::Interval
 ConfigReadContext::parseInterval(const ArgList& args) const
 {
 	if (args.size() == 0) {
-		return Config::Interval(0.0f, 1.0f);
+		return Config::Interval(0.0F, 1.0F);
 	}
 	if (args.size() != 2 || args[0].empty() || args[1].empty()) {
 		throw XConfigRead(*this, "invalid interval \"%{1}\"", concatArgs(args));
@@ -2070,7 +2066,7 @@ ConfigReadContext::parseInterval(const ArgList& args) const
 		throw XConfigRead(*this, "invalid interval \"%{1}\"", concatArgs(args));
 	}
 
-	return Config::Interval(startValue / 100.0f, endValue / 100.0f);
+	return Config::Interval(startValue / 100.0F, endValue / 100.0F);
 }
 
 void ConfigReadContext::parseNameWithArgs(const std::string& type, const std::string& line,
@@ -2215,7 +2211,7 @@ ConfigReadContext::parseMouse(const std::string& mouse) const
 	}
 
 	char* end;
-	ButtonID button = (ButtonID)strtol(s.c_str(), &end, 10);
+	auto button = static_cast<ButtonID>(strtol(s.c_str(), &end, 10));
 	if (*end != '\0') {
 		throw XConfigRead(*this, "unable to parse button");
 	}

@@ -46,7 +46,7 @@ ServerTaskBarReceiver::updateStatus(Server* server, const String& errorMsg)
     {
         // update our status
         m_errorMessage = errorMsg;
-        if (server == NULL) {
+        if (server == nullptr) {
             if (m_errorMessage.empty()) {
                 m_state = kNotRunning;
             }

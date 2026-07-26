@@ -32,6 +32,7 @@ std::string XScreenOpenFailure::getWhat() const noexcept
 // XScreenXInputFailure
 //
 
+// NOLINTNEXTLINE(bugprone-exception-escape)
 std::string XScreenXInputFailure::getWhat() const noexcept
 {
     return "";

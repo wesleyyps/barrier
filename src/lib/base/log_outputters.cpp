@@ -70,12 +70,10 @@ StopLogOutputter::write(ELevel, const char*)
 //
 
 ConsoleLogOutputter::ConsoleLogOutputter()
-{
-}
+= default;
 
 ConsoleLogOutputter::~ConsoleLogOutputter()
-{
-}
+= default;
 
 void
 ConsoleLogOutputter::open(const char* title)
@@ -153,7 +151,7 @@ SystemLogOutputter::write(ELevel level, const char* msg)
 //
 
 SystemLogger::SystemLogger(const char* title, bool blockConsole) :
-    m_stop(NULL)
+    m_stop(nullptr)
 {
     // redirect log messages
     if (blockConsole) {
@@ -169,7 +167,7 @@ SystemLogger::~SystemLogger()
 {
     CLOG->remove(m_syslog);
     delete m_syslog;
-    if (m_stop != NULL) {
+    if (m_stop != nullptr) {
         CLOG->remove(m_stop);
         delete m_stop;
     }
@@ -243,8 +241,7 @@ FileLogOutputter::FileLogOutputter(const char* logFile)
 }
 
 FileLogOutputter::~FileLogOutputter()
-{
-}
+= default;
 
 void
 FileLogOutputter::setLogFilename(const char* logFile)

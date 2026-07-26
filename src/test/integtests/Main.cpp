@@ -35,6 +35,7 @@ void lock(string lockFile);
 void unlock(string lockFile);
 
 int
+// NOLINTNEXTLINE(bugprone-exception-escape)
 main(int argc, char **argv)
 {
 #if SYSAPI_WIN32

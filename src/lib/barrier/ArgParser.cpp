@@ -30,7 +30,7 @@
 #include <VersionHelpers.h>
 #endif
 
-ArgsBase* ArgParser::m_argsBase = NULL;
+ArgsBase* ArgParser::m_argsBase = nullptr;
 
 ArgParser::ArgParser(App* app) :
     m_app(app)
@@ -47,7 +47,7 @@ ArgParser::parseServerArgs(ServerArgs& args, int argc, const char* const* argv)
         if (parsePlatformArg(args, argc, argv, i)) {
             continue;
         }
-        else if (parseGenericArgs(argc, argv, i)) {
+        if (parseGenericArgs(argc, argv, i)) {
             continue;
         }
         else if (parseDeprecatedArgs(argc, argv, i)) {
@@ -61,7 +61,7 @@ ArgParser::parseServerArgs(ServerArgs& args, int argc, const char* const* argv)
             // save configuration file path
             args.m_configFile = argv[++i];
         }
-        else if (isArg(i, argc, argv, NULL, "--screen-change-script", 1)) {
+        else if (isArg(i, argc, argv, nullptr, "--screen-change-script", 1)) {
             // save screen change script path
             args.m_screenChangeScript = argv[++i];
         }
@@ -91,19 +91,19 @@ ArgParser::parseClientArgs(ClientArgs& args, int argc, const char* const* argv)
         if (parsePlatformArg(args, argc, argv, i)) {
             continue;
         }
-        else if (parseGenericArgs(argc, argv, i)) {
+        if (parseGenericArgs(argc, argv, i)) {
             continue;
         }
         else if (parseDeprecatedArgs(argc, argv, i)) {
             continue;
         }
-        else if (isArg(i, argc, argv, NULL, "--camp")) {
+        else if (isArg(i, argc, argv, nullptr, "--camp")) {
             // ignore -- included for backwards compatibility
         }
-        else if (isArg(i, argc, argv, NULL, "--no-camp")) {
+        else if (isArg(i, argc, argv, nullptr, "--no-camp")) {
             // ignore -- included for backwards compatibility
         }
-        else if (isArg(i, argc, argv, NULL, "--yscroll", 1)) {
+        else if (isArg(i, argc, argv, nullptr, "--yscroll", 1)) {
             // define scroll
             args.m_yscroll = atoi(argv[++i]);
         }
@@ -212,7 +212,7 @@ ArgParser::parseGenericArgs(int argc, const char* const* argv, int& i)
         // not a daemon
         argsBase().m_daemon = false;
     }
-    else if (isArg(i, argc, argv, NULL, "--daemon")) {
+    else if (isArg(i, argc, argv, nullptr, "--daemon")) {
         // daemonize
         argsBase().m_daemon = true;
     }
@@ -224,41 +224,41 @@ ArgParser::parseGenericArgs(int argc, const char* const* argv, int& i)
         // don't try to restart
         argsBase().m_restartable = false;
     }
-    else if (isArg(i, argc, argv, NULL, "--restart")) {
+    else if (isArg(i, argc, argv, nullptr, "--restart")) {
         // try to restart
         argsBase().m_restartable = true;
     }
-    else if (isArg(i, argc, argv, "-z", NULL)) {
+    else if (isArg(i, argc, argv, "-z", nullptr)) {
         argsBase().m_backend = true;
     }
-    else if (isArg(i, argc, argv, NULL, "--no-hooks")) {
+    else if (isArg(i, argc, argv, nullptr, "--no-hooks")) {
         argsBase().m_noHooks = true;
     }
     else if (isArg(i, argc, argv, "-h", "--help")) {
-        if (m_app) {
+        if (m_app != nullptr) {
             m_app->help();
         }
         argsBase().m_shouldExit = true;
     }
-    else if (isArg(i, argc, argv, NULL, "--version")) {
-        if (m_app) {
+    else if (isArg(i, argc, argv, nullptr, "--version")) {
+        if (m_app != nullptr) {
             m_app->version();
         }
         argsBase().m_shouldExit = true;
     }
-    else if (isArg(i, argc, argv, NULL, "--no-tray")) {
+    else if (isArg(i, argc, argv, nullptr, "--no-tray")) {
         argsBase().m_disableTray = true;
     }
-    else if (isArg(i, argc, argv, NULL, "--ipc")) {
+    else if (isArg(i, argc, argv, nullptr, "--ipc")) {
         argsBase().m_enableIpc = true;
     }
-    else if (isArg(i, argc, argv, NULL, "--server")) {
+    else if (isArg(i, argc, argv, nullptr, "--server")) {
         // HACK: stop error happening when using portable (barrierp)
     }
-    else if (isArg(i, argc, argv, NULL, "--client")) {
+    else if (isArg(i, argc, argv, nullptr, "--client")) {
         // HACK: stop error happening when using portable (barrierp)
     }
-    else if (isArg(i, argc, argv, NULL, "--enable-drag-drop")) {
+    else if (isArg(i, argc, argv, nullptr, "--enable-drag-drop")) {
         bool useDragDrop = true;
 
 #ifdef WINAPI_XWINDOWS
@@ -280,19 +280,19 @@ ArgParser::parseGenericArgs(int argc, const char* const* argv, int& i)
             argsBase().m_enableDragDrop = true;
         }
     }
-    else if (isArg(i, argc, argv, NULL, "--drop-dir")) {
+    else if (isArg(i, argc, argv, nullptr, "--drop-dir")) {
         argsBase().m_dropTarget = argv[++i];
     }
-    else if (isArg(i, argc, argv, NULL, "--enable-crypto")) {
+    else if (isArg(i, argc, argv, nullptr, "--enable-crypto")) {
         LOG((CLOG_INFO "--enable-crypto is used by default. The option is deprecated."));
     }
-    else if (isArg(i, argc, argv, NULL, "--disable-crypto")) {
-        argsBase().m_enableCrypto = false;
+    else if (isArg(i, argc, argv, nullptr, "--disable-crypto")) {
+        LOG((CLOG_WARN "Plaintext connections are no longer supported. --disable-crypto will be ignored."));
     }
-    else if (isArg(i, argc, argv, NULL, "--profile-dir", 1)) {
+    else if (isArg(i, argc, argv, nullptr, "--profile-dir", 1)) {
         argsBase().m_profileDirectory = barrier::fs::u8path(argv[++i]);
     }
-    else if (isArg(i, argc, argv, NULL, "--plugin-dir", 1)) {
+    else if (isArg(i, argc, argv, nullptr, "--plugin-dir", 1)) {
         argsBase().m_pluginDirectory = barrier::fs::u8path(argv[++i]);
     }
     else {
@@ -306,27 +306,27 @@ ArgParser::parseGenericArgs(int argc, const char* const* argv, int& i)
 bool
 ArgParser::parseDeprecatedArgs(int argc, const char* const* argv, int& i)
 {
-    if (isArg(i, argc, argv, NULL, "--crypto-pass")) {
+    if (isArg(i, argc, argv, nullptr, "--crypto-pass")) {
         LOG((CLOG_NOTE "--crypto-pass is deprecated"));
         i++;
         return true;
     }
-    else if (isArg(i, argc, argv, NULL, "--res-w")) {
+    if (isArg(i, argc, argv, nullptr, "--res-w")) {
         LOG((CLOG_NOTE "--res-w is deprecated"));
         i++;
         return true;
     }
-    else if (isArg(i, argc, argv, NULL, "--res-h")) {
+    else if (isArg(i, argc, argv, nullptr, "--res-h")) {
         LOG((CLOG_NOTE "--res-h is deprecated"));
         i++;
         return true;
     }
-    else if (isArg(i, argc, argv, NULL, "--prm-wc")) {
+    else if (isArg(i, argc, argv, nullptr, "--prm-wc")) {
         LOG((CLOG_NOTE "--prm-wc is deprecated"));
         i++;
         return true;
     }
-    else if (isArg(i, argc, argv, NULL, "--prm-hc")) {
+    else if (isArg(i, argc, argv, nullptr, "--prm-hc")) {
         LOG((CLOG_NOTE "--prm-hc is deprecated"));
         i++;
         return true;
@@ -341,8 +341,8 @@ ArgParser::isArg(
     const char* name1, const char* name2,
     int minRequiredParameters)
 {
-    if ((name1 != NULL && strcmp(argv[argi], name1) == 0) ||
-        (name2 != NULL && strcmp(argv[argi], name2) == 0)) {
+    if ((name1 != nullptr && strcmp(argv[argi], name1) == 0) ||
+        (name2 != nullptr && strcmp(argv[argi], name2) == 0)) {
             // match.  check args left.
             if (argi + minRequiredParameters >= argc) {
                 LOG((CLOG_PRINT "%s: missing arguments for `%s'" BYE,
@@ -460,7 +460,7 @@ ArgParser::assembleCommand(std::vector<String>& argsArray,  String ignoreArg, in
 {
     String result;
 
-    for (std::vector<String>::iterator it = argsArray.begin(); it != argsArray.end(); ++it) {
+    for (auto it = argsArray.begin(); it != argsArray.end(); ++it) {
         if (it->compare(ignoreArg) == 0) {
             it = it + parametersRequired;
             continue;
