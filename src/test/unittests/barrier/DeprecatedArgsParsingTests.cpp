@@ -18,18 +18,19 @@
 #include "barrier/ArgParser.h"
 
 #include "test/global/gtest.h"
+#include <array>
 
 using namespace barrier;
 
 TEST(DeprecatedArgsParsingTests, parseDeprecatedArgs_cryptoPass_returnTrue)
 {
     int i = 1;
-    const int argc = 3;
-    const char* kCryptoPassCmd[argc] = { "stub", "--crypto-pass", "mock_pass" };
+    constexpr int argc = 3;
+    std::array<const char*, argc> kCryptoPassCmd = { "stub", "--crypto-pass", "mock_pass" };
 
     ArgParser argParser(nullptr);
 
-    bool result = argParser.parseDeprecatedArgs(argc, kCryptoPassCmd, i);
+    bool result = argParser.parseDeprecatedArgs(argc, kCryptoPassCmd.data(), i);
 
     EXPECT_EQ(true, result);
     EXPECT_EQ(2, i);
@@ -38,12 +39,12 @@ TEST(DeprecatedArgsParsingTests, parseDeprecatedArgs_cryptoPass_returnTrue)
 TEST(DeprecatedArgsParsingTests, parseDeprecatedArgs_cryptoPass_returnFalse)
 {
     int i = 1;
-    const int argc = 3;
-    const char* kCryptoPassCmd[argc] = { "stub", "--mock-arg", "mock_value" };
+    constexpr int argc = 3;
+    std::array<const char*, argc> kCryptoPassCmd = { "stub", "--mock-arg", "mock_value" };
 
     ArgParser argParser(nullptr);
 
-    bool result = argParser.parseDeprecatedArgs(argc, kCryptoPassCmd, i);
+    bool result = argParser.parseDeprecatedArgs(argc, kCryptoPassCmd.data(), i);
 
     EXPECT_FALSE(result);
     EXPECT_EQ(1, i);

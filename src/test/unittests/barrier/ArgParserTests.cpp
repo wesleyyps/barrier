@@ -19,13 +19,14 @@
 #include "barrier/ArgsBase.h"
 
 #include "test/global/gtest.h"
+#include <array>
 
 TEST(ArgParserTests, isArg_abbreviationsArg_returnTrue)
 {
     int i = 1;
-    const int argc = 2;
-    const char* argv[argc] = { "stub", "-t" };
-    bool result = ArgParser::isArg(i, argc, argv, "-t", nullptr);
+    constexpr int argc = 2;
+    std::array<const char*, argc> argv = { "stub", "-t" };
+    bool result = ArgParser::isArg(i, argc, argv.data(), "-t", nullptr);
 
     EXPECT_EQ(true, result);
 }
@@ -33,9 +34,9 @@ TEST(ArgParserTests, isArg_abbreviationsArg_returnTrue)
 TEST(ArgParserTests, isArg_fullArg_returnTrue)
 {
     int i = 1;
-    const int argc = 2;
-    const char* argv[argc] = { "stub", "--test" };
-    bool result = ArgParser::isArg(i, argc, argv, nullptr, "--test");
+    constexpr int argc = 2;
+    std::array<const char*, argc> argv = { "stub", "--test" };
+    bool result = ArgParser::isArg(i, argc, argv.data(), nullptr, "--test");
 
     EXPECT_EQ(true, result);
 }
@@ -43,13 +44,13 @@ TEST(ArgParserTests, isArg_fullArg_returnTrue)
 TEST(ArgParserTests, isArg_missingArgs_returnFalse)
 {
     int i = 1;
-    const int argc = 2;
-    const char* argv[argc] = { "stub", "-t" };
+    constexpr int argc = 2;
+    std::array<const char*, argc> argv = { "stub", "-t" };
     ArgParser argParser(nullptr);
     ArgsBase argsBase;
     argParser.setArgsBase(argsBase);
 
-    bool result = ArgParser::isArg(i, argc, argv, "-t", nullptr, 1);
+    bool result = ArgParser::isArg(i, argc, argv.data(), "-t", nullptr, 1);
 
     EXPECT_FALSE(result);
     EXPECT_EQ(true, argsBase.m_shouldExit);
