@@ -16,6 +16,7 @@
  */
 
 #include "platform/IOSXKeyResource.h"
+#include <array>
 
 #include <Carbon/Carbon.h>
 
@@ -110,7 +111,7 @@ IOSXKeyResource::getKeyID(UInt8 c)
         }
 
         // create string with character
-        char str[2];
+        std::array<char, 2> str;
         str[0] = static_cast<char>(c);
         str[1] = 0;
 
@@ -122,7 +123,7 @@ IOSXKeyResource::getKeyID(UInt8 c)
         // convert to unicode
         CFStringRef cfString =
             CFStringCreateWithCStringNoCopy(
-                kCFAllocatorDefault, str, encoding, kCFAllocatorNull);
+                kCFAllocatorDefault, str.data(), encoding, kCFAllocatorNull);
 
         // sometimes CFStringCreate...() returns NULL (e.g. Apple Korean
         // encoding with char value 214).  if it did then make no key,

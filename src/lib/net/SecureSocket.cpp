@@ -22,6 +22,7 @@
 #include "base/TMethodEventJob.h"
 #include "net/TCPSocket.h"
 #include "mt/Lock.h"
+#include <array>
 #include "arch/XArch.h"
 #include "base/Log.h"
 #include "base/String.h"
@@ -156,13 +157,13 @@ SecureSocket::secureAccept()
 TCPSocket::EJobResult
 SecureSocket::doRead()
 {
-    UInt8 buffer[4096];
-    memset(buffer, 0, sizeof(buffer));
+    std::array<UInt8, 4096> buffer;
+    buffer.fill(0);
     int bytesRead = 0;
     int status = 0;
 
     if (isSecureReady()) {
-        status = secureRead(buffer, sizeof(buffer), bytesRead);
+        status = secureRead(buffer.data(), buffer.size(), bytesRead);
         if (status < 0) {
             return kBreak;
         }
@@ -179,13 +180,13 @@ SecureSocket::doRead()
 
         // slurp up as much as possible
         do {
-            m_inputBuffer.write(buffer, bytesRead);
+            m_inputBuffer.write(buffer.data(), bytesRead);
 
             if (m_inputBuffer.getSize() > MAX_INPUT_BUFFER_SIZE) {
                 break;
             }
 
-            status = secureRead(buffer, sizeof(buffer), bytesRead);
+            status = secureRead(buffer.data(), buffer.size(), bytesRead);
             if (status < 0) {
                 return kBreak;
             }
@@ -681,9 +682,9 @@ std::string SecureSocket::getError()
     unsigned long e = ERR_get_error();
 
     if (e != 0) {
-        char error[MAX_ERROR_SIZE];
-        ERR_error_string_n(e, error, MAX_ERROR_SIZE);
-        return error;
+        std::array<char, MAX_ERROR_SIZE> error;
+        ERR_error_string_n(e, error.data(), error.size());
+        return error.data();
     }
             return "";
    
@@ -810,15 +811,15 @@ MultiplexerJobStatus SecureSocket::serviceAccept(ISocketMultiplexerJob* job,
 
 void
 showCipherStackDesc(STACK_OF(SSL_CIPHER) * stack) {
-    char msg[kMsgSize];
+    std::array<char, kMsgSize> msg;
     int i = 0;
     for ( ; i < sk_SSL_CIPHER_num(stack) ; i++) {
         const SSL_CIPHER * cipher = sk_SSL_CIPHER_value(stack,i);
 
-        SSL_CIPHER_description(cipher, msg, kMsgSize);
+        SSL_CIPHER_description(cipher, msg.data(), msg.size());
 
         // Why does SSL put a newline in the description?
-        int pos = static_cast<int>(strlen(msg)) - 1;
+        int pos = static_cast<int>(strlen(msg.data())) - 1;
         if (msg[pos] == '\n') {
             msg[pos] = '\0';
         }
@@ -879,9 +880,9 @@ SecureSocket::showSecureConnectInfo()
     const SSL_CIPHER* cipher = SSL_get_current_cipher(m_ssl->m_ssl);
 
     if (cipher != nullptr) {
-        char msg[kMsgSize];
-        SSL_CIPHER_description(cipher, msg, kMsgSize);
-        LOG((CLOG_INFO "%s", msg));
+        std::array<char, kMsgSize> msg;
+        SSL_CIPHER_description(cipher, msg.data(), msg.size());
+        LOG((CLOG_INFO "%s", msg.data()));
         }
     return;
 }

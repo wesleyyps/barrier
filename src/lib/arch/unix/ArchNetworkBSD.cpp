@@ -34,6 +34,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
+#include <array>
 
 #if HAVE_POLL
 #    include <poll.h>
@@ -50,15 +51,15 @@
 #    include <stdio.h>
 #endif
 
-static const int s_family[] = {
+static const std::array<int, 3> s_family = {{
     PF_UNSPEC,
     PF_INET,
     PF_INET6,
-};
-static const int s_type[] = {
+}};
+static const std::array<int, 2> s_type = {{
     SOCK_DGRAM,
     SOCK_STREAM
-};
+}};
 
 #if !HAVE_INET_ATON
 // parse dotted quad addresses.  we don't bother with the weird BSD'ism
@@ -286,7 +287,7 @@ ArchNetworkBSD::connectSocket(ArchSocket s, ArchNetAddress addr)
 #if HAVE_POLL
 
 int
-ArchNetworkBSD::pollSocket(PollEntry pe[], int num, double timeout)
+ArchNetworkBSD::pollSocket(PollEntry* pe, int num, double timeout)
 {
     assert(pe != NULL || num == 0);
 
@@ -331,11 +332,11 @@ ArchNetworkBSD::pollSocket(PollEntry pe[], int num, double timeout)
     // reset the unblock pipe
     if (n > 0 && unblockPipe != nullptr && (pfd[num].revents & POLLIN) != 0) {
         // the unblock event was signalled.  flush the pipe.
-        char dummy[100];
+        std::array<char, 100> dummy;
         ssize_t ignore;
 
         do {
-            ignore = read(unblockPipe[0], dummy, sizeof(dummy));
+            ignore = read(unblockPipe[0], dummy.data(), dummy.size());
             (void)ignore;
         } while (errno != EAGAIN);
 
@@ -379,7 +380,7 @@ ArchNetworkBSD::pollSocket(PollEntry pe[], int num, double timeout)
 #else
 
 int
-ArchNetworkBSD::pollSocket(PollEntry pe[], int num, double timeout)
+ArchNetworkBSD::pollSocket(PollEntry* pe, int num, double timeout)
 {
     int i, n;
 
@@ -633,14 +634,14 @@ ArchNetworkBSD::setReuseAddrOnSocket(ArchSocket s, bool reuse)
 std::string
 ArchNetworkBSD::getHostName()
 {
-    char name[256];
-    if (gethostname(name, sizeof(name)) == -1) {
+    std::array<char, 256> name;
+    if (gethostname(name.data(), name.size()) == -1) {
         name[0] = '\0';
     }
     else {
-        name[sizeof(name) - 1] = '\0';
+        name[name.size() - 1] = '\0';
     }
-    return name;
+    return name.data();
 }
 
 ArchNetAddress
@@ -733,17 +734,17 @@ ArchNetworkBSD::addrToName(ArchNetAddress addr)
 
     // mutexed name lookup (ugh)
     ARCH->lockMutex(m_mutex);
-    char host[1024];
-    char service[20];
-    int ret = getnameinfo(TYPED_ADDR(struct sockaddr, addr), addr->m_len, host,
-            sizeof(host), service, sizeof(service), 0);
+    std::array<char, 1024> host;
+    std::array<char, 20> service;
+    int ret = getnameinfo(TYPED_ADDR(struct sockaddr, addr), addr->m_len, host.data(),
+            host.size(), service.data(), service.size(), 0);
     if (ret != 0) {
         ARCH->unlockMutex(m_mutex);
         throwNameError(ret);
     }
 
     // save (primary) name
-    std::string name = host;
+    std::string name = host.data();
 
     // done with static buffer
     ARCH->unlockMutex(m_mutex);
@@ -766,12 +767,12 @@ ArchNetworkBSD::addrToString(ArchNetAddress addr)
     }
 
     case kINET6: {
-        char strAddr[INET6_ADDRSTRLEN];
+        std::array<char, INET6_ADDRSTRLEN> strAddr;
         auto* ipAddr = TYPED_ADDR(struct sockaddr_in6, addr);
         ARCH->lockMutex(m_mutex);
-        inet_ntop(AF_INET6, &ipAddr->sin6_addr, strAddr, INET6_ADDRSTRLEN);
+        inet_ntop(AF_INET6, &ipAddr->sin6_addr, strAddr.data(), INET6_ADDRSTRLEN);
         ARCH->unlockMutex(m_mutex);
-        return strAddr;
+        return strAddr.data();
     }
 
     default:
@@ -983,13 +984,13 @@ ArchNetworkBSD::throwError(int err)
 [[noreturn]] void
 ArchNetworkBSD::throwNameError(int err)
 {
-    static const char* s_msg[] = {
+    static const std::array<const char*, 5> s_msg = {{
         "The specified host is unknown",
         "The requested name is valid but does not have an IP address",
         "A non-recoverable name server error occurred",
         "A temporary error occurred on an authoritative name server",
         "An unknown name server error occurred"
-    };
+    }};
 
     switch (err) {
     case HOST_NOT_FOUND:

@@ -52,6 +52,8 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #include <openssl/pem.h>
+#include <memory>
+#include <array>
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -124,9 +126,9 @@ FingerprintData get_ssl_cert_fingerprint(X509* cert, FingerprintType type)
         throw std::runtime_error("certificate is null");
     }
 
-    unsigned char digest[EVP_MAX_MD_SIZE];
+    std::array<unsigned char, EVP_MAX_MD_SIZE> digest;
     unsigned int digest_length = 0;
-    int result = X509_digest(cert, get_digest_for_type(type), digest, &digest_length);
+    int result = X509_digest(cert, get_digest_for_type(type), digest.data(), &digest_length);
 
     if (result <= 0) {
         throw std::runtime_error("failed to calculate fingerprint, digest result: " +
@@ -134,8 +136,8 @@ FingerprintData get_ssl_cert_fingerprint(X509* cert, FingerprintType type)
     }
 
     std::vector<std::uint8_t> digest_vec;
-    digest_vec.assign(reinterpret_cast<std::uint8_t*>(digest),
-                      reinterpret_cast<std::uint8_t*>(digest) + digest_length);
+    digest_vec.assign(digest.data(),
+                      digest.data() + digest_length);
     return {fingerprint_type_to_string(type), digest_vec};
 }
 
@@ -256,7 +258,7 @@ std::string create_fingerprint_randomart(const std::vector<std::uint8_t>& dgst_r
      */
     const char* augmentation_string = " .o+=*BOX@%&#/^SE";
     char *p;
-    std::uint8_t field[FLDSIZE_X][FLDSIZE_Y];
+    std::array<std::array<std::uint8_t, FLDSIZE_Y>, FLDSIZE_X> field;
     std::size_t i;
     std::uint32_t b;
     int	 x;
@@ -269,7 +271,7 @@ std::string create_fingerprint_randomart(const std::vector<std::uint8_t>& dgst_r
     auto add_char = [&retval](char ch) { retval.push_back(ch); };
 
     /* initialize field */
-    std::memset(field, 0, FLDSIZE_X * FLDSIZE_Y * sizeof(char));
+    for (auto& row : field) { row.fill(0); }
     x = FLDSIZE_X / 2;
     y = FLDSIZE_Y / 2;
 
