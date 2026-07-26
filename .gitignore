@@ -36,3 +36,6 @@ CMakeCache.txt
 .history
 .env
 cov-int
+build-fuzz-homebrew
+build-fuzz-final
+build-fuzz

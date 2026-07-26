@@ -27,6 +27,10 @@ if (BARRIER_BUILD_TESTS)
     add_subdirectory(test/unittests)
 endif()
 
+if (BARRIER_BUILD_FUZZERS)
+    add_subdirectory(test/fuzztests)
+endif()
+
 if (BARRIER_BUILD_GUI)
     add_subdirectory(gui)
 endif()

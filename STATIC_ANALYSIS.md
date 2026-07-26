@@ -110,3 +110,43 @@ The following components are configured on the Coverity Scan dashboard to focus 
 To update the modeling file: edit `coverity-model.c` and upload it via the Coverity Scan dashboard under **Project Settings → Modeling File**, then re-submit the build with `./coverity-scan.sh --skip-build`.
 
 Results are published at: **https://scan.coverity.com/projects/wesleyyps%2Fbarrier**
+
+---
+
+## 3. Dynamic Analysis & Fuzzing
+
+Dynamic analysis catches vulnerabilities and undefined behaviors precisely at runtime, while Fuzzing bombards the parsing interfaces with malformed data to ensure stability.
+
+### Enabling Sanitizers (ASan & UBSan)
+
+AddressSanitizer (ASan) and UndefinedBehaviorSanitizer (UBSan) are supported natively. You must enable them during the CMake configuration step:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBARRIER_ENABLE_SANITIZERS=ON
+make -C build
+```
+
+Once compiled, any execution (e.g., running `unittests` or `integtests`) will instantly crash and print a stack trace if it encounters an out-of-bounds memory access, use-after-free, or undefined behavior. Note that sanitizers introduce significant performance overhead and should not be used for Release builds.
+
+### Fuzz Testing (libFuzzer)
+
+Barrier parses binary network packets from clients. We use `libFuzzer` to fuzz the protocol parser (`ProtocolUtil`).
+
+To compile the fuzzers, you **must use standard Clang** (e.g. on Linux or via a custom LLVM toolchain) and enable the fuzzing flag during CMake configuration:
+
+> [!NOTE]
+> **macOS Users:** Apple Clang omits the `libFuzzer` runtime library. If you compile with Apple Clang, the fuzzer targets will be automatically skipped to prevent linker errors. To fuzz on macOS, you must use a vanilla LLVM toolchain.
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBARRIER_ENABLE_SANITIZERS=ON -DBARRIER_BUILD_FUZZERS=ON
+make -C build
+```
+
+**Running the Fuzzer:**
+The fuzzing executable is built to `build/bin/fuzz_protocol_util`. Execute it from your terminal:
+
+```bash
+./build/bin/fuzz_protocol_util
+```
+
+It will run indefinitely, throwing millions of mutated binary strings at the protocol parser. If it finds a crash, it will halt and print the exact input bytes that caused it.
