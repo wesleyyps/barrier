@@ -50,7 +50,7 @@ public:
     std::unique_ptr<ISocketMultiplexerJob> newJob() override;
     bool                isFatal() const override { return m_fatal; }
     void                isFatal(bool b) { m_fatal = b; }
-    bool                isSecureReady();
+    bool                isSecureReady() const;
     void                secureConnect();
     void                secureAccept();
     int                    secureRead(void* buffer, int size, int& read);

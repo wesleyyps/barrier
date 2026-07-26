@@ -94,7 +94,7 @@ OSXScreenSaver::activate()
 void
 OSXScreenSaver::deactivate()
 {
-    screenSaverUtilDeactivate(m_screenSaverController, m_enabled);
+    screenSaverUtilDeactivate(m_screenSaverController, static_cast<int>(m_enabled));
 }
 
 bool
@@ -195,7 +195,7 @@ testProcessName(const char* name, const ProcessSerialNumber& psn)
 {
     CFStringRef    processName;
     OSStatus    err = CopyProcessName(&psn, &processName);
-    return (err == 0 && CFEqual(CFSTR("ScreenSaverEngine"), processName));
+    return (err == 0 && (CFEqual(CFSTR("ScreenSaverEngine"), processName) != 0u));
 }
 
 #pragma GCC diagnostic error "-Wdeprecated-declarations"

@@ -80,7 +80,7 @@ mouseDown:(NSEvent *)theEvent
 namesOfPromisedFilesDroppedAtDestination:(NSURL *)dropDestination
 {
 	[m_dropTarget setString:@""];
-	if (dropDestination && dropDestination.path) {
+	if ((dropDestination != nullptr) && (dropDestination.path != nullptr)) {
 		[m_dropTarget appendString:dropDestination.path];
 	}
 	NSLog ( @"cocoa drop target: %@", m_dropTarget);

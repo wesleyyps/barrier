@@ -23,8 +23,8 @@
 //! Cross platform implementation of IArchConsole
 class ArchConsoleStd : public IArchConsole {
 public:
-    ArchConsoleStd() { }
-    virtual ~ArchConsoleStd() { }
+    ArchConsoleStd() = default;
+    virtual ~ArchConsoleStd() = default;
 
     // IArchConsole overrides
     virtual void        openConsole(const char* title) { }

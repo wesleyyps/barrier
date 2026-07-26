@@ -104,7 +104,7 @@ ProtocolUtil::vreadf(barrier::IStream* stream, const char* fmt, va_list args)
     assert(fmt != NULL);
 
     // begin scanning
-    while (*fmt) {
+    while ((*fmt) != 0) {
         if (*fmt == '%') {
             // format specifier.  determine argument size.
             ++fmt;
@@ -292,7 +292,7 @@ UInt32
 ProtocolUtil::getLength(const char* fmt, va_list args)
 {
     UInt32 n = 0;
-    while (*fmt) {
+    while ((*fmt) != 0) {
         if (*fmt == '%') {
             // format specifier.  determine argument size.
             ++fmt;
@@ -362,7 +362,7 @@ ProtocolUtil::writef_void(void* buffer, const char* fmt, va_list args)
 {
     auto* dst = static_cast<UInt8*>(buffer);
 
-    while (*fmt) {
+    while ((*fmt) != 0) {
         if (*fmt == '%') {
             // format specifier.  determine argument size.
             ++fmt;

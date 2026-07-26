@@ -207,7 +207,7 @@ Server::Server(
 	m_inputFilter->setPrimaryClient(m_primaryClient);
 
 	// Determine if scroll lock is already set. If so, lock the cursor to the primary screen
-	if (m_primaryClient->getToggleMask() & KeyModifierScrollLock) {
+	if ((m_primaryClient->getToggleMask() & KeyModifierScrollLock) != 0u) {
 		LOG((CLOG_NOTE "Scroll Lock is on, locking cursor to screen"));
 		m_lockedToScreen = true;
 	}
@@ -1660,7 +1660,7 @@ Server::onKeyDown(KeyID id, KeyModifierMask mask, KeyButton button,
 		m_active->keyDown(id, mask, button);
 	}
 	else {
-		if (!screens && m_keyboardBroadcasting) {
+		if ((screens == nullptr) && m_keyboardBroadcasting) {
 			screens = m_keyboardBroadcastingScreens.c_str();
 			if (IKeyState::KeyInfo::isDefault(screens)) {
 				screens = "*";
@@ -1687,7 +1687,7 @@ Server::onKeyUp(KeyID id, KeyModifierMask mask, KeyButton button,
 		m_active->keyUp(id, mask, button);
 	}
 	else {
-		if (!screens && m_keyboardBroadcasting) {
+		if ((screens == nullptr) && m_keyboardBroadcasting) {
 			screens = m_keyboardBroadcastingScreens.c_str();
 			if (IKeyState::KeyInfo::isDefault(screens)) {
 				screens = "*";

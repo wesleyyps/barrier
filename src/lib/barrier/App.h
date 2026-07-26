@@ -80,7 +80,7 @@ public:
     void setupFileLogging();
 
     // If messages will be hidden (to improve performance), warn user.
-    void loggingFilterWarning();
+    void loggingFilterWarning() const;
 
     // Parses args, sets up file logging, and loads the config.
     void initApp(int argc, const char** argv);

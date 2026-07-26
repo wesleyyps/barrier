@@ -61,6 +61,6 @@ public:
     /*
     Returns a string containing the full path names of all loaded libraries at the point it is called.
     */
-    virtual std::string getLibsUsed(void) const = 0;
+    virtual std::string getLibsUsed() const = 0;
     //@}
 };

@@ -23,7 +23,7 @@
 class ZeroconfRecord
 {
 public:
-    ZeroconfRecord() {}
+    ZeroconfRecord() = default;
     ZeroconfRecord(const QString& name, const QString& regType,
                    const QString& domain)
         : serviceName(name), registeredType(regType), replyDomain(domain)

@@ -57,7 +57,7 @@ public:
 
     protected:
         BaseConfig() {}
-        virtual ~BaseConfig() {}
+        virtual ~BaseConfig() = default;
 
     protected:
         template<class SettingType, class T>

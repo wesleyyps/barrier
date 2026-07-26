@@ -194,7 +194,7 @@ ClientListener::handleUnknownClient(const Event&, void* vclient)
                                 client));
     } else {
         auto* stream = unknownClient->getStream();
-        if (stream) {
+        if (stream != nullptr) {
             stream->close();
         }
     }

@@ -63,14 +63,14 @@ OSXEventQueueBuffer::waitForEvent(double timeout)
     if (timeout > 0.0) {
         Stopwatch timer(true);
         while (timer.getTime() < timeout) {
-            OSStatus status = ReceiveNextEvent(0, nullptr, 0.0, false, &event);
+            OSStatus status = ReceiveNextEvent(0, nullptr, 0.0, 0u, &event);
             if (status != eventLoopTimedOutErr) {
                 break;
             }
             usleep(1000); // 1 ms sleep
         }
     } else {
-        ReceiveNextEvent(0, nullptr, 0.0, false, &event);
+        ReceiveNextEvent(0, nullptr, 0.0, 0u, &event);
     }
 }
 
@@ -84,7 +84,7 @@ OSXEventQueueBuffer::getEvent(Event& event, UInt32& dataID)
     }
 
     // get the next event
-    OSStatus error = ReceiveNextEvent(0, nullptr, 0.0, true, &m_event);
+    OSStatus error = ReceiveNextEvent(0, nullptr, 0.0, 1u, &m_event);
 
     // handle the event
     if (error == eventLoopQuitErr) {
@@ -140,7 +140,7 @@ bool
 OSXEventQueueBuffer::isEmpty() const
 {
     EventRef event;
-    OSStatus status = ReceiveNextEvent(0, nullptr, 0.0, false, &event);
+    OSStatus status = ReceiveNextEvent(0, nullptr, 0.0, 0u, &event);
     return (status == eventLoopTimedOutErr);
 }
 

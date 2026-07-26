@@ -33,7 +33,7 @@ public:
     //@{
 
     //! get server pointer
-    Server*            getServer() { return m_server; }
+    Server*            getServer() const { return m_server; }
 
     //@}
 

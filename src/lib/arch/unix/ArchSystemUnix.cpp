@@ -74,7 +74,7 @@ ArchSystemUnix::setting(const std::string&, const std::string&) const
 }
 
 std::string
-ArchSystemUnix::getLibsUsed(void) const
+ArchSystemUnix::getLibsUsed() const
 {
     return "not implemented.\nuse lsof on shell";
 }

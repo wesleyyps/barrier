@@ -405,7 +405,7 @@ KeyState::KeyState(IEventQueue* events, barrier::KeyMap& keyMap) :
 
 KeyState::~KeyState()
 {
-    if (m_keyMapPtr)
+    if (m_keyMapPtr != nullptr)
         delete m_keyMapPtr;
 }
 

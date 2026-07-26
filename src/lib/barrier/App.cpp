@@ -147,7 +147,7 @@ App::setupFileLogging()
 }
 
 void
-App::loggingFilterWarning()
+App::loggingFilterWarning() const
 {
     if (CLOG->getFilter() > CLOG->getConsoleMaxLevel()) {
         if (argsBase().m_logFile == nullptr) {

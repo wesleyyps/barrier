@@ -115,7 +115,7 @@ OSXScreen::OSXScreen(IEventQueue* events, bool isPrimary, bool autoShowHideCurso
 
 #ifdef MAC_OS_X_VERSION_10_9
 			// we can't pass options to show the dialog, this must be done by the gui.
-			if (!AXIsProcessTrusted()) {
+			if (AXIsProcessTrusted() == 0u) {
 				throw XArch("assistive devices does not trust this process, allow it in system settings.");
 			}
 #else
@@ -187,7 +187,7 @@ OSXScreen::~OSXScreen()
 	m_events->adoptBuffer(nullptr);
 	m_events->removeHandler(Event::kSystem, m_events->getSystemTarget());
 
-	if (m_pmWatchThread) {
+	if (m_pmWatchThread != nullptr) {
 		// make sure the thread has setup the runloop.
 		{
 			Lock lock(m_pmMutex);
@@ -706,7 +706,7 @@ OSXScreen::showCursor()
 	}
 
 	// appears to fix "mouse randomly not showing" bug
-	CGAssociateMouseAndMouseCursorPosition(true);
+	CGAssociateMouseAndMouseCursorPosition(1);
 
 	logCursorVisibility();
 
@@ -733,7 +733,7 @@ OSXScreen::hideCursor()
 	}
 
 	// appears to fix "mouse randomly not hiding" bug
-	CGAssociateMouseAndMouseCursorPosition(true);
+	CGAssociateMouseAndMouseCursorPosition(1);
 
 	logCursorVisibility();
 
@@ -758,7 +758,7 @@ OSXScreen::enable()
 										handleCGInputEvent,
 										this);
 		
-		if (!m_eventTapPort) {
+		if (m_eventTapPort == nullptr) {
 			LOG((CLOG_ERR "failed to create quartz event tap"));
 			return;
 		}
@@ -794,13 +794,13 @@ OSXScreen::enable()
 										this);
 	}
 
-	if (!m_eventTapPort) {
+	if (m_eventTapPort == nullptr) {
 		LOG((CLOG_ERR "failed to create quartz event tap"));
 		return;
 	}
 
 	m_eventTapRLSR = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, m_eventTapPort, 0);
-	if (!m_eventTapRLSR) {
+	if (m_eventTapRLSR == nullptr) {
 		LOG((CLOG_ERR "failed to create a CFRunLoopSourceRef for the quartz event tap"));
 	}
 
@@ -816,13 +816,13 @@ OSXScreen::disable()
 
 	// FIXME -- stop watching jump zones, stop capturing input
 
-	if (m_eventTapRLSR) {
+	if (m_eventTapRLSR != nullptr) {
 		CFRunLoopRemoveSource(CFRunLoopGetCurrent(), m_eventTapRLSR, kCFRunLoopDefaultMode);
 		CFRelease(m_eventTapRLSR);
 		m_eventTapRLSR = nullptr;
 	}
 
-	if (m_eventTapPort) {
+	if (m_eventTapPort != nullptr) {
 		CGEventTapEnable(m_eventTapPort, false);
 		CFRelease(m_eventTapPort);
 		m_eventTapPort = nullptr;
@@ -1240,7 +1240,7 @@ OSXScreen::displayReconfigurationCallback(CGDirectDisplayID displayID, CGDisplay
 
 	LOG((CLOG_DEBUG1 "event: display was reconfigured: %x %x %x", flags, mask, flags & mask));
 
-	if (flags & mask) { /* Something actually did change */
+	if ((flags & mask) != 0u) { /* Something actually did change */
 
 		LOG((CLOG_DEBUG1 "event: screen changed shape; refreshing dimensions"));
 		screen->updateScreenShape(displayID, flags);
@@ -1466,7 +1466,7 @@ OSXScreen::getScrollSpeed() const
 		CFTypeID id = CFGetTypeID(pref);
 		if (id == CFNumberGetTypeID()) {
 			auto value = static_cast<CFNumberRef>(pref);
-			if (CFNumberGetValue(value, kCFNumberDoubleType, &scaling)) {
+			if (CFNumberGetValue(value, kCFNumberDoubleType, &scaling) != 0u) {
 				if (scaling < 0.0) {
 					scaling = 0.0;
 				}
@@ -1695,7 +1695,7 @@ void OSXScreen::watchSystemPowerThread()
 	LOG((CLOG_DEBUG "carbon loop has stopped"));
 
 	// cleanup
-	if (notificationPortRef) {
+	if (notificationPortRef != nullptr) {
 		CFRunLoopRemoveSource(m_pmRunloop,
 								runloopSourceRef, kCFRunLoopDefaultMode);
 		CFRunLoopSourceInvalidate(runloopSourceRef);
@@ -2057,7 +2057,7 @@ OSXScreen::CFStringRefToUTF8String(CFStringRef aString)
 		length,
 		kCFStringEncodingUTF8);
 	char* buffer = (char*)malloc(maxSize);
-	if (CFStringGetCString(aString, buffer, maxSize, kCFStringEncodingUTF8)) {
+	if (CFStringGetCString(aString, buffer, maxSize, kCFStringEncodingUTF8) != 0u) {
 		return buffer;
 	}
 	free(buffer);
@@ -2158,7 +2158,7 @@ void
 logCursorVisibility()
 {
 	// CGCursorIsVisible is probably deprecated because its unreliable.
-	if (!CGCursorIsVisible()) {
+	if (CGCursorIsVisible() == 0) {
 		LOG((CLOG_WARN "cursor may not be visible"));
 	}
 }

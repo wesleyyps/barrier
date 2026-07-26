@@ -27,11 +27,11 @@ typedef std::vector<DragInformation> DragFileList;
 class DragInformation {
 public:
     DragInformation();
-    ~DragInformation() { }
+    ~DragInformation() = default;
 
     String&            getFilename() { return m_filename; }
     void                setFilename(String& name) { m_filename = name; }
-    size_t                getFilesize() { return m_filesize; }
+    size_t                getFilesize() const { return m_filesize; }
     void                setFilesize(size_t size) { m_filesize = size; }
 
     static void            parseDragInfo(DragFileList& dragFileList, UInt32 fileNum, String data);

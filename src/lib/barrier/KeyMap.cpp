@@ -1190,7 +1190,7 @@ KeyMap::parseKey(const String& x, KeyID& key)
     }
     // XXX -- we're assuming ASCII encoding here
     else if (x.size() == 1) {
-        if (!isgraph(x[0])) {
+        if (isgraph(x[0]) == 0) {
             // unknown key
             return false;
         }

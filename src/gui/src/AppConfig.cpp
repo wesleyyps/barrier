@@ -102,7 +102,7 @@ QString AppConfig::barrierProgramDir() const
     return QCoreApplication::applicationDirPath() + "/";
 }
 
-void AppConfig::persistLogDir()
+void AppConfig::persistLogDir() const
 {
     QDir dir = barrierLogDir();
 
@@ -214,7 +214,7 @@ void AppConfig::setElevateMode(ElevateMode em) { m_ElevateMode = em; }
 
 void AppConfig::setAutoConfig(bool autoConfig) { m_AutoConfig = autoConfig; }
 
-bool AppConfig::autoConfigPrompted() { return m_AutoConfigPrompted; }
+bool AppConfig::autoConfigPrompted() const { return m_AutoConfigPrompted; }
 
 void AppConfig::setAutoConfigPrompted(bool prompted) { m_AutoConfigPrompted = prompted; }
 
@@ -234,12 +234,12 @@ bool AppConfig::getRequireClientCertificate() const { return m_RequireClientCert
 
 void AppConfig::setAutoHide(bool b) { m_AutoHide = b; }
 
-bool AppConfig::getAutoHide() { return m_AutoHide; }
+bool AppConfig::getAutoHide() const { return m_AutoHide; }
 
 void AppConfig::setAutoStart(bool b) { m_AutoStart = b; }
 
-bool AppConfig::getAutoStart() { return m_AutoStart; }
+bool AppConfig::getAutoStart() const { return m_AutoStart; }
 
 void AppConfig::setMinimizeToTray(bool b) { m_MinimizeToTray = b; }
 
-bool AppConfig::getMinimizeToTray() { return m_MinimizeToTray; }
+bool AppConfig::getMinimizeToTray() const { return m_MinimizeToTray; }

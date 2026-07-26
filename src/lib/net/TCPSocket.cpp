@@ -398,7 +398,7 @@ void TCPSocket::removeJob()
 
 void TCPSocket::setJob(std::unique_ptr<ISocketMultiplexerJob>&& job)
 {
-    if (job.get() == nullptr) {
+    if (job == nullptr) {
         removeJob();
     } else {
         m_socketMultiplexer->addSocket(this, std::move(job));

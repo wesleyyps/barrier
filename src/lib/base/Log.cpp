@@ -280,7 +280,7 @@ Log::output(ELevel priority, char* msg)
 {
     assert(priority >= -1 && priority < g_numPriority);
     assert(msg != NULL);
-    if (!msg) return;
+    if (msg == nullptr) return;
 
     std::lock_guard<std::mutex> lock(m_mutex);
 

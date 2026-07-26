@@ -182,7 +182,7 @@ ClientApp::updateStatus()
 void
 ClientApp::updateStatus(const String& msg)
 {
-    if (m_taskBarReceiver)
+    if (m_taskBarReceiver != nullptr)
     {
         m_taskBarReceiver->updateStatus(m_client, msg);
     }
@@ -529,7 +529,7 @@ ClientApp::runInner(int argc, char** argv, ILogOutputter* outputter, StartupFunc
     }
     catch (...)
     {
-        if (m_taskBarReceiver)
+        if (m_taskBarReceiver != nullptr)
         {
             // done with task bar receiver
             delete m_taskBarReceiver;

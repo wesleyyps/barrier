@@ -106,7 +106,7 @@ int main(int argc, char* argv[])
 	QSettings settings;
 	AppConfig appConfig (&settings);
 
-	if (appConfig.getAutoHide() && !trayAvailable)
+	if (appConfig.getAutoHide() && (trayAvailable == 0))
 	{
 		// force auto hide to false - otherwise there is no way to get the GUI back
 		fprintf(stdout, "System tray not available, force disabling auto hide!\n");
@@ -145,12 +145,12 @@ int waitForTray()
 		if (++trayAttempts > TRAY_RETRY_COUNT)
 		{
 			fprintf(stdout, "System tray is unavailable.\n");
-			return false;
+			return 0;
 		}
 
 		QThreadImpl::msleep(TRAY_RETRY_WAIT);
 	}
-	return true;
+	return 1;
 }
 
 #ifdef Q_OS_MAC
@@ -164,7 +164,7 @@ bool checkMacAssistiveDevices()
 	// tab, with a list of allowed applications. barrier should
 	// show up there automatically, but will be unchecked.
 
-	if (AXIsProcessTrusted()) {
+	if (AXIsProcessTrusted() != 0u) {
 		return true;
 	}
 
@@ -172,7 +172,7 @@ bool checkMacAssistiveDevices()
 	const void* trueValue[] = { kCFBooleanTrue };
 	CFDictionaryRef options = CFDictionaryCreate(nullptr, keys, trueValue, 1, nullptr, nullptr);
 
-	bool result = AXIsProcessTrustedWithOptions(options);
+	bool result = AXIsProcessTrustedWithOptions(options) != 0u;
 	CFRelease(options);
 	return result;
 

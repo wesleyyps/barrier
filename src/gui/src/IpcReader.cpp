@@ -55,7 +55,7 @@ void IpcReader::read()
     QMutexLocker locker(&m_Mutex);
     IPC_LOG(std::cout << "ready read" << std::endl);
 
-    while (m_Socket->bytesAvailable()) {
+    while (m_Socket->bytesAvailable() != 0) {
         IPC_LOG(std::cout << "bytes available" << std::endl);
 
         char codeBuf[5];

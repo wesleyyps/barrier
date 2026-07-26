@@ -271,7 +271,7 @@ SecureSocket::secureRead(void* buffer, int size, int& read)
         // Check result will cleanup the connection in the case of a fatal
         checkResult(read, secure_read_retry_);
 
-        if (secure_read_retry_) {
+        if (secure_read_retry_ != 0) {
             return 0;
         }
 
@@ -298,7 +298,7 @@ SecureSocket::secureWrite(const void* buffer, int size, int& wrote)
         // Check result will cleanup the connection in the case of a fatal
         checkResult(wrote, secure_write_retry_);
 
-        if (secure_write_retry_) {
+        if (secure_write_retry_ != 0) {
             return 0;
         }
 
@@ -313,7 +313,7 @@ SecureSocket::secureWrite(const void* buffer, int size, int& wrote)
 }
 
 bool
-SecureSocket::isSecureReady()
+SecureSocket::isSecureReady() const
 {
     return m_secureReady;
 }
@@ -358,7 +358,7 @@ bool SecureSocket::load_certificates(const barrier::fs::path& path)
     }
 
     r = SSL_CTX_check_private_key(m_ssl->m_context);
-    if (!r) {
+    if (r == 0) {
         showError("could not verify ssl private key: " + path.u8string());
         return false;
     }

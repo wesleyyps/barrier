@@ -322,7 +322,7 @@ void MainWindow::saveSettings()
 
 void MainWindow::setIcon(qBarrierState state)
 {
-    if (m_pTrayIcon) {
+    if (m_pTrayIcon != nullptr) {
         QIcon icon = QIcon::fromTheme(barrierIconNames[state], QIcon(barrierIconFiles[state]));
 #ifdef Q_OS_MAC
         icon.setIsMask(true);
@@ -349,7 +349,7 @@ void MainWindow::trayActivated(QSystemTrayIcon::ActivationReason reason)
 
 void MainWindow::logOutput()
 {
-    if (m_pBarrier)
+    if (m_pBarrier != nullptr)
     {
         QString text(m_pBarrier->readAllStandardOutput());
         for (QString line : text.split(QRegExp("\r|\n|\r\n"))) {
@@ -363,7 +363,7 @@ void MainWindow::logOutput()
 
 void MainWindow::logError()
 {
-    if (m_pBarrier)
+    if (m_pBarrier != nullptr)
     {
         appendLogRaw(m_pBarrier->readAllStandardError());
     }
@@ -778,7 +778,7 @@ void MainWindow::stopService()
 void MainWindow::stopDesktop()
 {
     QMutexLocker locker(&m_StopDesktopMutex);
-    if (!barrierProcess()) {
+    if (barrierProcess() == nullptr) {
         return;
     }
 
@@ -979,7 +979,7 @@ void MainWindow::updateZeroconfService()
 
     if (isBonjourRunning()) {
         if (!m_AppConfig->wizardShouldRun()) {
-            if (m_pZeroconfService) {
+            if (m_pZeroconfService != nullptr) {
                 delete m_pZeroconfService;
                 m_pZeroconfService = nullptr;
             }

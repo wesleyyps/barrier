@@ -26,7 +26,7 @@ class BarrierLocale
     class Language
     {
     public:
-        Language() { }
+        Language() = default;
         Language(const QString& IetfCode, const QString& name)
             : m_IetfCode(IetfCode), m_Name(name) { }
 

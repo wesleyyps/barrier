@@ -100,7 +100,7 @@ isMediaKeyEvent(CGEventRef event) {
 			return false;
 		}
 		uint32_t const nxKeyId = ([nsEvent data1] & 0xFFFF0000) >> 16;
-		if (convertNXKeyTypeToKeyID (nxKeyId)) {
+		if (convertNXKeyTypeToKeyID (nxKeyId) != 0u) {
 			return true;
 		}
 	} @catch (NSException* e) {
@@ -117,14 +117,14 @@ getMediaKeyEventInfo(CGEventRef event, KeyID* const keyId,
 	} @catch (NSException* e) {
 		return false;
 	}
-	if (keyId) {
+	if (keyId != nullptr) {
 		*keyId = convertNXKeyTypeToKeyID (([nsEvent data1] & 0xFFFF0000) >> 16);
 	}
-	if (down) {
-		*down = !([nsEvent data1] & 0x100);
+	if (down != nullptr) {
+		*down = (([nsEvent data1] & 0x100) == 0);
 	}
-	if (isRepeat) {
-		*isRepeat = [nsEvent data1] & 0x1;
+	if (isRepeat != nullptr) {
+		*isRepeat = (([nsEvent data1] & 0x1) != 0);
 	}
 	return true;
 }

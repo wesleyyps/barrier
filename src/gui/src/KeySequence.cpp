@@ -131,7 +131,7 @@ bool KeySequence::appendKey(int key, int modifiers)
         case Qt::Key_Menu:
             {
                 int mod = modifiers & (~m_Modifiers);
-                if (mod)
+                if (mod != 0)
                 {
                     m_Sequence.append(mod);
                     m_Modifiers |= mod;
@@ -199,16 +199,16 @@ QString KeySequence::keyToString(int key)
     }
 
     // modifiers?
-    if (key & Qt::ShiftModifier)
+    if ((key & Qt::ShiftModifier) != 0u)
         return "Shift";
 
-    if (key & Qt::ControlModifier)
+    if ((key & Qt::ControlModifier) != 0u)
         return "Control";
 
-    if (key & Qt::AltModifier)
+    if ((key & Qt::AltModifier) != 0u)
         return "Alt";
 
-    if (key & Qt::MetaModifier)
+    if ((key & Qt::MetaModifier) != 0u)
         return "Meta";
 
     // treat key pad like normal keys (FIXME: we should have another lookup table for keypad keys instead)
@@ -216,7 +216,7 @@ QString KeySequence::keyToString(int key)
 
     // a special key?
     int i = 0;
-    while (keyname[i].name) {
+    while (keyname[i].name != nullptr) {
         if (key == keyname[i].key)
             return QString::fromUtf8(keyname[i].name);
         i++;

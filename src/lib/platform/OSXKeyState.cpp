@@ -137,7 +137,7 @@ static const KeyEntry    s_controlKeys[] = {
 
 static void clearGroupList(std::vector<TISInputSourceRef>& groups) {
     for (auto & group : groups) {
-        if (group) {
+        if (group != nullptr) {
             CFRelease(group);
         }
     }
@@ -353,7 +353,7 @@ OSXKeyState::fakeMediaKey(KeyID id)
 }
 
 CGEventFlags
-OSXKeyState::getModifierStateAsOSXFlags()
+OSXKeyState::getModifierStateAsOSXFlags() const
 {
     auto modifiers = static_cast<CGEventFlags>(0);
 
@@ -488,7 +488,7 @@ OSXKeyState::getKeyMap(barrier::KeyMap& keyMap)
     }
 }
 
-static io_connect_t getEventDriver(void)
+static io_connect_t getEventDriver()
 {
     static mach_port_t sEventDrvrRef = 0;
     mach_port_t masterPort;
@@ -584,7 +584,7 @@ OSXKeyState::postHIDVirtualKey(const UInt8 virtualKeyCode,
         break;
 
     default:
-        event.key.repeat = false;
+        event.key.repeat = 0;
         event.key.keyCode = virtualKeyCode;
         event.key.origCharSet = event.key.charSet = NX_ASCIISET;
         event.key.origCharCode = event.key.charCode = 0;
@@ -872,8 +872,8 @@ OSXKeyState::getGroups(GroupList& groups) const
 
     if (!gotLayouts) {
         LOG((CLOG_DEBUG1 "can't get keyboard layouts"));
-        if (dict) CFRelease(dict);
-        if (kbds) CFRelease(kbds);
+        if (dict != nullptr) CFRelease(dict);
+        if (kbds != nullptr) CFRelease(kbds);
         return false;
     }
 
@@ -885,12 +885,12 @@ OSXKeyState::getGroups(GroupList& groups) const
             (TISInputSourceRef)CFArrayGetValueAtIndex(kbds, i);
 
         if (addToGroups) {
-            if (keyboardLayout) CFRetain(keyboardLayout);
+            if (keyboardLayout != nullptr) CFRetain(keyboardLayout);
             groups.push_back(keyboardLayout);
         }
     }
-    if (dict) CFRelease(dict);
-    if (kbds) CFRelease(kbds);
+    if (dict != nullptr) CFRelease(dict);
+    if (kbds != nullptr) CFRelease(kbds);
     return true;
 }
 
@@ -917,7 +917,7 @@ void
 OSXKeyState::adjustAltGrModifier(const KeyIDs& ids,
                 KeyModifierMask* mask, bool isCommand) const
 {
-    if (!mask) return;
+    if (mask == nullptr) return;
 
     if (!isCommand) {
         for (unsigned int id : ids) {

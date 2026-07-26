@@ -235,13 +235,13 @@ ArgParser::parseGenericArgs(int argc, const char* const* argv, int& i)
         argsBase().m_noHooks = true;
     }
     else if (isArg(i, argc, argv, "-h", "--help")) {
-        if (m_app) {
+        if (m_app != nullptr) {
             m_app->help();
         }
         argsBase().m_shouldExit = true;
     }
     else if (isArg(i, argc, argv, nullptr, "--version")) {
-        if (m_app) {
+        if (m_app != nullptr) {
             m_app->version();
         }
         argsBase().m_shouldExit = true;

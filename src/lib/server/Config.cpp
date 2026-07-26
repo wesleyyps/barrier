@@ -372,14 +372,14 @@ bool Config::isValidScreenName(const std::string& name) const
 		}
 
 		// check first and last characters
-		if (!(isalnum(name[b]) || name[b] == '_') ||
-			!(isalnum(name[e - 1]) || name[e - 1] == '_')) {
+		if (!((isalnum(name[b]) != 0) || name[b] == '_') ||
+			!((isalnum(name[e - 1]) != 0) || name[e - 1] == '_')) {
 			return false;
 		}
 
 		// check interior characters
         for (std::string::size_type i = b; i < e; ++i) {
-			if (!isalnum(name[i]) && name[i] != '_' && name[i] != '-') {
+			if ((isalnum(name[i]) == 0) && name[i] != '_' && name[i] != '-') {
 				return false;
 			}
 		}
@@ -1874,7 +1874,7 @@ bool ConfigReadContext::readLine(std::string& line)
 		if (!line.empty()) {
 			// make sure there are no invalid characters
 			for (i = 0; i < line.length(); ++i) {
-				if (!isgraph(line[i]) && line[i] != ' ' && line[i] != '\t') {
+				if ((isgraph(line[i]) == 0) && line[i] != ' ' && line[i] != '\t') {
 					throw XConfigRead(*this,
 								"invalid character %{1}",
 								barrier::string::sprintf("%#2x", line[i]));

@@ -58,7 +58,7 @@ std::string OSXClipboardHTMLConverter::convertString(const std::string& data,
     CFRange entireString = CFRangeMake(0, CFStringGetLength(stringRef));
 
     CFStringGetBytes(stringRef, entireString, toEncoding,
-        0, false, nullptr, 0, &buffSize);
+        0, 0u, nullptr, 0, &buffSize);
 
     char* buffer = new char[buffSize];
 
@@ -68,7 +68,7 @@ std::string OSXClipboardHTMLConverter::convertString(const std::string& data,
     }
 
     CFStringGetBytes(stringRef, entireString, toEncoding,
-        0, false, reinterpret_cast<UInt8*>(buffer), buffSize, nullptr);
+        0, 0u, reinterpret_cast<UInt8*>(buffer), buffSize, nullptr);
 
     std::string result(buffer, buffSize);
 

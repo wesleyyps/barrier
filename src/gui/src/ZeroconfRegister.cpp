@@ -28,11 +28,11 @@ ZeroconfRegister::ZeroconfRegister(QObject* parent) :
 
 ZeroconfRegister::~ZeroconfRegister()
 {
-    if (m_pSocket) {
+    if (m_pSocket != nullptr) {
         delete m_pSocket;
     }
 
-    if (m_DnsServiceRef) {
+    if (m_DnsServiceRef != nullptr) {
         DNSServiceRefDeallocate(m_DnsServiceRef);
         m_DnsServiceRef = nullptr;
     }
@@ -41,7 +41,7 @@ ZeroconfRegister::~ZeroconfRegister()
 void ZeroconfRegister::registerService(const ZeroconfRecord& record,
     quint16 servicePort)
 {
-    if (m_DnsServiceRef) {
+    if (m_DnsServiceRef != nullptr) {
         qWarning("Warning: Already registered a service for this object");
         return;
     }

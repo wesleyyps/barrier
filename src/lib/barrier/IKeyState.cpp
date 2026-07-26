@@ -75,7 +75,7 @@ IKeyState::KeyInfo::alloc(const KeyInfo& x)
     info->m_mask    = x.m_mask;
     info->m_button  = x.m_button;
     info->m_count   = x.m_count;
-    info->m_screens = x.m_screens ? info->m_screensBuffer : nullptr;
+    info->m_screens = (x.m_screens != nullptr) ? info->m_screensBuffer : nullptr;
     memcpy(info->m_screensBuffer, x.m_screensBuffer, strlen(x.m_screensBuffer) + 1);
     return info;
 }

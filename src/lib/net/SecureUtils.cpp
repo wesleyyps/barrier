@@ -120,7 +120,7 @@ std::string format_ssl_fingerprint_columns(const std::vector<uint8_t>& fingerpri
 
 FingerprintData get_ssl_cert_fingerprint(X509* cert, FingerprintType type)
 {
-    if (!cert) {
+    if (cert == nullptr) {
         throw std::runtime_error("certificate is null");
     }
 
@@ -142,13 +142,13 @@ FingerprintData get_ssl_cert_fingerprint(X509* cert, FingerprintType type)
 FingerprintData get_pem_file_cert_fingerprint(const std::string& path, FingerprintType type)
 {
     auto fp = fopen_utf8_path(path, "r");
-    if (!fp) {
+    if (fp == nullptr) {
         throw std::runtime_error("Could not open certificate path");
     }
     auto file_close = finally([fp]() { std::fclose(fp); });
 
     X509* cert = PEM_read_X509(fp, nullptr, nullptr, nullptr);
-    if (!cert) {
+    if (cert == nullptr) {
         throw std::runtime_error("Certificate could not be parsed");
     }
     auto cert_free = finally([cert]() { X509_free(cert); });
@@ -161,15 +161,15 @@ void generate_pem_self_signed_cert(const std::string& path)
     auto expiration_days = 365;
 
     auto* private_key = EVP_PKEY_new();
-    if (!private_key) {
+    if (private_key == nullptr) {
         throw std::runtime_error("Could not allocate private key for certificate");
     }
     auto private_key_free = finally([private_key](){ EVP_PKEY_free(private_key); });
 
     auto* rsa = RSA_new();
-    if (rsa) {
+    if (rsa != nullptr) {
         BIGNUM* e = BN_new();
-        if (e) {
+        if (e != nullptr) {
             BN_set_word(e, RSA_F4);
             if (RSA_generate_key_ex(rsa, 2048, e, nullptr) != 1) {
                 RSA_free(rsa);
@@ -181,13 +181,13 @@ void generate_pem_self_signed_cert(const std::string& path)
             rsa = nullptr;
         }
     }
-    if (!rsa) {
+    if (rsa == nullptr) {
         throw std::runtime_error("Failed to generate RSA key");
     }
     EVP_PKEY_assign_RSA(private_key, rsa);
 
     auto* cert = X509_new();
-    if (!cert) {
+    if (cert == nullptr) {
         throw std::runtime_error("Could not allocate certificate");
     }
     auto cert_free = finally([cert]() { X509_free(cert); });
@@ -205,7 +205,7 @@ void generate_pem_self_signed_cert(const std::string& path)
     X509_sign(cert, private_key, EVP_sha256());
 
     auto fp = fopen_utf8_path(path.c_str(), "r");
-    if (!fp) {
+    if (fp == nullptr) {
         throw std::runtime_error("Could not open certificate output path");
     }
     auto file_close = finally([fp]() { std::fclose(fp); });
@@ -279,8 +279,8 @@ std::string create_fingerprint_randomart(const std::vector<std::uint8_t>& dgst_r
         int input = dgst_raw[i];
         for (b = 0; b < 4; b++) {
             /* evaluate 2 bit, rest is shifted later */
-            x += (input & 0x1) ? 1 : -1;
-            y += (input & 0x2) ? 1 : -1;
+            x += ((input & 0x1) != 0) ? 1 : -1;
+            y += ((input & 0x2) != 0) ? 1 : -1;
 
             /* assure we are still in bounds */
             x = std::max(x, 0);

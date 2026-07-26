@@ -104,7 +104,7 @@ void ScreenSetupView::keyPressEvent(QKeyEvent* event)
         // results in next esc/return key in the opened Screen Settings dialog not
         // only closing that but also the parent Server Configuration dialog.
     }
-    else if ((event->modifiers() & Qt::ControlModifier)
+    else if (((event->modifiers() & Qt::ControlModifier) != 0u)
         && (event->key() == Qt::Key_Left || event->key() == Qt::Key_Right
          || event->key() == Qt::Key_Up   || event->key() == Qt::Key_Down))
     {
@@ -138,7 +138,7 @@ void ScreenSetupView::keyPressEvent(QKeyEvent* event)
 
 void ScreenSetupView::mouseDoubleClickEvent(QMouseEvent* event)
 {
-    if (event->buttons() & Qt::LeftButton)
+    if (event->buttons() & Qt::LeftButton != 0u)
     {
         int col = columnAt(event->pos().x());
         int row = rowAt(event->pos().y());

@@ -89,21 +89,21 @@ bool SslCertificate::is_certificate_valid(const barrier::fs::path& path)
     ERR_load_crypto_strings();
 
     auto fp = barrier::fopen_utf8_path(path, "r");
-    if (!fp) {
+    if (fp == nullptr) {
         emit info(tr("Could not read from default certificate file."));
         return false;
     }
     auto file_close = barrier::finally([fp]() { std::fclose(fp); });
 
     auto* cert = PEM_read_X509(fp, nullptr, nullptr, nullptr);
-    if (!cert) {
+    if (cert == nullptr) {
         emit info(tr("Error loading default certificate file to memory."));
         return false;
     }
     auto cert_free = barrier::finally([cert]() { X509_free(cert); });
 
     auto* pubkey = X509_get_pubkey(cert);
-    if (!pubkey) {
+    if (pubkey == nullptr) {
         emit info(tr("Default certificate key file does not contain valid public key"));
         return false;
     }

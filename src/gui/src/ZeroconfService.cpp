@@ -91,10 +91,10 @@ ZeroconfService::ZeroconfService(MainWindow* mainWindow) :
 
 ZeroconfService::~ZeroconfService()
 {
-    if (m_pZeroconfBrowser) {
+    if (m_pZeroconfBrowser != nullptr) {
         delete m_pZeroconfBrowser;
     }
-    if (m_pZeroconfRegister) {
+    if (m_pZeroconfRegister != nullptr) {
         delete m_pZeroconfRegister;
     }
 }
