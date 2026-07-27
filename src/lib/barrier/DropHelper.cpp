@@ -21,30 +21,53 @@
 #include "io/filesystem.h"
 
 #include <fstream>
+#include <cstdlib>
+#ifdef SYSAPI_WIN32
+#include <windows.h>
+#endif
 
 void
 DropHelper::writeToDir(const String& destination, DragFileList& fileList, String& data)
 {
-    LOG((CLOG_DEBUG "dropping file, files=%i target=%s", fileList.size(), destination.c_str()));
-
-    if (!destination.empty() && fileList.size() > 0) {
-        std::fstream file;
-        String dropTarget = destination;
+    String dropTarget = destination;
+    if (dropTarget.empty()) {
 #ifdef SYSAPI_WIN32
-        dropTarget.append("\\");
+        char userProfile[MAX_PATH];
+        if (GetEnvironmentVariableA("USERPROFILE", userProfile, MAX_PATH) > 0) {
+            dropTarget = std::string(userProfile) + "\\Downloads";
+        }
 #else
-        dropTarget.append("/");
+        const char* home = std::getenv("HOME");
+        if (home != nullptr) {
+            dropTarget = std::string(home) + "/Downloads";
+        }
 #endif
-        dropTarget.append(fileList.at(0).getFilename());
-        barrier::open_utf8_path(file, dropTarget, std::ios::out | std::ios::binary);
+        if (!dropTarget.empty()) {
+            LOG((CLOG_INFO "drop target was empty, falling back to: %s", dropTarget.c_str()));
+        }
+    }
+
+    LOG((CLOG_DEBUG "dropping file, files=%i target=%s", fileList.size(), dropTarget.c_str()));
+
+    if (!dropTarget.empty() && fileList.size() > 0) {
+        std::fstream file;
+        String filePath = dropTarget;
+#ifdef SYSAPI_WIN32
+        filePath.append("\\");
+#else
+        filePath.append("/");
+#endif
+        filePath.append(fileList.at(0).getFilename());
+        barrier::open_utf8_path(file, filePath, std::ios::out | std::ios::binary);
         if (!file.is_open()) {
-            LOG((CLOG_ERR "drop file failed: can not open %s", dropTarget.c_str()));
+            LOG((CLOG_ERR "drop file failed: can not open %s", filePath.c_str()));
+            return;
         }
 
         file.write(data.c_str(), data.size());
         file.close();
 
-        LOG((CLOG_INFO "dropped file \"%s\" in \"%s\"", fileList.at(0).getFilename().c_str(), destination.c_str()));
+        LOG((CLOG_INFO "dropped file \"%s\" in \"%s\"", fileList.at(0).getFilename().c_str(), dropTarget.c_str()));
 
         fileList.clear();
     }
