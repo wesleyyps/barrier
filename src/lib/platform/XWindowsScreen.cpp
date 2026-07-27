@@ -24,6 +24,8 @@
 #include "platform/XWindowsScreenSaver.h"
 #include "platform/XWindowsUtil.h"
 #include "barrier/Clipboard.h"
+#include "barrier/DragInformation.h"
+#include "barrier/DropHelper.h"
 #include "barrier/KeyMap.h"
 #include "barrier/XScreen.h"
 #include "arch/XArch.h"
@@ -36,6 +38,10 @@
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
+#include <sstream>
+#include <sys/stat.h>
+#include <cerrno>
+#include <unistd.h>
 
 static int xi_opcode;
 
@@ -90,7 +96,19 @@ XWindowsScreen::XWindowsScreen(
 	m_xi2detected(false),
 	m_xrandr(false),
 	m_events(events),
-	PlatformScreen(events)
+	PlatformScreen(events),
+    m_xdndDragging(false),
+    m_xdndFakeDragging(false),
+    m_atomXdndEnter(None),
+    m_atomXdndPosition(None),
+    m_atomXdndStatus(None),
+    m_atomXdndDrop(None),
+    m_atomXdndFinished(None),
+    m_atomXdndSelection(None),
+    m_atomXdndActionCopy(None),
+    m_atomTextUriList(None),
+    m_atomBarrierDndData(None),
+    m_mouseButtonDown(false)
 {
     m_impl = impl;
 	assert(s_screen == NULL);
@@ -120,6 +138,9 @@ XWindowsScreen::XWindowsScreen(
                                              m_keyMap);
 		LOG((CLOG_DEBUG "screen shape: %d,%d %dx%d %s", m_x, m_y, m_w, m_h, m_xinerama ? "(xinerama)" : ""));
 		LOG((CLOG_DEBUG "window is 0x%08x", m_window));
+
+		// Initialise XDND atoms for drag & drop
+		initXdnd();
 	}
 	catch (...) {
 		if (m_display != NULL) {
@@ -1284,6 +1305,13 @@ XWindowsScreen::handleSystemEvent(const Event& event, void*)
 		break;
 
 	case SelectionNotify:
+		// Check if this is our XDND XConvertSelection response
+		if (m_isPrimary &&
+			xevent->xselection.property == m_atomBarrierDndData &&
+			xevent->xselection.selection == m_atomXdndSelection) {
+			onXdndSelectionNotify(*xevent);
+			return;
+		}
 		// notification of selection transferred.  we shouldn't
 		// get this here because we handle them in the selection
 		// retrieval methods.  we'll just delete the property
@@ -1523,6 +1551,13 @@ XWindowsScreen::onMousePress(const XButtonEvent& xbutton)
 	if (button != kButtonNone) {
 		sendEvent(m_events->forIPrimaryScreen().buttonDown(), ButtonInfo::alloc(button, mask));
 	}
+
+	// Track LMB for XDND source detection
+	if (xbutton.button == Button1) {
+		m_mouseButtonDown = true;
+		m_xdndDragging    = false;
+		m_xdndFilename.clear();
+	}
 }
 
 void
@@ -1549,6 +1584,24 @@ XWindowsScreen::onMouseRelease(const XButtonEvent& xbutton)
 	else if (xbutton.button == 7) {
 		// wheel right
 		sendEvent(m_events->forIPrimaryScreen().wheel(), WheelInfo::alloc(120, 0));
+	}
+
+	// On LMB release, if a drag was detected on the primary screen,
+	// request the XdndSelection content to find the dragged file.
+	if (xbutton.button == Button1 && m_isPrimary) {
+		if (m_mouseButtonDown && m_xdndDragging) {
+			LOG((CLOG_DEBUG "XDND: LMB released during drag, requesting XdndSelection"));
+			// Ask the XDND source for the URI list
+			XConvertSelection(
+				m_display,
+				m_atomXdndSelection,
+				m_atomTextUriList,
+				m_atomBarrierDndData,
+				m_window,
+				CurrentTime);
+			// SelectionNotify will be processed in handleSystemEvent
+		}
+		m_mouseButtonDown = false;
 	}
 }
 
@@ -1587,6 +1640,12 @@ XWindowsScreen::onMouseMove(const XMotionEvent& xmotion)
 		// motion on primary screen
 		sendEvent(m_events->forIPrimaryScreen().motionOnPrimary(),
 							MotionInfo::alloc(m_xCursor, m_yCursor));
+
+		// Detect drag: LMB held + mouse moved
+		if (m_mouseButtonDown && !m_xdndDragging) {
+			m_xdndDragging = true;
+			LOG((CLOG_DEBUG2 "XDND: drag detected on primary screen"));
+		}
 	}
 	else {
 		// motion on secondary screen.  warp mouse back to
@@ -2077,3 +2136,209 @@ XWindowsScreen::selectXIRawMotion()
 	free(mask.mask);
 }
 #endif
+
+// ---------------------------------------------------------------------------
+// Drag & Drop (Linux XDND) implementation
+// ---------------------------------------------------------------------------
+
+void
+XWindowsScreen::initXdnd()
+{
+    // Intern all atoms needed for the XDND protocol
+    m_atomXdndEnter       = XInternAtom(m_display, "XdndEnter",       False);
+    m_atomXdndPosition    = XInternAtom(m_display, "XdndPosition",    False);
+    m_atomXdndStatus      = XInternAtom(m_display, "XdndStatus",      False);
+    m_atomXdndDrop        = XInternAtom(m_display, "XdndDrop",        False);
+    m_atomXdndFinished    = XInternAtom(m_display, "XdndFinished",    False);
+    m_atomXdndSelection   = XInternAtom(m_display, "XdndSelection",   False);
+    m_atomXdndActionCopy  = XInternAtom(m_display, "XdndActionCopy",  False);
+    m_atomTextUriList     = XInternAtom(m_display, "text/uri-list",   False);
+    m_atomBarrierDndData  = XInternAtom(m_display, "_BARRIER_DND_DATA", False);
+
+    LOG((CLOG_DEBUG "XDND atoms initialised"));
+}
+
+// Called when our XConvertSelection request for XdndSelection is answered
+void
+XWindowsScreen::onXdndSelectionNotify(const XEvent& event)
+{
+    const XSelectionEvent& se = event.xselection;
+
+    if (se.property == None) {
+        LOG((CLOG_DEBUG "XDND: XConvertSelection failed (no owner or unsupported type)"));
+        return;
+    }
+
+    // Read the property containing the URI list
+    Atom            actualType;
+    int             actualFormat;
+    unsigned long   nItems, bytesAfter;
+    unsigned char*  data = nullptr;
+
+    int rc = XGetWindowProperty(
+        m_display,
+        m_window,
+        m_atomBarrierDndData,
+        0, 65536, True,           // True = delete after reading
+        AnyPropertyType,
+        &actualType, &actualFormat,
+        &nItems, &bytesAfter,
+        &data);
+
+    if (rc != Success || data == nullptr) {
+        LOG((CLOG_WARN "XDND: failed to read XdndSelection property"));
+        return;
+    }
+
+    std::string uriList(reinterpret_cast<char*>(data), nItems);
+    XFree(data);
+
+    LOG((CLOG_DEBUG "XDND: uri-list received: %s", uriList.c_str()));
+
+    m_xdndFilename = parseUriList(uriList);
+    if (!m_xdndFilename.empty()) {
+        LOG((CLOG_DEBUG "XDND: dragged file: %s", m_xdndFilename.c_str()));
+    } else {
+        LOG((CLOG_DEBUG "XDND: no valid file:// URI found in selection"));
+    }
+
+    // reset drag tracking
+    m_xdndDragging = false;
+}
+
+// static helper: percent-decode a URI component
+std::string
+XWindowsScreen::decodeUriComponent(const std::string& uri)
+{
+    std::string result;
+    result.reserve(uri.size());
+
+    for (size_t i = 0; i < uri.size(); ++i) {
+        if (uri[i] == '%' && i + 2 < uri.size()) {
+            char hex[3] = { uri[i+1], uri[i+2], '\0' };
+            char* end;
+            long val = strtol(hex, &end, 16);
+            if (end == hex + 2) {
+                result += static_cast<char>(val);
+                i += 2;
+                continue;
+            }
+        }
+        result += uri[i];
+    }
+    return result;
+}
+
+// Extract the first valid local file path from a text/uri-list payload
+String
+XWindowsScreen::parseUriList(const std::string& uriList)
+{
+    // text/uri-list format: one URI per line, comments start with '#'
+    std::istringstream stream(uriList);
+    std::string line;
+
+    while (std::getline(stream, line)) {
+        // strip CR
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        // skip comments and empty lines
+        if (line.empty() || line[0] == '#') {
+            continue;
+        }
+        // only handle file:// URIs
+        const std::string prefix = "file://";
+        if (line.compare(0, prefix.size(), prefix) == 0) {
+            std::string path = line.substr(prefix.size());
+            // Remove optional host part (file://localhost/path -> /path)
+            if (!path.empty() && path[0] != '/') {
+                size_t slash = path.find('/');
+                if (slash != std::string::npos) {
+                    path = path.substr(slash);
+                }
+            }
+            return decodeUriComponent(path);
+        }
+    }
+    return String();
+}
+
+// IPlatformScreen override — source side
+String&
+XWindowsScreen::getDraggingFilename()
+{
+    return m_xdndFilename;
+}
+
+// IPlatformScreen override — source side
+bool
+XWindowsScreen::isDraggingStarted()
+{
+    return m_xdndDragging;
+}
+
+// IPlatformScreen override — source side
+void
+XWindowsScreen::clearDraggingFilename()
+{
+    m_xdndFilename.clear();
+    m_xdndDragging = false;
+}
+
+// IPlatformScreen override — destination side
+// Called by Client::dragInfoReceived() after file metadata arrives.
+// We write the incoming file into the drop target directory.
+void
+XWindowsScreen::fakeDraggingFiles(DragFileList fileList)
+{
+    // Already handled by DropHelper::writeToDir() called from Client
+    // write_to_drop_dir_thread().  This override exists so the base
+    // class no longer throws runtime_error on Linux.
+    m_xdndFakeDragging = true;
+    LOG((CLOG_DEBUG "Linux: fakeDraggingFiles called, %d file(s), target: %s",
+         (int)fileList.size(), getDropTarget().c_str()));
+
+    // DropHelper will write the file when it calls getDropTarget().
+    // We just need to make sure the directory exists.
+    const std::string& target = getDropTarget();
+    struct stat st;
+    if (stat(target.c_str(), &st) != 0) {
+        // Try to create it
+        if (mkdir(target.c_str(), 0755) != 0) {
+            LOG((CLOG_WARN "Linux: cannot create drop target directory %s: %s",
+                 target.c_str(), strerror(errno)));
+        }
+    }
+
+    // Signal that fake dragging is done (no async Cocoa/OLE required on Linux)
+    m_xdndFakeDragging = false;
+}
+
+// IPlatformScreen override — destination side
+const String&
+XWindowsScreen::getDropTarget() const
+{
+    if (!m_dropTargetPath.empty()) {
+        return m_dropTargetPath;
+    }
+
+    // Default: $XDG_DOWNLOAD_DIR or ~/Downloads
+    static String defaultTarget;
+    if (defaultTarget.empty()) {
+        const char* home = std::getenv("HOME");
+        if (home != nullptr) {
+            defaultTarget = std::string(home) + "/Downloads";
+        } else {
+            defaultTarget = "/tmp";
+        }
+    }
+    return defaultTarget;
+}
+
+// IPlatformScreen override — destination side
+void
+XWindowsScreen::setDropTarget(const String& path)
+{
+    m_dropTargetPath = path;
+    LOG((CLOG_DEBUG "Linux: drop target set to: %s", path.c_str()));
+}

@@ -21,6 +21,7 @@
 #include "common/common.h"
 
 #include <stdio.h>
+#include <string>
 #include <Shlobj.h>
 
 void getDropData(IDataObject *pDataObject);
@@ -126,19 +127,31 @@ getDropData(IDataObject* dataObject)
             // TODO: get multiple filenames
             wchar_t* wcData = (wchar_t*)((LPBYTE)data + sizeof(DROPFILES));
 
-            // convert wchar to char
-            char* filename = new char[wcslen(wcData) + 1];
-            filename[wcslen(wcData)] = '\0';
-            wcstombs(filename, wcData, wcslen(wcData));
+            // Convert wchar to UTF-8 (fixes non-ASCII filenames that
+            // wcstombs() would corrupt when the system locale != UTF-8)
+            int utf8Len = WideCharToMultiByte(
+                CP_UTF8, 0,
+                wcData, static_cast<int>(wcslen(wcData)),
+                nullptr, 0,
+                nullptr, nullptr);
 
-            MSWindowsDropTarget::instance().setDraggingFilename(filename);
+            std::string utf8Filename;
+            if (utf8Len > 0) {
+                utf8Filename.resize(utf8Len);
+                WideCharToMultiByte(
+                    CP_UTF8, 0,
+                    wcData, static_cast<int>(wcslen(wcData)),
+                    &utf8Filename[0], utf8Len,
+                    nullptr, nullptr);
+            }
+
+            MSWindowsDropTarget::instance().setDraggingFilename(
+                const_cast<char*>(utf8Filename.c_str()));
 
             GlobalUnlock(stgMed.hGlobal);
 
             // release the data using the COM API
             ReleaseStgMedium(&stgMed);
-
-            delete[] filename;
         }
     }
 }
