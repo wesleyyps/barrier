@@ -2108,6 +2108,12 @@ OSXScreen::getDraggingFilename()
 }
 
 void
+OSXScreen::setDropTarget(const String& target)
+{
+	m_dropTarget = target;
+}
+
+void
 OSXScreen::waitForCarbonLoop() const
 {
 #ifdef MAC_OS_X_VERSION_10_7

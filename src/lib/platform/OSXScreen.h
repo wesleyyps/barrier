@@ -99,6 +99,7 @@ public:
     virtual void        fakeDraggingFiles(DragFileList fileList);
     virtual std::string& getDraggingFilename();
 
+    virtual void        setDropTarget(const String& target);
     const std::string& getDropTarget() const { return m_dropTarget; }
     void                waitForCarbonLoop() const;
 

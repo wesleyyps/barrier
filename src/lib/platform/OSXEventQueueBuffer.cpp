@@ -17,131 +17,68 @@
  */
 
 #include "platform/OSXEventQueueBuffer.h"
-
+#include "base/EventQueue.h"
 #include "base/Event.h"
-#include "base/IEventQueue.h"
-
-//
-// EventQueueTimer
-//
+#include <chrono>
 
 class EventQueueTimer { };
 
-//
-// OSXEventQueueBuffer
-//
-
 OSXEventQueueBuffer::OSXEventQueueBuffer(IEventQueue* events) :
-    m_event(nullptr),
-    m_eventQueue(events),
-    m_carbonEventQueue(nullptr)
+    m_eventQueue(events)
 {
-    // do nothing
 }
 
 OSXEventQueueBuffer::~OSXEventQueueBuffer()
 {
-    // release the last event
-    if (m_event != nullptr) {
-        ReleaseEvent(m_event);
-    }
 }
 
 void
 OSXEventQueueBuffer::init()
 {
-    m_carbonEventQueue = GetCurrentEventQueue();
+    // No initialization needed for condition variables
 }
-
-#include <unistd.h>
-#include "base/Stopwatch.h"
 
 void
 OSXEventQueueBuffer::waitForEvent(double timeout)
 {
-    EventRef event;
-    if (timeout > 0.0) {
-        Stopwatch timer(true);
-        while (timer.getTime() < timeout) {
-            OSStatus status = ReceiveNextEvent(0, nullptr, 0.0, 0u, &event);
-            if (status != eventLoopTimedOutErr) {
-                break;
-            }
-            usleep(1000); // 1 ms sleep
+    std::unique_lock<std::mutex> lock(m_mutex);
+    if (m_dataQueue.empty()) {
+        if (timeout > 0.0) {
+            m_cond.wait_for(lock, std::chrono::duration<double>(timeout));
+        } else {
+            m_cond.wait(lock);
         }
-    } else {
-        ReceiveNextEvent(0, nullptr, 0.0, 0u, &event);
     }
 }
 
 IEventQueueBuffer::Type
 OSXEventQueueBuffer::getEvent(Event& event, UInt32& dataID)
 {
-    // release the previous event
-    if (m_event != nullptr) {
-        ReleaseEvent(m_event);
-        m_event = nullptr;
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (!m_dataQueue.empty()) {
+        dataID = m_dataQueue.front();
+        m_dataQueue.pop();
+        return kUser;
     }
-
-    // get the next event
-    OSStatus error = ReceiveNextEvent(0, nullptr, 0.0, 1u, &m_event);
-
-    // handle the event
-    if (error == eventLoopQuitErr) {
-        event = Event(Event::kQuit);
-        return kSystem;
-    }
-    if (error != noErr) {
-        return kNone;
-    }
-    else {
-        UInt32 eventClass = GetEventClass(m_event);
-        switch (eventClass) {
-        case 'Syne':
-            dataID = GetEventKind(m_event);
-            return kUser;
-
-        default:
-            event = Event(Event::kSystem,
-                        m_eventQueue->getSystemTarget(), &m_event);
-            return kSystem;
-        }
-    }
+    return kNone;
 }
 
 bool
 OSXEventQueueBuffer::addEvent(UInt32 dataID)
 {
-    EventRef event;
-    OSStatus error = CreateEvent(
-                            kCFAllocatorDefault,
-                            'Syne',
-                            dataID,
-                            0,
-                            kEventAttributeNone,
-                            &event);
-
-    if (error == noErr) {
-
-        assert(m_carbonEventQueue != NULL);
-
-        error = PostEventToQueue(
-            m_carbonEventQueue,
-            event,
-            kEventPriorityStandard);
-
-        ReleaseEvent(event);
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_dataQueue.push(dataID);
     }
-
-    return (error == noErr);
+    m_cond.notify_one();
+    return true;
 }
 
 bool
 OSXEventQueueBuffer::isEmpty() const
 {
-    EventRef event;
-    OSStatus status = ReceiveNextEvent(0, nullptr, 0.0, 0u, &event);
-    return (status == eventLoopTimedOutErr);
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_dataQueue.empty();
 }
 
 EventQueueTimer*
