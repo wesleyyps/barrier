@@ -303,4 +303,5 @@ private:
 
     // Mouse state for source-side drag detection
     bool                m_mouseButtonDown;     // LMB is currently pressed
+    bool                m_xdndReceived;        // true when selection notify received
 };

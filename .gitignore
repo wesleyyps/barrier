@@ -39,3 +39,4 @@ cov-int
 build-fuzz-homebrew
 build-fuzz-final
 build-fuzz
+build-asan

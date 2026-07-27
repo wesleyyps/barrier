@@ -108,7 +108,8 @@ XWindowsScreen::XWindowsScreen(
     m_atomXdndActionCopy(None),
     m_atomTextUriList(None),
     m_atomBarrierDndData(None),
-    m_mouseButtonDown(false)
+    m_mouseButtonDown(false),
+    m_xdndReceived(false)
 {
     m_impl = impl;
 	assert(s_screen == NULL);
@@ -2166,6 +2167,7 @@ XWindowsScreen::onXdndSelectionNotify(const XEvent& event)
 
     if (se.property == None) {
         LOG((CLOG_DEBUG "XDND: XConvertSelection failed (no owner or unsupported type)"));
+        m_xdndReceived = true;
         return;
     }
 
@@ -2187,6 +2189,7 @@ XWindowsScreen::onXdndSelectionNotify(const XEvent& event)
 
     if (rc != Success || data == nullptr) {
         LOG((CLOG_WARN "XDND: failed to read XdndSelection property"));
+        m_xdndReceived = true;
         return;
     }
 
@@ -2204,6 +2207,7 @@ XWindowsScreen::onXdndSelectionNotify(const XEvent& event)
 
     // reset drag tracking
     m_xdndDragging = false;
+    m_xdndReceived = true;
 }
 
 // static helper: percent-decode a URI component
@@ -2267,6 +2271,37 @@ XWindowsScreen::parseUriList(const std::string& uriList)
 String&
 XWindowsScreen::getDraggingFilename()
 {
+    if (!m_xdndFilename.empty()) {
+        return m_xdndFilename;
+    }
+
+    Window owner = XGetSelectionOwner(m_display, m_atomXdndSelection);
+    if (owner == None) {
+        m_xdndFilename.clear();
+        return m_xdndFilename;
+    }
+
+    m_xdndFilename.clear();
+    m_xdndReceived = false;
+
+    // Send selection request
+    XConvertSelection(
+        m_display,
+        m_atomXdndSelection,
+        m_atomTextUriList,
+        m_atomBarrierDndData,
+        m_window,
+        CurrentTime);
+    XFlush(m_display);
+
+    // Wait up to 500ms for selection notify event to be received by main event loop
+    for (int i = 0; i < 50; ++i) {
+        if (m_xdndReceived) {
+            break;
+        }
+        usleep(10000); // 10ms
+    }
+
     return m_xdndFilename;
 }
 
@@ -2274,7 +2309,8 @@ XWindowsScreen::getDraggingFilename()
 bool
 XWindowsScreen::isDraggingStarted()
 {
-    return m_xdndDragging;
+    Window owner = XGetSelectionOwner(m_display, m_atomXdndSelection);
+    return (owner != None);
 }
 
 // IPlatformScreen override — source side
@@ -2283,6 +2319,7 @@ XWindowsScreen::clearDraggingFilename()
 {
     m_xdndFilename.clear();
     m_xdndDragging = false;
+    m_xdndReceived = false;
 }
 
 // IPlatformScreen override — destination side
