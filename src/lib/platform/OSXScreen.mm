@@ -96,6 +96,9 @@ OSXScreen::OSXScreen(IEventQueue* events, bool isPrimary, bool autoShowHideCurso
 	m_activeModifierHotKeyMask(0),
 	m_eventTapPort(nullptr),
 	m_eventTapRLSR(nullptr),
+	m_powerAssertion(0),
+	m_hasPowerAssertion(false),
+	m_lastUserActivity(0.0),
 	m_lastClickTime(0),
 	m_clickState(1),
 	m_lastSingleClickXCursor(0),
@@ -439,6 +442,8 @@ OSXScreen::constructMouseButtonEventMap()
 void
 OSXScreen::postMouseEvent(CGPoint& pos) const
 {
+	declareUserActivity();
+
 	// check if cursor position is valid on the client display configuration
 	// stkamp@users.sourceforge.net
 	CGDisplayCount displayCount = 0;
@@ -510,6 +515,8 @@ OSXScreen::postMouseEvent(CGPoint& pos) const
 void
 OSXScreen::fakeMouseButton(ButtonID id, bool press)
 {
+	declareUserActivity();
+
 	// Buttons are indexed from one, but the button down array is indexed from zero
 	UInt32 index = mapBarrierButtonToMac(id) - kButtonLeft;
 	if (index >= NumButtonIDs) {
@@ -621,6 +628,8 @@ void OSXScreen::get_drop_target_thread()
 void
 OSXScreen::fakeMouseMove(SInt32 x, SInt32 y)
 {
+	declareUserActivity();
+
 	if (m_fakeDraggingStarted) {
 		m_buttonState.set(0, kMouseButtonDown);
 	}
@@ -670,6 +679,8 @@ OSXScreen::fakeMouseRelativeMove(SInt32 dx, SInt32 dy) const
 void
 OSXScreen::fakeMouseWheel(SInt32 xDelta, SInt32 yDelta) const
 {
+	declareUserActivity();
+
 	if (xDelta != 0 || yDelta != 0) {
 		// create a scroll event, post it and release it.  not sure if kCGScrollEventUnitLine
 		// is the right choice here over kCGScrollEventUnitPixel
@@ -2111,6 +2122,18 @@ void
 OSXScreen::setDropTarget(const String& target)
 {
 	m_dropTarget = target;
+}
+
+void
+OSXScreen::declareUserActivity() const
+{
+	double now = ARCH->time();
+	// Only declare activity at most once every 2 seconds to avoid IPC overhead
+	if (now - m_lastUserActivity > 2.0) {
+		m_lastUserActivity = now;
+		IOPMAssertionID assertionID;
+		IOPMAssertionDeclareUserActivity(CFSTR("Barrier Synthetic Input Activity"), kIOPMUserActiveLocal, &assertionID);
+	}
 }
 
 void
