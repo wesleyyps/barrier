@@ -799,8 +799,26 @@ XWindowsScreen::isAnyMouseButtonDown(UInt32& buttonID) const
 	unsigned int state;
     if (m_impl->XQueryPointer(m_display, m_root, &root, &window,
 								&xRoot, &yRoot, &xWindow, &yWindow, &state)) {
-		return ((state & (Button1Mask | Button2Mask | Button3Mask |
-							Button4Mask | Button5Mask)) != 0);
+		if ((state & Button1Mask) != 0) {
+			buttonID = kButtonLeft;
+			return true;
+		}
+		else if ((state & Button2Mask) != 0) {
+			buttonID = kButtonMiddle;
+			return true;
+		}
+		else if ((state & Button3Mask) != 0) {
+			buttonID = kButtonRight;
+			return true;
+		}
+		else if ((state & Button4Mask) != 0) {
+			buttonID = 4;
+			return true;
+		}
+		else if ((state & Button5Mask) != 0) {
+			buttonID = 5;
+			return true;
+		}
 	}
 
 	return false;
@@ -1266,6 +1284,19 @@ XWindowsScreen::handleSystemEvent(const Event& event, void*)
                     m_impl->XFreeEventData(m_display, cookie);
 					return;
 			}
+			else if (cookie->evtype == XI_RawButtonRelease) {
+				XIRawEvent *rawEvent = (XIRawEvent*)cookie->data;
+				XButtonEvent xbutton;
+				memset(&xbutton, 0, sizeof(xbutton));
+				xbutton.type = ButtonRelease;
+				xbutton.display = m_display;
+				xbutton.window = m_window;
+				xbutton.button = rawEvent->detail;
+				xbutton.time = rawEvent->time;
+				onMouseRelease(xbutton);
+				m_impl->XFreeEventData(m_display, cookie);
+				return;
+			}
                 m_impl->XFreeEventData(m_display, cookie);
 		}
 	}
@@ -1308,8 +1339,8 @@ XWindowsScreen::handleSystemEvent(const Event& event, void*)
 	case SelectionNotify:
 		// Check if this is our XDND XConvertSelection response
 		if (m_isPrimary &&
-			xevent->xselection.property == m_atomBarrierDndData &&
-			xevent->xselection.selection == m_atomXdndSelection) {
+			xevent->xselection.selection == m_atomXdndSelection &&
+			(xevent->xselection.property == m_atomBarrierDndData || xevent->xselection.property == None)) {
 			onXdndSelectionNotify(*xevent);
 			return;
 		}
@@ -1599,7 +1630,7 @@ XWindowsScreen::onMouseRelease(const XButtonEvent& xbutton)
 				m_atomTextUriList,
 				m_atomBarrierDndData,
 				m_window,
-				CurrentTime);
+				xbutton.time);
 			// SelectionNotify will be processed in handleSystemEvent
 		}
 		m_mouseButtonDown = false;
@@ -2045,9 +2076,14 @@ XWindowsScreen::grabMouseAndKeyboard()
 		LOG((CLOG_DEBUG2 "grabbed keyboard"));
 
 		// now the mouse --- use event_mask to get EnterNotify, LeaveNotify events
-        result = m_impl->XGrabPointer(m_display, m_window, False, event_mask,
-								GrabModeAsync, GrabModeAsync,
-								m_window, None, CurrentTime);
+		if (isDraggingStarted()) {
+			result = GrabSuccess;
+			LOG((CLOG_DEBUG1 "DND active: skipping pointer grab to allow Nautilus to keep it"));
+		} else {
+			result = m_impl->XGrabPointer(m_display, m_window, False, event_mask,
+									GrabModeAsync, GrabModeAsync,
+									m_window, None, CurrentTime);
+		}
 		assert(result != GrabNotViewable);
 		if (result != GrabSuccess) {
 			// back off to avoid grab deadlock
@@ -2132,6 +2168,7 @@ XWindowsScreen::selectXIRawMotion()
 	mask.deviceid = XIAllMasterDevices;
 	memset(mask.mask, 0, 2);
     XISetMask(mask.mask, XI_RawKeyRelease);
+	XISetMask(mask.mask, XI_RawButtonRelease);
 	XISetMask(mask.mask, XI_RawMotion);
     m_impl->XISelectEvents(m_display, DefaultRootWindow(m_display), &mask, 1);
 	free(mask.mask);
@@ -2284,14 +2321,15 @@ XWindowsScreen::getDraggingFilename()
     m_xdndFilename.clear();
     m_xdndReceived = false;
 
-    // Send selection request
+    // Send selection request using a valid ICCCM timestamp
+    Time timestamp = XWindowsUtil::getCurrentTime(m_display, m_window);
     XConvertSelection(
         m_display,
         m_atomXdndSelection,
         m_atomTextUriList,
         m_atomBarrierDndData,
         m_window,
-        CurrentTime);
+        timestamp);
     XFlush(m_display);
 
     // Wait up to 500ms for selection notify event to be received by main event loop

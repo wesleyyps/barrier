@@ -79,7 +79,7 @@ public:
     };
 
     //! Screen connected data
-    class ScreenConnectedInfo {
+    class ScreenConnectedInfo : public EventData {
     public:
         ScreenConnectedInfo(std::string screen) : m_screen(screen) { }
 
@@ -143,7 +143,7 @@ public:
     void                disconnect();
 
     //! Create a new thread and use it to send file to client
-    void                sendFileToClient(const char* filename);
+    void                sendFileToClient(const std::string& filename);
 
     //! Received dragging information from client
     void dragInfoReceived(UInt32 fileNum, std::string content);
@@ -358,7 +358,7 @@ private:
     void                forceLeaveClient(BaseClientProxy* client);
 
     // thread function for sending file
-    void send_file_thread(const char* filename);
+    void send_file_thread(std::string filename);
 
     // thread function for writing file to drop directory
     void write_to_drop_dir_thread();

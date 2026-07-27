@@ -31,6 +31,16 @@
 #error Platform not supported.
 #endif
 
+#if defined(__clang__) || defined(__GNUC__)
+extern "C" const char* __asan_default_options() {
+    return "alloc_dealloc_mismatch=0:detect_leaks=0:halt_on_error=0";
+}
+
+extern "C" const char* __ubsan_default_options() {
+    return "halt_on_error=0:print_stacktrace=1";
+}
+#endif
+
 int
 main(int argc, char** argv)
 {

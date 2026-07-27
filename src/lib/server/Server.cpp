@@ -348,8 +348,10 @@ Server::adoptClient(BaseClientProxy* client)
 	// send notification
 	auto* info =
 		new Server::ScreenConnectedInfo(getName(client));
-	m_events->addEvent(Event(m_events->forServer().connected(),
-								m_primaryClient->getEventTarget(), info));
+	Event event(m_events->forServer().connected(),
+				m_primaryClient->getEventTarget());
+	event.setDataObject(info);
+	m_events->addEvent(event);
 }
 
 void
@@ -2410,7 +2412,7 @@ Server::isReceivedFileSizeValid()
 }
 
 void
-Server::sendFileToClient(const char* filename)
+Server::sendFileToClient(const std::string& filename)
 {
 	if (m_sendFileThread != nullptr) {
 		StreamChunker::interruptFile();
@@ -2419,11 +2421,11 @@ Server::sendFileToClient(const char* filename)
     m_sendFileThread = new Thread([this, filename]() { send_file_thread(filename); });
 }
 
-void Server::send_file_thread(const char* filename)
+void Server::send_file_thread(std::string filename)
 {
 	try {
-		LOG((CLOG_DEBUG "sending file to client, filename=%s", filename));
-		StreamChunker::sendFile(filename, m_events, this);
+		LOG((CLOG_DEBUG "sending file to client, filename=%s", filename.c_str()));
+		StreamChunker::sendFile(filename.c_str(), m_events, this);
 	}
 	catch (std::runtime_error &error) {
 		LOG((CLOG_ERR "failed sending file chunks, error: %s", error.what()));
