@@ -894,7 +894,15 @@ ArchNetworkBSD::getUnblockPipeForThread(ArchThread thread)
         if (pipe(unblockPipe) != -1) {
             try {
                 setBlockingOnSocket(unblockPipe[0], false);
-                mt->setNetworkDataForCurrentThread(unblockPipe);
+                mt->setNetworkDataForThread(thread, unblockPipe);
+                mt->setNetworkDataCleanupForThread(thread, [](void* data) {
+                    int* p = static_cast<int*>(data);
+                    if (p != nullptr) {
+                        close(p[0]);
+                        close(p[1]);
+                        delete[] p;
+                    }
+                });
             }
             catch (...) {
                 delete[] unblockPipe;

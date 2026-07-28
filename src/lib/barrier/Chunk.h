@@ -17,9 +17,14 @@
 
 #pragma once
 
+#include "base/Event.h"
+
 #include <cstddef>
 
-class Chunk {
+// Chunk and its subclasses (FileChunk, ClipboardChunk) are always allocated
+// with operator new. Inheriting EventData ensures the event system stores them
+// via setDataObject() and frees them with delete, not free().
+class Chunk : public EventData {
 public:
     Chunk(size_t size);
     ~Chunk();

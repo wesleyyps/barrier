@@ -297,7 +297,7 @@ TEST(GenericArgsParsingTests, parseGenericArgs_dragDropCmdOnNonLinux_enableDragD
 #endif
 
 #ifdef  WINAPI_XWINDOWS
-TEST(GenericArgsParsingTests, parseGenericArgs_dragDropCmdOnLinux_enableDragDropFalse)
+TEST(GenericArgsParsingTests, parseGenericArgs_dragDropCmdOnLinux_enableDragDropTrue)
 {
     int i = 1;
     constexpr int argc = 2;
@@ -309,7 +309,8 @@ TEST(GenericArgsParsingTests, parseGenericArgs_dragDropCmdOnLinux_enableDragDrop
 
     argParser.parseGenericArgs(argc, kDragDropCmd.data(), i);
 
-    EXPECT_FALSE(argsBase.m_enableDragDrop);
+    // X11 drag-and-drop is now supported; --enable-drag-drop must work on Linux.
+    EXPECT_TRUE(argsBase.m_enableDragDrop);
     EXPECT_EQ(1, i);
 }
 #endif

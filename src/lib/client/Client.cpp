@@ -99,14 +99,26 @@ Client::Client(IEventQueue* events, const std::string& name, const NetworkAddres
 
 Client::~Client()
 {
-    if (m_mock) {
-        return;
-    }
-
+    // Always remove event handlers to prevent leaks, even in mock mode
     m_events->removeHandler(m_events->forIScreen().suspend(),
                               getEventTarget());
     m_events->removeHandler(m_events->forIScreen().resume(),
                               getEventTarget());
+
+    if (m_args.m_enableDragDrop) {
+        m_events->removeHandler(m_events->forFile().fileChunkSending(), this);
+        m_events->removeHandler(m_events->forFile().fileRecieveCompleted(), this);
+    }
+
+    if (m_sendFileThread != nullptr) {
+        StreamChunker::interruptFile();
+        delete m_sendFileThread;
+        m_sendFileThread = nullptr;
+    }
+
+    if (m_mock) {
+        return;
+    }
 
     cleanupTimer();
     cleanupScreen();
@@ -747,7 +759,7 @@ Client::handleResume(const Event&, void*)
 void
 Client::handleFileChunkSending(const Event& event, void*)
 {
-    sendFileChunk(event.getData());
+    sendFileChunk(event.getDataObject());
 }
 
 void
@@ -807,6 +819,8 @@ Client::sendFileToServer(const char* filename)
 {
     if (m_sendFileThread != nullptr) {
         StreamChunker::interruptFile();
+        delete m_sendFileThread;
+        m_sendFileThread = nullptr;
     }
 
     m_sendFileThread = new Thread([this, filename]() { send_file_thread(filename); });
@@ -820,8 +834,6 @@ void Client::send_file_thread(const char* filename)
     catch (std::runtime_error& error) {
         LOG((CLOG_ERR "failed sending file chunks: %s", error.what()));
     }
-
-    m_sendFileThread = nullptr;
 }
 
 void

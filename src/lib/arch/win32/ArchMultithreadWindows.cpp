@@ -54,6 +54,7 @@ public:
     bool                m_cancelling;
     HANDLE                m_exit;
     void*                m_networkData;
+    void                 (*m_networkDataCleanup)(void*);
 };
 
 ArchThreadImpl::ArchThreadImpl() :
@@ -61,7 +62,8 @@ ArchThreadImpl::ArchThreadImpl() :
     m_thread(NULL),
     m_id(0),
     m_cancelling(false),
-    m_networkData(NULL)
+    m_networkData(NULL),
+    m_networkDataCleanup(NULL)
 {
     m_exit   = CreateEvent(NULL, TRUE, FALSE, NULL);
     m_cancel = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -69,6 +71,9 @@ ArchThreadImpl::ArchThreadImpl() :
 
 ArchThreadImpl::~ArchThreadImpl()
 {
+    if (m_networkData && m_networkDataCleanup) {
+        m_networkDataCleanup(m_networkData);
+    }
     CloseHandle(m_exit);
     CloseHandle(m_cancel);
 }
@@ -117,11 +122,18 @@ ArchMultithreadWindows::~ArchMultithreadWindows()
 }
 
 void
-ArchMultithreadWindows::setNetworkDataForCurrentThread(void* data)
+ArchMultithreadWindows::setNetworkDataForThread(ArchThread thread, void* data)
 {
     lockMutex(m_threadMutex);
-    ArchThreadImpl* thread = findNoRef(GetCurrentThreadId());
     thread->m_networkData = data;
+    unlockMutex(m_threadMutex);
+}
+
+void
+ArchMultithreadWindows::setNetworkDataCleanupForThread(ArchThread thread, void (*cleanup)(void*))
+{
+    lockMutex(m_threadMutex);
+    thread->m_networkDataCleanup = cleanup;
     unlockMutex(m_threadMutex);
 }
 

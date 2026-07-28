@@ -51,12 +51,15 @@ setSignalSet(sigset_t* sigset)
 // ArchThreadImpl
 //
 
+#include <atomic>
+
 class ArchThreadImpl {
 public:
     ArchThreadImpl();
+    ~ArchThreadImpl();
 
 public:
-    int                    m_refCount;
+    std::atomic<int>       m_refCount;
     IArchMultithread::ThreadID        m_id;
     pthread_t            m_thread;
     std::function<void()> func_;;
@@ -64,6 +67,7 @@ public:
     bool                m_cancelling;
     bool                m_exited;
     void*                m_networkData;
+    void                 (*m_networkDataCleanup)(void*);
 };
 
 ArchThreadImpl::ArchThreadImpl() :
@@ -72,9 +76,17 @@ ArchThreadImpl::ArchThreadImpl() :
     m_cancel(false),
     m_cancelling(false),
     m_exited(false),
-    m_networkData(nullptr)
+    m_networkData(nullptr),
+    m_networkDataCleanup(nullptr)
 {
     // do nothing
+}
+
+ArchThreadImpl::~ArchThreadImpl()
+{
+    if (m_networkData && m_networkDataCleanup) {
+        m_networkDataCleanup(m_networkData);
+    }
 }
 
 
@@ -135,14 +147,26 @@ ArchMultithreadPosix::~ArchMultithreadPosix()
     assert(s_instance != NULL);
 
     s_instance = nullptr;
+
+    // clean up thread list
+    for (ThreadList::iterator index = m_threadList.begin();
+                              index != m_threadList.end(); ++index) {
+        delete *index;
+    }
 }
 
 void
-ArchMultithreadPosix::setNetworkDataForCurrentThread(void* data)
+ArchMultithreadPosix::setNetworkDataForThread(ArchThread thread, void* data)
 {
     std::lock_guard<std::mutex> lock(m_threadMutex);
-    ArchThreadImpl* thread = find(pthread_self());
     thread->m_networkData = data;
+}
+
+void
+ArchMultithreadPosix::setNetworkDataCleanupForThread(ArchThread thread, void (*cleanup)(void*))
+{
+    std::lock_guard<std::mutex> lock(m_threadMutex);
+    thread->m_networkDataCleanup = cleanup;
 }
 
 void*

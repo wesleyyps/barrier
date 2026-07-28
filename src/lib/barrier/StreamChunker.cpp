@@ -62,7 +62,11 @@ StreamChunker::sendFile(const char* filename,
     String fileSize = barrier::string::sizeTypeToString(size);
     FileChunk* sizeMessage = FileChunk::start(fileSize);
 
-    events->addEvent(Event(events->forFile().fileChunkSending(), eventTarget, sizeMessage));
+    {
+        Event ev(events->forFile().fileChunkSending(), eventTarget);
+        ev.setDataObject(sizeMessage);
+        events->addEvent(ev);
+    }
 
     // send chunk messages with a fixed chunk size
     size_t sentLength = 0;
@@ -89,7 +93,11 @@ StreamChunker::sendFile(const char* filename,
         FileChunk* fileChunk = FileChunk::data(data, chunkSize);
         delete[] chunkData;
 
-        events->addEvent(Event(events->forFile().fileChunkSending(), eventTarget, fileChunk));
+        {
+            Event ev(events->forFile().fileChunkSending(), eventTarget);
+            ev.setDataObject(fileChunk);
+            events->addEvent(ev);
+        }
 
         sentLength += chunkSize;
         file.seekg (sentLength, std::ios::beg);
@@ -102,7 +110,11 @@ StreamChunker::sendFile(const char* filename,
     // send last message
     FileChunk* end = FileChunk::end();
 
-    events->addEvent(Event(events->forFile().fileChunkSending(), eventTarget, end));
+    {
+        Event ev(events->forFile().fileChunkSending(), eventTarget);
+        ev.setDataObject(end);
+        events->addEvent(ev);
+    }
 
     file.close();
 
@@ -122,7 +134,11 @@ StreamChunker::sendClipboard(
     String dataSize = barrier::string::sizeTypeToString(size);
     ClipboardChunk* sizeMessage = ClipboardChunk::start(id, sequence, dataSize);
 
-    events->addEvent(Event(events->forClipboard().clipboardSending(), eventTarget, sizeMessage));
+    {
+        Event ev(events->forClipboard().clipboardSending(), eventTarget);
+        ev.setDataObject(sizeMessage);
+        events->addEvent(ev);
+    }
 
     // send clipboard chunk with a fixed size
     size_t sentLength = 0;
@@ -139,7 +155,11 @@ StreamChunker::sendClipboard(
         String chunk(data.substr(sentLength, chunkSize).c_str(), chunkSize);
         ClipboardChunk* dataChunk = ClipboardChunk::data(id, sequence, chunk);
 
-        events->addEvent(Event(events->forClipboard().clipboardSending(), eventTarget, dataChunk));
+        {
+            Event ev(events->forClipboard().clipboardSending(), eventTarget);
+            ev.setDataObject(dataChunk);
+            events->addEvent(ev);
+        }
 
         sentLength += chunkSize;
         if (sentLength == size) {
@@ -150,7 +170,11 @@ StreamChunker::sendClipboard(
     // send last message
     ClipboardChunk* end = ClipboardChunk::end(id, sequence);
 
-    events->addEvent(Event(events->forClipboard().clipboardSending(), eventTarget, end));
+    {
+        Event ev(events->forClipboard().clipboardSending(), eventTarget);
+        ev.setDataObject(end);
+        events->addEvent(ev);
+    }
 
     LOG((CLOG_DEBUG "sent clipboard size=%d", sentLength));
 }

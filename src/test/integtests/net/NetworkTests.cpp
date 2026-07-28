@@ -430,7 +430,11 @@ NetworkTests::sendMockData(void* eventTarget)
     String size = barrier::string::sizeTypeToString(kMockDataSize);
     FileChunk* sizeMessage = FileChunk::start(size);
 
-    m_events.addEvent(Event(m_events.forFile().fileChunkSending(), eventTarget, sizeMessage));
+    {
+        Event ev(m_events.forFile().fileChunkSending(), eventTarget);
+        ev.setDataObject(sizeMessage);
+        m_events.addEvent(ev);
+    }
 
     // send chunk messages with incrementing chunk size
     size_t lastSize = 0;
@@ -445,7 +449,11 @@ NetworkTests::sendMockData(void* eventTarget)
 
         // first byte is the chunk mark, last is \0
         FileChunk* chunk = FileChunk::data(m_mockData, dataSize);
-        m_events.addEvent(Event(m_events.forFile().fileChunkSending(), eventTarget, chunk));
+        {
+            Event ev(m_events.forFile().fileChunkSending(), eventTarget);
+            ev.setDataObject(chunk);
+            m_events.addEvent(ev);
+        }
 
         sentLength += dataSize;
         lastSize = dataSize;
@@ -458,7 +466,11 @@ NetworkTests::sendMockData(void* eventTarget)
 
     // send last message
     FileChunk* transferFinished = FileChunk::end();
-    m_events.addEvent(Event(m_events.forFile().fileChunkSending(), eventTarget, transferFinished));
+    {
+        Event ev(m_events.forFile().fileChunkSending(), eventTarget);
+        ev.setDataObject(transferFinished);
+        m_events.addEvent(ev);
+    }
 }
 
 UInt8*

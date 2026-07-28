@@ -41,7 +41,9 @@ ClientProxy1_6::ClientProxy1_6(const std::string& name, barrier::IStream* stream
 }
 
 ClientProxy1_6::~ClientProxy1_6()
-= default;
+{
+    m_events->removeHandler(m_events->forClipboard().clipboardSending(), this);
+}
 
 void
 ClientProxy1_6::setClipboard(ClipboardID id, const IClipboard* clipboard)
