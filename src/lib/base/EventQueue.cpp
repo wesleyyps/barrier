@@ -101,6 +101,13 @@ EventQueue::~EventQueue()
     delete m_readyCondVar;
     delete m_readyMutex;
 
+    for (auto& targetPair : m_handlers) {
+        for (auto& typePair : targetPair.second) {
+            delete typePair.second;
+        }
+    }
+    m_handlers.clear();
+
     // Free lazily-allocated event-type descriptor objects.
     // Each for*() accessor allocates its object on first call and stores it
     // as a raw pointer. delete nullptr is a safe no-op for those never used.

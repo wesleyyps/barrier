@@ -25,6 +25,9 @@
 #include "base/IEventQueue.h"
 #include "base/TMethodEventJob.h"
 
+#include <stdio.h>
+#include <string.h>
+
 #include <X11/Xatom.h>
 #include <X11/extensions/XTest.h>
 #if HAVE_X11_EXTENSIONS_DPMS_H
@@ -501,6 +504,56 @@ XWindowsScreenSaver::updateDisableTimer()
 void
 XWindowsScreenSaver::handleDisableTimer(const Event&, void*)
 {
+    // Fix for GNOME/systemd lock screens on Linux:
+    // We dynamically re-enable DPMS if the session is locked via systemd.
+    FILE* fp = popen("/usr/bin/loginctl show-session $(/usr/bin/loginctl show-user $(/usr/bin/whoami) -p Display --value 2>/dev/null) -p LockedHint 2>&1", "r");
+    if (fp) {
+        char buffer[256];
+        bool locked = false;
+        while (fgets(buffer, sizeof(buffer), fp) != NULL) {
+            LOG((CLOG_DEBUG "loginctl output: %s", buffer));
+            if (strstr(buffer, "LockedHint=yes")) {
+                locked = true;
+                break;
+            }
+        }
+        pclose(fp);
+        LOG((CLOG_DEBUG "Parsed locked state: %d", locked));
+
+        static bool wasLocked = false;
+        if (m_dpmsEnabled || m_timeout != 0 || locked) {
+            if (locked) {
+                // Screen is locked. Force DPMS on and turn off monitor.
+                enableDPMS(true);
+                if (m_timeout != 0) {
+                    m_impl->XSetScreenSaver(m_display, m_timeout, m_interval, m_preferBlanking, m_allowExposures);
+                }
+                if (!wasLocked) {
+                    LOG((CLOG_DEBUG "Forcing screen off via DPMSForceLevel"));
+                    m_impl->DPMSForceLevel(m_display, 3); // 3 = DPMSModeOff
+                    wasLocked = true;
+                }
+                m_impl->XFlush(m_display);
+                return; // Let the OS sleep naturally
+            } else {
+                wasLocked = false;
+                // Screen is unlocked. Re-disable to keep awake while reading.
+                if (m_dpmsEnabled) enableDPMS(false);
+                if (m_timeout != 0) {
+                    m_impl->XSetScreenSaver(m_display, 0, m_interval, m_preferBlanking, m_allowExposures);
+                }
+                m_impl->XFlush(m_display);
+            }
+        }
+    }
+
+    // Do not send fake input to keep the screen awake if it is ALREADY asleep or locked!
+    // This allows the user to manually lock the screen (or let DPMS blank it) without
+    // Barrier forcibly waking it up every 5 seconds.
+    if (isActive()) {
+        return;
+    }
+
     // send fake mouse motion directly to xscreensaver
     if (m_xscreensaver != None) {
         XEvent event;

@@ -43,3 +43,5 @@ build-asan
 coverity-auth-key.txt
 build-tsan
 build-msan
+asan-barrierc.log*
+lsan-suppressions.log
