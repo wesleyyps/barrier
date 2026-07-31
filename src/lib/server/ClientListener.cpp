@@ -199,9 +199,10 @@ ClientListener::handleUnknownClient(const Event&, void* vclient)
         }
     }
 
-    // now finished with unknown client
-    m_events->removeHandler(m_events->forClientProxyUnknown().success(), client);
-    m_events->removeHandler(m_events->forClientProxyUnknown().failure(), client);
+    // now finished with unknown client — remove handlers registered with
+    // unknownClient as the target (not 'client', which is a ClientProxy*).
+    m_events->removeHandler(m_events->forClientProxyUnknown().success(), unknownClient);
+    m_events->removeHandler(m_events->forClientProxyUnknown().failure(), unknownClient);
     m_newClients.erase(unknownClient);
 
     delete unknownClient;

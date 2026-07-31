@@ -85,6 +85,11 @@ PrimaryClient::getJumpZoneSize() const
 void
 PrimaryClient::getCursorCenter(SInt32& x, SInt32& y) const
 {
+    if (m_screen == nullptr) {
+        x = 0;
+        y = 0;
+        return;
+    }
     m_screen->getCursorCenter(x, y);
 }
 

@@ -25,6 +25,7 @@
 #include "XWindowsImpl.h"
 
 #include <X11/Xlib.h>
+#include <X11/Xatom.h>
 
 class XWindowsClipboard;
 class XWindowsKeyState;
@@ -82,11 +83,28 @@ public:
     virtual void        setSequenceNumber(UInt32);
     virtual bool        isPrimary() const;
 
+    // Drag & drop overrides (Linux XDND implementation)
+    virtual void        fakeDraggingFiles(DragFileList fileList);
+    virtual String&     getDraggingFilename();
+    virtual void        clearDraggingFilename();
+    virtual const String& getDropTarget() const;
+    virtual void        setDropTarget(const String&);
+    virtual bool        isDraggingStarted();
+    virtual bool        isFakeDraggingStarted() { return m_xdndFakeDragging; }
+    virtual void        setDraggingStarted(bool started) { m_xdndDragging = started; }
+
 protected:
     // IPlatformScreen overrides
     virtual void        handleSystemEvent(const Event&, void*);
     virtual void        updateButtons();
     virtual IKeyState*    getKeyState() const;
+
+private:
+    // XDND helpers
+    void                initXdnd();
+    void                onXdndSelectionNotify(const XEvent& event);
+    String              parseUriList(const std::string& uriList);
+    static std::string  decodeUriComponent(const std::string& uri);
 
 private:
     // event sending
@@ -261,4 +279,29 @@ private:
     // pointer to (singleton) screen.  this is only needed by
     // ioErrorHandler().
     static XWindowsScreen*    s_screen;
+
+    // --- Drag & Drop state (Linux XDND) ---
+
+    // Source-side (primary/server): set when user starts dragging on this screen
+    bool                m_xdndDragging;        // true while LMB is held + motion detected
+    String              m_xdndFilename;        // resolved file path from XdndSelection
+
+    // Destination-side (secondary/client): set while simulating a fake drag
+    bool                m_xdndFakeDragging;    // true while fakeDraggingFiles() is active
+    String              m_dropTargetPath;      // where received files are written
+
+    // XDND atoms
+    Atom                m_atomXdndEnter;
+    Atom                m_atomXdndPosition;
+    Atom                m_atomXdndStatus;
+    Atom                m_atomXdndDrop;
+    Atom                m_atomXdndFinished;
+    Atom                m_atomXdndSelection;
+    Atom                m_atomXdndActionCopy;
+    Atom                m_atomTextUriList;
+    Atom                m_atomBarrierDndData;  // scratch property for XConvertSelection
+
+    // Mouse state for source-side drag detection
+    bool                m_mouseButtonDown;     // LMB is currently pressed
+    bool                m_xdndReceived;        // true when selection notify received
 };

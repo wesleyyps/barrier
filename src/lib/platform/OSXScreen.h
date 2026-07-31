@@ -99,6 +99,7 @@ public:
     virtual void        fakeDraggingFiles(DragFileList fileList);
     virtual std::string& getDraggingFilename();
 
+    virtual void        setDropTarget(const String& target);
     const std::string& getDropTarget() const { return m_dropTarget; }
     void                waitForCarbonLoop() const;
 
@@ -112,6 +113,7 @@ private:
     void                updateScreenShape();
     void                updateScreenShape(const CGDirectDisplayID, const CGDisplayChangeSummaryFlags);
     void                postMouseEvent(CGPoint&) const;
+    void                declareUserActivity() const;
 
     // convenience function to send events
     void                sendEvent(Event::Type type, void* = NULL) const;
@@ -311,6 +313,7 @@ private:
     io_connect_t            m_pmRootPort;
     IOPMAssertionID            m_powerAssertion;
     bool                    m_hasPowerAssertion;
+    mutable double          m_lastUserActivity;
 
     // hot key stuff
     HotKeyMap                m_hotKeys;

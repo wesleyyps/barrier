@@ -69,11 +69,23 @@ mouseDown:(NSEvent *)theEvent
 	dragPosition.y -= 16;
 	imageLocation.origin = dragPosition;
 	imageLocation.size = NSMakeSize(32,32);
-	[self dragPromisedFilesOfTypes:[NSArray arrayWithObject:m_dragFileExt]
-								fromRect:imageLocation
-								  source:self
-							   slideBack:NO
-								   event:theEvent];
+
+	if (@available(macOS 10.12, *)) {
+		NSFilePromiseProvider *provider = [[NSFilePromiseProvider alloc] initWithFileType:m_dragFileExt delegate:self];
+		NSDraggingItem *item = [[NSDraggingItem alloc] initWithPasteboardWriter:provider];
+		NSImage *dragImage = [[NSImage alloc] initWithSize:NSMakeSize(32, 32)];
+		[item setDraggingFrame:imageLocation contents:dragImage];
+		[self beginDraggingSessionWithItems:[NSArray arrayWithObject:item] event:theEvent source:self];
+		[dragImage release];
+		[item release];
+		[provider release];
+	} else {
+		[self dragPromisedFilesOfTypes:[NSArray arrayWithObject:m_dragFileExt]
+									fromRect:imageLocation
+									  source:self
+								   slideBack:NO
+									   event:theEvent];
+	}
 }
 
 - (NSArray*)
@@ -85,6 +97,27 @@ namesOfPromisedFilesDroppedAtDestination:(NSURL *)dropDestination
 	}
 	NSLog ( @"cocoa drop target: %@", m_dropTarget);
 	return nil;
+}
+
+- (NSString *)filePromiseProvider:(NSFilePromiseProvider *)filePromiseProvider fileNameForType:(NSString *)fileType API_AVAILABLE(macos(10.12))
+{
+	return [NSString stringWithFormat:@"file.%@", fileType];
+}
+
+- (void)filePromiseProvider:(NSFilePromiseProvider *)filePromiseProvider writePromiseToURL:(NSURL *)url completionHandler:(void (^)(NSError * _Nullable errorOrNil))completionHandler API_AVAILABLE(macos(10.12))
+{
+	[m_dropTarget setString:@""];
+	if (url != nil) {
+		NSURL *parentDir = [url URLByDeletingLastPathComponent];
+		if (parentDir != nil && parentDir.path != nil) {
+			[m_dropTarget appendString:parentDir.path];
+		}
+	}
+	NSLog ( @"cocoa drop target: %@", m_dropTarget);
+	
+	if (completionHandler) {
+		completionHandler(nil);
+	}
 }
 
 - (NSDragOperation)

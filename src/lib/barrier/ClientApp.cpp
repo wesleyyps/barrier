@@ -67,7 +67,9 @@ ClientApp::ClientApp(IEventQueue* events, CreateTaskBarReceiverFunc createTaskBa
 }
 
 ClientApp::~ClientApp()
-= default;
+{
+    delete m_serverAddress;
+}
 
 void
 ClientApp::parseArgs(int argc, const char* const* argv)
@@ -539,6 +541,15 @@ ClientApp::runInner(int argc, char** argv, ILogOutputter* outputter, StartupFunc
 
         throw;
     }
+
+    if (m_taskBarReceiver != nullptr)
+    {
+        // done with task bar receiver
+        delete m_taskBarReceiver;
+    }
+
+    delete m_serverAddress;
+    m_serverAddress = nullptr;
 
     return result;
 }

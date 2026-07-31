@@ -254,7 +254,7 @@ InputFilter::ScreenConnectedCondition::match(const Event& event)
 {
     if (event.getType() == m_events->forServer().connected()) {
         auto* info =
-            static_cast<Server::ScreenConnectedInfo*>(event.getData());
+            static_cast<Server::ScreenConnectedInfo*>(event.getDataObject());
         if (m_screen == info->m_screen || m_screen.empty()) {
             return kActivate;
         }
@@ -352,7 +352,7 @@ InputFilter::SwitchToScreenAction::perform(const Event& event)
     std::string screen = m_screen;
     if (screen.empty() && event.getType() == m_events->forServer().connected()) {
         auto* info =
-            static_cast<Server::ScreenConnectedInfo*>(event.getData());
+            static_cast<Server::ScreenConnectedInfo*>(event.getDataObject());
         screen = info->m_screen;
     }
 

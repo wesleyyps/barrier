@@ -20,7 +20,9 @@
 
 #include "base/IEventQueueBuffer.h"
 
-#include <Carbon/Carbon.h>
+#include <mutex>
+#include <condition_variable>
+#include <queue>
 
 class IEventQueue;
 
@@ -41,7 +43,8 @@ public:
     virtual void        deleteTimer(EventQueueTimer*) const;
 
 private:
-    EventRef            m_event;
     IEventQueue*        m_eventQueue;
-    EventQueueRef        m_carbonEventQueue;
+    mutable std::mutex  m_mutex;
+    std::condition_variable m_cond;
+    std::queue<UInt32>  m_dataQueue;
 };

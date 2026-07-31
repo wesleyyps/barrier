@@ -36,6 +36,7 @@ public:
     MOCK_METHOD0(enable, void());
     MOCK_METHOD0(disable, void());
     MOCK_METHOD2(registerHotKey, UInt32(KeyID, KeyModifierMask));
+    MOCK_CONST_METHOD2(getCursorCenter, void(SInt32&, SInt32&));
     MOCK_CONST_METHOD0(getToggleMask, KeyModifierMask());
     MOCK_METHOD1(unregisterHotKey, void(UInt32));
 };

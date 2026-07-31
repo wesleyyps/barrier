@@ -218,11 +218,8 @@ Server::Server(
 // NOLINTNEXTLINE(bugprone-exception-escape)
 Server::~Server()
 {
-	if (m_mock) {
-		return;
-	}
-
-	// remove event handlers and timers
+	// Always remove event handlers, even in mock mode — the TMethodEventJob
+	// objects are heap-allocated and must be freed regardless.
 	m_events->removeHandler(m_events->forIKeyState().keyDown(),
 							m_inputFilter);
 	m_events->removeHandler(m_events->forIKeyState().keyUp(),
@@ -247,10 +244,67 @@ Server::~Server()
 							m_inputFilter);
 	m_events->removeHandler(m_events->forIPrimaryScreen().fakeInputEnd(),
 							m_inputFilter);
+	m_events->removeHandler(m_events->forServer().switchToScreen(),
+							m_inputFilter);
+	m_events->removeHandler(m_events->forServer().toggleScreen(),
+							m_inputFilter);
+	m_events->removeHandler(m_events->forServer().switchInDirection(),
+							m_inputFilter);
+	m_events->removeHandler(m_events->forServer().keyboardBroadcast(),
+							m_inputFilter);
+	m_events->removeHandler(m_events->forServer().lockCursorToScreen(),
+							m_inputFilter);
 	m_events->removeHandler(Event::kTimer, this);
+
+	if (m_args.m_enableDragDrop) {
+		m_events->removeHandler(m_events->forFile().fileChunkSending(), this);
+		m_events->removeHandler(m_events->forFile().fileRecieveCompleted(), this);
+	}
+
 	stopSwitch();
 
-	// force immediate disconnection of secondary clients
+	if (m_sendFileThread != nullptr) {
+		StreamChunker::interruptFile();
+		delete m_sendFileThread;
+		m_sendFileThread = nullptr;
+	}
+
+	if (m_mock) {
+		// Mock mode: disconnect() crashes because forceLeaveClient uses a mock
+		// PrimaryClient without a real screen. Manually delete all secondary clients.
+		
+		// Create a copy of clients to safely iterate and remove them
+		std::vector<BaseClientProxy*> clientsToDelete;
+		for (auto & m_client : m_clients) {
+			if (m_client.second != m_primaryClient) {
+				clientsToDelete.push_back(m_client.second);
+			}
+		}
+		
+		for (BaseClientProxy* client : clientsToDelete) {
+			removeClient(client);
+			m_events->removeHandler(m_events->forClientProxy().disconnected(), client);
+			delete client;
+		}
+		
+		for (auto & m_oldClient : m_oldClients) {
+			BaseClientProxy* client = m_oldClient.first;
+			if (m_oldClient.second) {
+				m_events->deleteTimer(m_oldClient.second);
+				m_events->removeHandler(Event::kTimer, client);
+			}
+			m_events->removeHandler(m_events->forClientProxy().disconnected(), client);
+			delete client;
+		}
+
+		// Primary client is a mock object — skip disable, but we must removeClient
+		// to clean up its event handlers (shapeChanged, clipboardGrabbed, clipboardChanged).
+		removeClient(m_primaryClient);
+		return;
+	}
+
+	// force immediate disconnection of secondary clients (real network clients,
+	// even in mock mode — their destructor removes event handlers).
 	disconnect();
 	for (auto & m_oldClient : m_oldClients) {
 		BaseClientProxy* client = m_oldClient.first;
@@ -348,8 +402,10 @@ Server::adoptClient(BaseClientProxy* client)
 	// send notification
 	auto* info =
 		new Server::ScreenConnectedInfo(getName(client));
-	m_events->addEvent(Event(m_events->forServer().connected(),
-								m_primaryClient->getEventTarget(), info));
+	Event event(m_events->forServer().connected(),
+				m_primaryClient->getEventTarget());
+	event.setDataObject(info);
+	m_events->addEvent(event);
 }
 
 void
@@ -1542,7 +1598,7 @@ Server::handleFakeInputEndEvent(const Event&, void*)
 void
 Server::handleFileChunkSendingEvent(const Event& event, void*)
 {
-	onFileChunkSending(event.getData());
+	onFileChunkSending(event.getDataObject());
 }
 
 void
@@ -2049,6 +2105,7 @@ Server::onMouseMoveSecondary(SInt32 dx, SInt32 dy)
 	if (jump) {
 		if (m_sendFileThread != nullptr) {
 			StreamChunker::interruptFile();
+			delete m_sendFileThread;
 			m_sendFileThread = nullptr;
 		}
 
@@ -2410,26 +2467,26 @@ Server::isReceivedFileSizeValid()
 }
 
 void
-Server::sendFileToClient(const char* filename)
+Server::sendFileToClient(const std::string& filename)
 {
 	if (m_sendFileThread != nullptr) {
 		StreamChunker::interruptFile();
+		delete m_sendFileThread;
+		m_sendFileThread = nullptr;
 	}
 
     m_sendFileThread = new Thread([this, filename]() { send_file_thread(filename); });
 }
 
-void Server::send_file_thread(const char* filename)
+void Server::send_file_thread(std::string filename)
 {
 	try {
-		LOG((CLOG_DEBUG "sending file to client, filename=%s", filename));
-		StreamChunker::sendFile(filename, m_events, this);
+		LOG((CLOG_DEBUG "sending file to client, filename=%s", filename.c_str()));
+		StreamChunker::sendFile(filename.c_str(), m_events, this);
 	}
 	catch (std::runtime_error &error) {
 		LOG((CLOG_ERR "failed sending file chunks, error: %s", error.what()));
 	}
-
-	m_sendFileThread = nullptr;
 }
 
 void

@@ -39,3 +39,9 @@ cov-int
 build-fuzz-homebrew
 build-fuzz-final
 build-fuzz
+build-asan
+coverity-auth-key.txt
+build-tsan
+build-msan
+asan-barrierc.log*
+lsan-suppressions.log

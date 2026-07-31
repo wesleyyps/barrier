@@ -101,6 +101,37 @@ EventQueue::~EventQueue()
     delete m_readyCondVar;
     delete m_readyMutex;
 
+    for (auto& targetPair : m_handlers) {
+        for (auto& typePair : targetPair.second) {
+            delete typePair.second;
+        }
+    }
+    m_handlers.clear();
+
+    // Free lazily-allocated event-type descriptor objects.
+    // Each for*() accessor allocates its object on first call and stores it
+    // as a raw pointer. delete nullptr is a safe no-op for those never used.
+    delete m_typesForClient;
+    delete m_typesForIStream;
+    delete m_typesForIpcClient;
+    delete m_typesForIpcClientProxy;
+    delete m_typesForIpcServer;
+    delete m_typesForIpcServerProxy;
+    delete m_typesForIDataSocket;
+    delete m_typesForIListenSocket;
+    delete m_typesForISocket;
+    delete m_typesForOSXScreen;
+    delete m_typesForClientListener;
+    delete m_typesForClientProxy;
+    delete m_typesForClientProxyUnknown;
+    delete m_typesForServer;
+    delete m_typesForServerApp;
+    delete m_typesForIKeyState;
+    delete m_typesForIPrimaryScreen;
+    delete m_typesForIScreen;
+    delete m_typesForClipboard;
+    delete m_typesForFile;
+
     ARCH->setSignalHandler(Arch::kINTERRUPT, nullptr, nullptr);
     ARCH->setSignalHandler(Arch::kTERMINATE, nullptr, nullptr);
 }
@@ -115,11 +146,18 @@ EventQueue::loop()
         m_readyCondVar->signal();
     }
     LOG((CLOG_DEBUG "event queue is ready"));
-    while (!m_pending.empty()) {
+    while (true) {
+        Event event;
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_pending.empty()) {
+                break;
+            }
+            event = m_pending.front();
+            m_pending.pop();
+        }
         LOG((CLOG_DEBUG "add pending events to buffer"));
-        Event& event = m_pending.front();
         addEventToBuffer(event);
-        m_pending.pop();
     }
 
     Event event;
@@ -302,11 +340,21 @@ EventQueue::addEvent(const Event& event)
         dispatchEvent(event);
         Event::deleteData(event);
     }
-    else if (!(*m_readyCondVar)) {
-        m_pending.push(event);
-    }
     else {
-        addEventToBuffer(event);
+        bool isReady = false;
+        {
+            Lock lockReady(m_readyMutex);
+            isReady = *m_readyCondVar;
+        }
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (!isReady) {
+                m_pending.push(event);
+            }
+        }
+        if (isReady) {
+            addEventToBuffer(event);
+        }
     }
 }
 

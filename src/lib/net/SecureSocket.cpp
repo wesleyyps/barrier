@@ -823,11 +823,11 @@ showCipherStackDesc(STACK_OF(SSL_CIPHER) * stack) {
 
         // Why does SSL put a newline in the description?
         int pos = static_cast<int>(strlen(msg.data())) - 1;
-        if (msg[pos] == '\n') {
+        if (pos >= 0 && msg[pos] == '\n') {
             msg[pos] = '\0';
         }
 
-        LOG((CLOG_DEBUG1 "%s",msg));
+        LOG((CLOG_DEBUG1 "%s", msg.data()));
     }
 }
 

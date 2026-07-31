@@ -51,7 +51,11 @@ IpcClient::init()
 }
 
 IpcClient::~IpcClient()
-= default;
+{
+    if (m_server != nullptr) {
+        disconnect();
+    }
+}
 
 void
 IpcClient::connect()

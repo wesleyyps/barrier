@@ -450,7 +450,13 @@ ArchNetworkWinsock::pollSocket(PollEntry* pe, int num, double timeout)
         unblockEvent  = new WSAEVENT;
         m_unblockEvents.push_back(unblockEvent);
         *unblockEvent = WSACreateEvent_winsock();
-        mt->setNetworkDataForCurrentThread(unblockEvent);
+        mt->setNetworkDataForThread(thread, unblockEvent);
+        mt->setNetworkDataCleanupForThread(thread, [](void* data) {
+            WSAEVENT* ev = static_cast<WSAEVENT*>(data);
+            if (ev != NULL && *ev != WSA_INVALID_EVENT) {
+                WSACloseEvent_winsock(*ev);
+            }
+        });
     }
     events[n++] = *unblockEvent;
 
