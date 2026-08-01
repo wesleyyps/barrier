@@ -24,14 +24,16 @@
 
 const QString ScreenSetupModel::m_MimeType = "application/x-qbarrier-screen";
 
-ScreenSetupModel::ScreenSetupModel(std::vector<Screen>& screens, int numColumns, int numRows) :
-    QAbstractTableModel(nullptr),
-    m_Screens(screens),
+ScreenSetupModel::ScreenSetupModel(std::vector<Screen>& screens, int numColumns, int numRows, const QString& serverName) :
     m_NumColumns(numColumns),
-    m_NumRows(numRows)
+    m_NumRows(numRows),
+    m_Screens(screens),
+    m_ServerName(serverName)
 {
-    if (m_NumColumns * m_NumRows > screens.size())
+    if (screens.size() < static_cast<std::vector<Screen>::size_type>(m_NumColumns * m_NumRows))
+    {
         qFatal("Not enough elements (%u) in screens QList for %d columns and %d rows", screens.size(), m_NumColumns, m_NumRows);
+    }
 }
 
 QVariant ScreenSetupModel::data(const QModelIndex& index, int role) const
@@ -57,6 +59,11 @@ QVariant ScreenSetupModel::data(const QModelIndex& index, int role) const
                 if (screen(index).isNull())
                     break;
                 return screen(index).name();
+            case Qt::BackgroundRole:
+                if (!screen(index).isNull() && screen(index).name() == m_ServerName) {
+                    return QBrush(QColor(46, 125, 50)); // Dark green brush
+                }
+                break;
             default:
                 break;
         }

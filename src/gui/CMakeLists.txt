@@ -46,6 +46,7 @@ set(GUI_SOURCE_FILES
     src/ScreenSetupModel.cpp
     src/ScreenSetupView.cpp
     src/ServerConfig.cpp
+    src/ConfModifier.cpp
     src/ServerConfigDialog.cpp
     src/SettingsDialog.cpp
     src/SetupWizard.cpp

@@ -123,6 +123,7 @@ MainWindow::MainWindow(QSettings& settings, AppConfig& appConfig) :
     m_SuppressAutoConfigWarning(false),
     m_BonjourInstall(nullptr),
     m_SuppressEmptyServerWarning(false),
+    m_bIsExternalDaemon(false),
     m_ExpectedRunningState(kStopped),
     m_pSslCertificate(nullptr),
     m_pLogWindow(new LogWindow(nullptr))
@@ -232,16 +233,48 @@ void MainWindow::open()
         }
         
         if (!runningConfigPath.isEmpty()) {
-            m_pRadioExternalConfig->setChecked(true);
+            m_pCheckBoxExternalConfig->setChecked(true);
             m_pLineEditConfigFile->setText(runningConfigPath);
+            
+            QFile file(runningConfigPath);
+            if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                QTextStream in(&file);
+                bool inOptions = false;
+                while (!in.atEnd()) {
+                    QString line = in.readLine().trimmed();
+                    if (line == "section: options") {
+                        inOptions = true;
+                    } else if (line.startsWith("section:") || line == "end") {
+                        inOptions = false;
+                    } else if (inOptions) {
+                        if (line.startsWith("server = ")) {
+                            m_pLabelScreenName->setText(line.mid(line.indexOf('=') + 1).trimmed());
+                        } else if (line.startsWith("serverIp = ")) {
+                            m_pLineEditHostname->setText(line.mid(line.indexOf('=') + 1).trimmed());
+                        } else if (line.startsWith("autoConfig = ")) {
+                            m_pCheckBoxAutoConfig->setChecked(line.mid(line.indexOf('=') + 1).trimmed() == "true");
+                        }
+                    }
+                }
+            }
         }
 
         m_ExpectedRunningState = kStarted;
+        m_bIsExternalDaemon = true;
         setBarrierState(barrierConnected);
         m_pActionStopBarrier->setEnabled(false);
         m_pActionStartBarrier->setEnabled(false);
         m_pButtonToggleStart->setText(tr("Rodando Externamente"));
         m_pButtonToggleStart->setEnabled(false);
+        
+        // Bloqueia toda a interface gráfica de ser editada quando há um daemon em execução
+        m_pGroupServer->setCheckable(false); // Mantém o grupo acessível mas não checkable
+        m_pGroupClient->setEnabled(false);
+        m_pGroupClient->setCheckable(false);
+        m_pCheckBoxExternalConfig->setEnabled(false);
+        m_pLineEditConfigFile->setEnabled(false);
+        m_pButtonBrowseConfigFile->setEnabled(false);
+        
         appendLogInfo("Instância externa detectada. GUI em modo monitor.");
     }
     // only start if user has previously started. this stops the gui from
@@ -317,8 +350,7 @@ void MainWindow::loadSettings()
 {
     // the next two must come BEFORE loading groupServerChecked and groupClientChecked or
     // disabling and/or enabling the right widgets won't automatically work
-    m_pRadioExternalConfig->setChecked(settings().value("useExternalConfig", false).toBool());
-    m_pRadioInternalConfig->setChecked(settings().value("useInternalConfig", true).toBool());
+    m_pCheckBoxExternalConfig->setChecked(settings().value("useExternalConfig", false).toBool());
 
     m_pGroupServer->setChecked(settings().value("groupServerChecked", false).toBool());
     m_pLineEditConfigFile->setText(settings().value("configFile", QDir::homePath() + "/" + barrierConfigName).toString());
@@ -334,15 +366,15 @@ void MainWindow::initConnections()
     connect(m_pActionStopBarrier, SIGNAL(triggered()), this, SLOT(stopBarrier()));
     connect(m_pActionShowLog, SIGNAL(triggered()), this, SLOT(showLogWindow()));
     connect(m_pActionQuit, SIGNAL(triggered()), qApp, SLOT(quit()));
+
 }
 
 void MainWindow::saveSettings()
 {
     // program settings
-    settings().setValue("groupServerChecked", m_pGroupServer->isChecked());
-    settings().setValue("useExternalConfig", m_pRadioExternalConfig->isChecked());
+    settings().setValue("useExternalConfig", m_pCheckBoxExternalConfig->isChecked());
     settings().setValue("configFile", m_pLineEditConfigFile->text());
-    settings().setValue("useInternalConfig", m_pRadioInternalConfig->isChecked());
+
     settings().setValue("groupClientChecked", m_pGroupClient->isChecked());
     settings().setValue("serverHostname", m_pLineEditHostname->text());
 
@@ -440,6 +472,10 @@ void MainWindow::checkConnected(const QString& line)
         line.contains("connected to server") ||
         line.contains("server status: active"))
     {
+        if (m_ExpectedRunningState == kStopped) {
+            m_ExpectedRunningState = kStarted;
+            m_bIsExternalDaemon = true;
+        }
         setBarrierState(barrierConnected);
 
         if (!appConfig().startedBefore() && isVisible()) {
@@ -534,6 +570,7 @@ void MainWindow::startBarrier()
 
     appendLogDebug("starting process");
     m_ExpectedRunningState = kStarted;
+    m_bIsExternalDaemon = false;
     setBarrierState(barrierConnecting);
 
     QString app;
@@ -576,6 +613,10 @@ void MainWindow::startBarrier()
     }
 
 #endif
+
+    if (!m_ServerConfig.dragDropDirectory().isEmpty()) {
+        args << "--drop-dir" << m_ServerConfig.dragDropDirectory();
+    }
 
     if (!m_AppConfig->getCryptoEnabled()) {
         args << "--disable-crypto";
@@ -658,6 +699,18 @@ bool MainWindow::clientArgs(QStringList& args, QString& app)
         args << "--log" << appConfig().logFilenameCmd();
     }
 
+    if (m_pCheckBoxExternalConfig->isChecked()) {
+        QString configFile = configFilename();
+        if (configFile.isEmpty()) {
+            return false;
+        }
+
+        args << "-c" << configFile;
+        args << "--name" << getScreenName();
+
+        return true;
+    }
+
     // check auto config first, if it is disabled or no server detected,
     // use line edit host name if it is not empty
     if (m_pCheckBoxAutoConfig->isChecked()) {
@@ -683,7 +736,7 @@ bool MainWindow::clientArgs(QStringList& args, QString& app)
 QString MainWindow::configFilename()
 {
     QString filename;
-    if (m_pRadioInternalConfig->isChecked())
+    if (!m_pCheckBoxExternalConfig->isChecked())
     {
         // TODO: no need to use a temporary file, since we need it to
         // be permanent (since it'll be used for Windows services, etc).
@@ -851,15 +904,11 @@ void MainWindow::setBarrierState(qBarrierState state)
     {
         disconnect (m_pButtonToggleStart, SIGNAL(clicked()), m_pActionStartBarrier, SLOT(trigger()));
         connect (m_pButtonToggleStart, SIGNAL(clicked()), m_pActionStopBarrier, SLOT(trigger()));
-        m_pButtonToggleStart->setText(tr("&Stop"));
-        m_pButtonReload->setEnabled(true);
     }
     else if (state == barrierDisconnected)
     {
         disconnect (m_pButtonToggleStart, SIGNAL(clicked()), m_pActionStopBarrier, SLOT(trigger()));
         connect (m_pButtonToggleStart, SIGNAL(clicked()), m_pActionStartBarrier, SLOT(trigger()));
-        m_pButtonToggleStart->setText(tr("&Start"));
-        m_pButtonReload->setEnabled(false);
     }
 
     bool connected = false;
@@ -867,8 +916,26 @@ void MainWindow::setBarrierState(qBarrierState state)
         connected = true;
     }
 
-    m_pActionStartBarrier->setEnabled(!connected);
-    m_pActionStopBarrier->setEnabled(connected);
+    if (m_bIsExternalDaemon) {
+        m_pActionStartBarrier->setEnabled(false);
+        m_pActionStopBarrier->setEnabled(false);
+        m_pButtonToggleStart->setText(tr("Rodando Externamente"));
+        m_pButtonToggleStart->setEnabled(false);
+        m_pButtonReload->setEnabled(true);
+    } else {
+        m_pActionStartBarrier->setEnabled(!connected);
+        m_pActionStopBarrier->setEnabled(connected);
+        
+        if (state == barrierConnected || state == barrierConnecting) {
+            m_pButtonToggleStart->setText(tr("&Stop"));
+            m_pButtonToggleStart->setEnabled(true);
+            m_pButtonReload->setEnabled(true);
+        } else if (state == barrierDisconnected) {
+            m_pButtonToggleStart->setText(tr("&Start"));
+            m_pButtonToggleStart->setEnabled(true);
+            m_pButtonReload->setEnabled(false);
+        }
+    }
 
     switch (state)
     {
@@ -1116,12 +1183,21 @@ bool MainWindow::on_m_pButtonBrowseConfigFile_clicked()
 
 bool MainWindow::on_m_pActionSave_triggered()
 {
+    QString runningConfigPath;
+    if (detectExistingInstance(&runningConfigPath) > 0 && !runningConfigPath.isEmpty()) {
+        if (serverConfig().save(runningConfigPath)) {
+            QMessageBox::information(this, tr("Save successful"), tr("Configuration saved to external instance path."));
+            return true;
+        }
+        QMessageBox::warning(this, tr("Save failed"), tr("Could not save configuration to file."));
+        return false;
+    }
+    
     QString fileName = QFileDialog::getSaveFileName(this, tr("Save configuration as..."), QString(), barrierConfigSaveFilter);
-
     if (!fileName.isEmpty() && !serverConfig().save(fileName))
     {
         QMessageBox::warning(this, tr("Save failed"), tr("Could not save configuration to file."));
-        return true;
+        return false;
     }
 
     return false;
@@ -1134,8 +1210,37 @@ void MainWindow::on_m_pActionAbout_triggered()
 
 void MainWindow::on_m_pActionSettings_triggered()
 {
-    if (SettingsDialog(this, appConfig()).exec() == QDialog::Accepted)
+    QString configPath;
+    if (m_pCheckBoxExternalConfig->isChecked() && !m_pLineEditConfigFile->text().isEmpty()) {
+        configPath = m_pLineEditConfigFile->text();
+        m_ServerConfig.loadFromConf(configPath);
+        
+        // Sync to AppConfig for SettingsDialog to display
+        appConfig().setPort(m_ServerConfig.port());
+        appConfig().setCryptoEnabled(m_ServerConfig.cryptoEnabled());
+        appConfig().setRequireClientCertificate(m_ServerConfig.requireClientCertificate());
+        appConfig().setLogLevel(m_ServerConfig.logLevel());
+        appConfig().setLogToFile(m_ServerConfig.logToFile());
+        appConfig().setLogFilename(m_ServerConfig.logFilename());
+        appConfig().setNetworkInterface(m_ServerConfig.networkInterface());
+    }
+
+    if (SettingsDialog(this, appConfig()).exec() == QDialog::Accepted) {
+        if (!configPath.isEmpty()) {
+            // Sync back to ServerConfig and save
+            m_ServerConfig.setServerName(appConfig().screenName());
+            m_ServerConfig.setPort(appConfig().port());
+            m_ServerConfig.setCryptoEnabled(appConfig().getCryptoEnabled());
+            m_ServerConfig.setRequireClientCertificate(appConfig().getRequireClientCertificate());
+            m_ServerConfig.setLogLevel(appConfig().logLevel());
+            m_ServerConfig.setLogToFile(appConfig().logToFile());
+            m_ServerConfig.setLogFilename(appConfig().logFilename());
+            m_ServerConfig.setNetworkInterface(appConfig().networkInterface());
+            
+            m_ServerConfig.save(configPath);
+        }
         updateSSLFingerprint();
+    }
 }
 
 void MainWindow::autoAddScreen(const QString name)
@@ -1166,9 +1271,29 @@ void MainWindow::autoAddScreen(const QString name)
 
 void MainWindow::showConfigureServer(const QString& message)
 {
-    ServerConfigDialog dlg(this, serverConfig(), appConfig().screenName());
-    dlg.message(message);
-    dlg.exec();
+    ServerConfig& config = serverConfig();
+    QString runningConfigPath;
+    int externalInstance = detectExistingInstance(&runningConfigPath);
+    
+    if (externalInstance > 0 && !runningConfigPath.isEmpty()) {
+        config.loadFromConf(runningConfigPath);
+    }
+
+    ServerConfigDialog dlg(this, config, appConfig().screenName());
+    
+    QString displayMessage = message;
+    if (externalInstance > 0 && !runningConfigPath.isEmpty()) {
+        if (!displayMessage.isEmpty()) displayMessage += "\n\n";
+        displayMessage += tr("Atenção: A configuração visual será salva diretamente no arquivo de configuração do daemon ativo.\nAs mudanças só serão aplicadas após você reiniciar o processo do Barrier em background.");
+    }
+    
+    dlg.message(displayMessage);
+    
+    if (dlg.exec() == QDialog::Accepted) {
+        if (externalInstance > 0 && !runningConfigPath.isEmpty()) {
+            config.save(runningConfigPath);
+        }
+    }
 }
 
 void MainWindow::on_m_pButtonConfigureServer_clicked()
@@ -1178,7 +1303,14 @@ void MainWindow::on_m_pButtonConfigureServer_clicked()
 
 void MainWindow::on_m_pButtonReload_clicked()
 {
-    restartBarrier();
+    QString runningConfigPath;
+    int externalInstance = detectExistingInstance(&runningConfigPath);
+    if (externalInstance > 0) {
+        m_IpcClient.sendCommand("reload", appConfig().elevateMode());
+        appendLogInfo("Sent reload command to external daemon.");
+    } else {
+        restartBarrier();
+    }
 }
 
 #ifdef Q_OS_WIN
@@ -1264,11 +1396,14 @@ int MainWindow::detectExistingInstance(QString* outConfigPath)
                             QFile confFile(confPathStr);
                             if (confFile.exists() && confFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
                                 QTextStream confIn(&confFile);
-                                *outConfigPath = confIn.readLine();
+                                *outConfigPath = confIn.readLine().trimmed();
                                 confFile.close();
                             }
                         }
-                        return true;
+                        
+                        if (outConfigPath && !outConfigPath->isEmpty()) {
+                            return true;
+                        }
                     }
                 }
             }
@@ -1280,6 +1415,22 @@ int MainWindow::detectExistingInstance(QString* outConfigPath)
         pgrep.start("pgrep", QStringList() << "-x" << exeName);
         pgrep.waitForFinished(500);
         if (pgrep.exitCode() == 0) {
+            QString pidsStr = QString(pgrep.readAllStandardOutput()).trimmed();
+            QStringList pids = pidsStr.split('\n');
+            if (!pids.isEmpty() && outConfigPath) {
+                QString pid = pids[0].trimmed();
+                QFile cmdlineFile("/proc/" + pid + "/cmdline");
+                if (cmdlineFile.open(QIODevice::ReadOnly)) {
+                    QByteArray cmdlineData = cmdlineFile.readAll();
+                    QList<QByteArray> args = cmdlineData.split('\0');
+                    for (int i = 0; i < args.size() - 1; ++i) {
+                        if (args[i] == "-c" || args[i] == "--config") {
+                            *outConfigPath = QString::fromUtf8(args[i+1]);
+                            break;
+                        }
+                    }
+                }
+            }
             return true;
         }
 #endif

@@ -23,14 +23,34 @@
 
 Screen::Screen() :
     m_Pixmap(QPixmap(":res/icons/64x64/video-display.png")),
-    m_Swapped(false)
+    m_Name(),
+    m_Aliases(),
+    m_Modifiers(),
+    m_SwitchCorners(),
+    m_SwitchCornerSize(0),
+    m_Fixes(),
+    m_Swapped(false),
+    m_NetworkIP(),
+    m_NetworkSSHUser(),
+    m_NetworkSSHPort(0),
+    m_NetworkClientCmd()
 {
     init();
 }
 
 Screen::Screen(const QString& name) :
     m_Pixmap(QPixmap(":res/icons/64x64/video-display.png")),
-    m_Swapped(false)
+    m_Name(name),
+    m_Aliases(),
+    m_Modifiers(),
+    m_SwitchCorners(),
+    m_SwitchCornerSize(0),
+    m_Fixes(),
+    m_Swapped(false),
+    m_NetworkIP(),
+    m_NetworkSSHUser(),
+    m_NetworkSSHPort(0),
+    m_NetworkClientCmd()
 {
     init();
     setName(name);
@@ -147,23 +167,33 @@ QDataStream& operator<<(QDataStream& outStream, const Screen& screen)
         << modifiers
         << screen.switchCorners()
         << screen.fixes()
+        << screen.networkIP()
+        << screen.networkSSHUser()
+        << screen.networkSSHPort()
+        << screen.networkClientCmd()
         ;
 }
 
 QDataStream& operator>>(QDataStream& inStream, Screen& screen)
 {
     QList<int> modifiers;
-    return inStream
+    inStream
         >> screen.m_Name
         >> screen.m_SwitchCornerSize
         >> screen.m_Aliases
         >> modifiers
         >> screen.m_SwitchCorners
         >> screen.m_Fixes
+        >> screen.m_NetworkIP
+        >> screen.m_NetworkSSHUser
+        >> screen.m_NetworkSSHPort
+        >> screen.m_NetworkClientCmd
         ;
 
     screen.m_Modifiers.clear();
     for (auto mod : modifiers) {
         screen.m_Modifiers.push_back(static_cast<Screen::Modifier>(mod));
     }
+    
+    return inStream;
 }

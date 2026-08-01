@@ -69,6 +69,15 @@ ScreenSettingsDialog::ScreenSettingsDialog(QWidget* parent, Screen* pScreen) :
     m_pCheckBoxScrollLock->setChecked(m_pScreen->fix(Screen::Fix::ScrollLock));
     m_pCheckBoxXTest->setChecked(m_pScreen->fix(Screen::Fix::XTest));
     m_pCheckBoxPreserveFocus->setChecked(m_pScreen->fix(Screen::Fix::PreserveFocus));
+
+    m_pLineEditIP->setText(m_pScreen->networkIP());
+    m_pLineEditSSHUser->setText(m_pScreen->networkSSHUser());
+    if (m_pScreen->networkSSHPort() > 0) {
+        m_pSpinBoxSSHPort->setValue(m_pScreen->networkSSHPort());
+    } else {
+        m_pSpinBoxSSHPort->setValue(22);
+    }
+    m_pLineEditClientCmd->setText(m_pScreen->networkClientCmd());
 }
 
 void ScreenSettingsDialog::accept()
@@ -122,6 +131,11 @@ void ScreenSettingsDialog::accept()
     m_pScreen->setFix(Screen::Fix::ScrollLock, m_pCheckBoxScrollLock->isChecked());
     m_pScreen->setFix(Screen::Fix::XTest, m_pCheckBoxXTest->isChecked());
     m_pScreen->setFix(Screen::Fix::PreserveFocus, m_pCheckBoxPreserveFocus->isChecked());
+
+    m_pScreen->setNetworkIP(m_pLineEditIP->text().trimmed());
+    m_pScreen->setNetworkSSHUser(m_pLineEditSSHUser->text().trimmed());
+    m_pScreen->setNetworkSSHPort(m_pSpinBoxSSHPort->value());
+    m_pScreen->setNetworkClientCmd(m_pLineEditClientCmd->text().trimmed());
 
     QDialog::accept();
 }

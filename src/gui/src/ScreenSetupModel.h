@@ -38,7 +38,7 @@ class ScreenSetupModel : public QAbstractTableModel
     friend class ServerConfigDialog;
 
     public:
-        ScreenSetupModel(std::vector<Screen>& screens, int numColumns, int numRows);
+        ScreenSetupModel(std::vector<Screen>& screens, int numColumns, int numRows, const QString& serverName = "");
 
     public:
         static const QString& mimeType() { return m_MimeType; }
@@ -60,9 +60,10 @@ class ScreenSetupModel : public QAbstractTableModel
         Screen& screen(int column, int row) { return m_Screens[row * m_NumColumns + column]; }
 
     private:
+        int m_NumColumns;
+        int m_NumRows;
         std::vector<Screen>& m_Screens;
-        const int m_NumColumns;
-        const int m_NumRows;
+        QString m_ServerName;
 
         static const QString m_MimeType;
 };

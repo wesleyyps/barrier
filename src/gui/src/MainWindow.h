@@ -197,6 +197,7 @@ public slots:
         bool m_SuppressAutoConfigWarning;
         CommandProcess* m_BonjourInstall;
         bool m_SuppressEmptyServerWarning;
+        bool m_bIsExternalDaemon;
         qRuningState m_ExpectedRunningState;
         QMutex m_StopDesktopMutex;
         SslCertificate* m_pSslCertificate;

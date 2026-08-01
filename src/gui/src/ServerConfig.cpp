@@ -17,6 +17,8 @@
  */
 
 #include "ServerConfig.h"
+#include "AppConfig.h"
+#include "ConfModifier.h"
 #include "Hotkey.h"
 #include "MainWindow.h"
 #include "AddClientDialog.h"
@@ -53,6 +55,7 @@ ServerConfig::ServerConfig(QSettings* settings, int numColumns, int numRows ,
     m_ServerName(serverName),
     m_IgnoreAutoConfigClient(false),
     m_EnableDragAndDrop(false),
+    m_DragDropDirectory(""),
     m_ClipboardSharing(true),
     m_pMainWindow(mainWindow)
 {
@@ -69,13 +72,105 @@ ServerConfig::~ServerConfig()
 bool ServerConfig::save(const QString& fileName) const
 {
     QFile file(fileName);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
-        return false;
+    if (!file.exists()) {
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+            return false;
+        save(file);
+        file.close();
+        return true;
+    }
 
-    save(file);
-    file.close();
-
-    return true;
+    ConfModifier mod;
+    if (!mod.load(fileName)) return false;
+    
+    mod.setOption("server", m_ServerName);
+    mod.setOption("port", QString::number(port()));
+    mod.setOption("cryptoEnabled", cryptoEnabled() ? "true" : "false");
+    mod.setOption("requireClientCertificate", requireClientCertificate() ? "true" : "false");
+    mod.setOption("logLevel", QString::number(logLevel()));
+    mod.setOption("logToFile", logToFile() ? "true" : "false");
+    if (!logFilename().isEmpty()) {
+        mod.setOption("logFilename", logFilename());
+    }
+    if (!networkInterface().isEmpty()) {
+        mod.setOption("networkInterface", networkInterface());
+    }
+    if (hasHeartbeat()) mod.setOption("heartbeat", QString::number(heartbeat()));
+    
+    mod.setOption("relativeMouseMoves", relativeMouseMoves() ? "true" : "false");
+    mod.setOption("screenSaverSync", screenSaverSync() ? "true" : "false");
+    mod.setOption("win32KeepForeground", win32KeepForeground() ? "true" : "false");
+    mod.setOption("clipboardSharing", clipboardSharing() ? "true" : "false");
+    if (!m_DragDropDirectory.isEmpty()) {
+        mod.setOption("dropTarget", "\"" + m_DragDropDirectory + "\"");
+    } else {
+        mod.setOption("dropTarget", QString());
+    }
+    
+    if (hasSwitchDelay()) mod.setOption("switchDelay", QString::number(switchDelay()));
+    if (hasSwitchDoubleTap()) mod.setOption("switchDoubleTap", QString::number(switchDoubleTap()));
+    
+    QString corners = "none ";
+    for (int i = 0; i < switchCorners().size(); i++) {
+        if (switchCorners()[i]) {
+            corners += QString("+") + switchCornerName(static_cast<Screen::SwitchCorner>(i)) + " ";
+        }
+    }
+    mod.setOption("switchCorners", corners.trimmed());
+    mod.setOption("switchCornerSize", QString::number(switchCornerSize()));
+    
+    QStringList validScreens;
+    for (const Screen& s : screens()) {
+        if (!s.isNull()) {
+            validScreens.append(s.name());
+        }
+    }
+    mod.cleanupScreens(validScreens);
+    
+    for (int i = 0; i < screens().size(); ++i) {
+        if (!screens()[i].isNull()) {
+            const Screen& s = screens()[i];
+            mod.ensureScreenExists(s.name());
+            
+            if (!s.networkIP().isEmpty()) mod.setNetworkOption(s.name(), "ip", s.networkIP());
+            if (!s.networkSSHUser().isEmpty()) mod.setNetworkOption(s.name(), "ssh_user", s.networkSSHUser());
+            if (s.networkSSHPort() > 0) mod.setNetworkOption(s.name(), "ssh_port", QString::number(s.networkSSHPort()));
+            if (!s.networkClientCmd().isEmpty()) mod.setNetworkOption(s.name(), "client_cmd", "\"" + s.networkClientCmd() + "\"");
+            
+            bool hasCorners = false;
+            QString sCorners = "none ";
+            for (int c = 0; c < s.switchCorners().size(); c++) {
+                if (s.switchCorners()[c]) {
+                    hasCorners = true;
+                    sCorners += QString("+") + switchCornerName(static_cast<Screen::SwitchCorner>(c)) + " ";
+                }
+            }
+            if (hasCorners || s.switchCornerSize() > 0) {
+                mod.setScreenOption(s.name(), "switchCorners", sCorners.trimmed());
+                mod.setScreenOption(s.name(), "switchCornerSize", QString::number(s.switchCornerSize()));
+            }
+            
+            mod.clearLinks(s.name());
+            for (auto neighbourDir : neighbourDirs) {
+                int idx = adjacentScreenIndex(i, neighbourDir.x, neighbourDir.y);
+                if (idx != -1 && !screens()[idx].isNull()) {
+                    mod.addLink(s.name(), neighbourDir.name, screens()[idx].name());
+                }
+            }
+        }
+    }
+    
+    mod.clearHotkeys();
+    for (const Hotkey& hotkey : hotkeys()) {
+        QString s;
+        QTextStream stream(&s);
+        stream << hotkey;
+        if (!s.trimmed().isEmpty()) {
+            mod.addOptionLine("\t" + s.trimmed());
+        }
+    }
+    
+    return mod.save(fileName);
 }
 
 void ServerConfig::save(QFile& file) const
@@ -88,6 +183,7 @@ void ServerConfig::init()
 {
     switchCorners().clear();
     screens().clear();
+    hotkeys().clear();
 
     // m_NumSwitchCorners is used as a fixed size array. See Screen::init()
     for (int i = 0; i < static_cast<int>(SwitchCorner::Count); i++) {
@@ -120,6 +216,7 @@ void ServerConfig::saveSettings()
     settings().setValue("switchCornerSize", switchCornerSize());
     settings().setValue("ignoreAutoConfigClient", ignoreAutoConfigClient());
     settings().setValue("enableDragAndDrop", enableDragAndDrop());
+    settings().setValue("dragDropDirectory", dragDropDirectory());
     settings().setValue("clipboardSharing", clipboardSharing());
 
     writeSettings<bool>(settings(), switchCorners(), "switchCorner");
@@ -162,9 +259,10 @@ void ServerConfig::loadSettings()
     setSwitchDelay(settings().value("switchDelay", 250).toInt());
     haveSwitchDoubleTap(settings().value("hasSwitchDoubleTap", false).toBool());
     setSwitchDoubleTap(settings().value("switchDoubleTap", 250).toInt());
-    setSwitchCornerSize(settings().value("switchCornerSize").toInt());
-    setIgnoreAutoConfigClient(settings().value("ignoreAutoConfigClient").toBool());
+    setSwitchCornerSize(settings().value("switchCornerSize", 0).toInt());
+    setIgnoreAutoConfigClient(settings().value("ignoreAutoConfigClient", false).toBool());
     setEnableDragAndDrop(settings().value("enableDragAndDrop", true).toBool());
+    setDragDropDirectory(settings().value("dragDropDirectory", "").toString());
     setClipboardSharing(settings().value("clipboardSharing", true).toBool());
 
     readSettings<bool>(settings(), switchCorners(), "switchCorner", false,
@@ -190,6 +288,202 @@ void ServerConfig::loadSettings()
     settings().endArray();
 
     settings().endGroup();
+}
+
+#include <QQueue>
+#include <QSet>
+#include <QDebug>
+
+bool ServerConfig::loadFromConf(const QString& path)
+{
+    qDebug() << "loadFromConf called with path:" << path;
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return false;
+
+    init(); // clear screens and switchCorners
+
+    QTextStream in(&file);
+    QString currentSection = "";
+    
+    struct Link { QString dir; QString target; };
+    QMap<QString, QList<Link>> screenLinks;
+    QMap<QString, QMap<QString, QString>> screenNetwork;
+    QString currentLinkScreen = "";
+
+    while (!in.atEnd()) {
+        QString line = in.readLine().trimmed();
+        if (line.isEmpty() || line.startsWith("#")) continue;
+
+        if (line.startsWith("section:")) {
+            currentSection = line.mid(8).trimmed();
+        } else if (line == "end") {
+            currentSection = "";
+            currentLinkScreen = "";
+        } else {
+            if (currentSection == "options") {
+                if (line.startsWith("server =")) {
+                    m_ServerName = line.mid(line.indexOf('=')+1).trimmed();
+                } else if (line.startsWith("port =")) {
+                    setPort(line.mid(line.indexOf('=')+1).trimmed().toInt());
+                } else if (line.startsWith("cryptoEnabled =")) {
+                    setCryptoEnabled(line.mid(line.indexOf('=')+1).trimmed() == "true");
+                } else if (line.startsWith("requireClientCertificate =")) {
+                    setRequireClientCertificate(line.mid(line.indexOf('=')+1).trimmed() == "true");
+                } else if (line.startsWith("logLevel =")) {
+                    setLogLevel(line.mid(line.indexOf('=')+1).trimmed().toInt());
+                } else if (line.startsWith("logToFile =")) {
+                    setLogToFile(line.mid(line.indexOf('=')+1).trimmed() == "true");
+                } else if (line.startsWith("logFilename =")) {
+                    setLogFilename(line.mid(line.indexOf('=')+1).trimmed());
+                } else if (line.startsWith("networkInterface =")) {
+                    setNetworkInterface(line.mid(line.indexOf('=')+1).trimmed());
+                } else if (line.startsWith("heartbeat =")) {
+                    haveHeartbeat(true);
+                    setHeartbeat(line.mid(line.indexOf('=')+1).trimmed().toInt());
+                } else if (line.startsWith("relativeMouseMoves =")) {
+                    setRelativeMouseMoves(line.mid(line.indexOf('=')+1).trimmed() == "true");
+                } else if (line.startsWith("screenSaverSync =")) {
+                    setScreenSaverSync(line.mid(line.indexOf('=')+1).trimmed() == "true");
+                } else if (line.startsWith("win32KeepForeground =")) {
+                    setWin32KeepForeground(line.mid(line.indexOf('=')+1).trimmed() == "true");
+                } else if (line.startsWith("clipboardSharing =")) {
+                    setClipboardSharing(line.mid(line.indexOf('=')+1).trimmed() == "true");
+                } else if (line.startsWith("switchDelay =")) {
+                    haveSwitchDelay(true);
+                    setSwitchDelay(line.mid(line.indexOf('=')+1).trimmed().toInt());
+                } else if (line.startsWith("switchDoubleTap =")) {
+                    haveSwitchDoubleTap(true);
+                    setSwitchDoubleTap(line.mid(line.indexOf('=')+1).trimmed().toInt());
+                } else if (line.startsWith("switchCornerSize =")) {
+                    setSwitchCornerSize(line.mid(line.indexOf('=')+1).trimmed().toInt());
+                } else if (line.startsWith("switchCorners =")) {
+                    QString cornersStr = line.mid(line.indexOf('=')+1).trimmed();
+                    if (cornersStr.startsWith("none")) {
+                        switchCorners().clear();
+                        for (int i = 0; i < static_cast<int>(BaseConfig::SwitchCorner::Count); i++) switchCorners() << false;
+                        
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+                        QStringList parts = cornersStr.split("+", Qt::SkipEmptyParts);
+#else
+                        QStringList parts = cornersStr.split("+", QString::SkipEmptyParts);
+#endif
+                        for (int i = 0; i < parts.size(); ++i) {
+                            QString c = parts[i].trimmed();
+                            if (c.startsWith("none")) continue;
+                            for (int j = 0; j < static_cast<int>(BaseConfig::SwitchCorner::Count); j++) {
+                                if (c == switchCornerName(static_cast<BaseConfig::SwitchCorner>(j))) {
+                                    switchCorners()[j] = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } else if (line.startsWith("keystroke(") || line.startsWith("mousebutton(")) {
+                    QString keyStr;
+                    int parenOpen = line.indexOf('(');
+                    int parenClose = line.indexOf(')');
+                    if (parenOpen != -1 && parenClose > parenOpen) {
+                        keyStr = line.mid(parenOpen + 1, parenClose - parenOpen - 1).trimmed();
+                        int eqIdx = line.indexOf('=', parenClose);
+                        if (eqIdx != -1) {
+                            QString actionsStr = line.mid(eqIdx + 1).trimmed();
+                            Hotkey h;
+                            h.setKeySequence(KeySequence::fromString(keyStr));
+                            
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+                            QStringList actionList = actionsStr.split(",", Qt::SkipEmptyParts);
+#else
+                            QStringList actionList = actionsStr.split(",", QString::SkipEmptyParts);
+#endif
+                            for (const QString& actStr : actionList) {
+                                Action a = Action::fromString(actStr);
+                                h.appendAction(a);
+                            }
+                            
+                            hotkeys().push_back(h);
+                        }
+                    }
+                }
+            } else if (currentSection == "links") {
+                if (line.endsWith(":")) {
+                    currentLinkScreen = line.left(line.length() - 1).trimmed();
+                } else if (!currentLinkScreen.isEmpty() && line.contains("=")) {
+                    QStringList parts = line.split("=");
+                    if (parts.size() == 2) {
+                        QString dir = parts[0].trimmed();
+                        QString target = parts[1].trimmed();
+                        if (target.contains("(")) {
+                            target = target.left(target.indexOf("(")).trimmed();
+                        }
+                        screenLinks[currentLinkScreen].append({dir, target});
+                    }
+                }
+            } else if (currentSection == "network") {
+                if (line.endsWith(":")) {
+                    currentLinkScreen = line.left(line.length() - 1).trimmed();
+                } else if (!currentLinkScreen.isEmpty() && line.contains("=")) {
+                    QStringList parts = line.split("=");
+                    if (parts.size() >= 2) {
+                        QString key = parts[0].trimmed();
+                        QString val = parts.mid(1).join("=").trimmed(); // Value might contain '='
+                        if (val.startsWith("\"") && val.endsWith("\"")) {
+                            val = val.mid(1, val.length() - 2);
+                        }
+                        screenNetwork[currentLinkScreen][key] = val;
+                    }
+                }
+            }
+        }
+    }
+
+    qDebug() << "loadFromConf: ServerName found as" << m_ServerName;
+    if (m_ServerName.isEmpty()) {
+        qDebug() << "loadFromConf: m_ServerName is empty, aborting grid rebuild";
+        return true;
+    }
+
+    m_Screens[serverDefaultIndex].setName(m_ServerName);
+    QQueue<int> queue;
+    QSet<int> visited;
+    queue.enqueue(serverDefaultIndex);
+    visited.insert(serverDefaultIndex);
+
+    while (!queue.isEmpty()) {
+        int idx = queue.dequeue();
+        QString currentName = m_Screens[idx].name();
+        qDebug() << "loadFromConf: Processing node" << currentName << "at index" << idx;
+        
+        QList<Link> links = screenLinks.value(currentName);
+        for (const Link& link : links) {
+            int dirX = 0, dirY = 0;
+            if (link.dir == "right") { dirX = 1; }
+            else if (link.dir == "left") { dirX = -1; }
+            else if (link.dir == "up") { dirY = -1; }
+            else if (link.dir == "down") { dirY = 1; }
+            
+            if (dirX != 0 || dirY != 0) {
+                int adjIdx = adjacentScreenIndex(idx, dirX, dirY);
+                if (adjIdx != -1 && m_Screens[adjIdx].isNull()) {
+                    m_Screens[adjIdx].setName(link.target);
+                    qDebug() << "loadFromConf: Placed" << link.target << "at index" << adjIdx;
+                    if (!visited.contains(adjIdx)) {
+                        visited.insert(adjIdx);
+                        queue.enqueue(adjIdx);
+                    }
+                }
+            }
+        }
+        
+        QMap<QString, QString> netProps = screenNetwork.value(currentName);
+        if (netProps.contains("ip")) m_Screens[idx].setNetworkIP(netProps["ip"]);
+        if (netProps.contains("ssh_user")) m_Screens[idx].setNetworkSSHUser(netProps["ssh_user"]);
+        if (netProps.contains("ssh_port")) m_Screens[idx].setNetworkSSHPort(netProps["ssh_port"].toInt());
+        if (netProps.contains("client_cmd")) m_Screens[idx].setNetworkClientCmd(netProps["client_cmd"]);
+    }
+
+    qDebug() << "loadFromConf: Grid rebuilt successfully.";
+    return true;
 }
 
 int ServerConfig::adjacentScreenIndex(int idx, int deltaColumn, int deltaRow) const
@@ -246,9 +540,34 @@ QTextStream& operator<<(QTextStream& outStream, const ServerConfig& config)
         }
 
     outStream << "end" << Qt::endl << Qt::endl;
+    
+    outStream << "section: network" << Qt::endl;
+    for (int i = 0; i < config.screens().size(); i++) {
+        if (!config.screens()[i].isNull()) {
+            const Screen& s = config.screens()[i];
+            if (!s.networkIP().isEmpty() || !s.networkSSHUser().isEmpty() || s.networkSSHPort() > 0 || !s.networkClientCmd().isEmpty()) {
+                outStream << "\t" << s.name() << ":" << Qt::endl;
+                if (!s.networkIP().isEmpty()) outStream << "\t\t" << "ip = " << s.networkIP() << Qt::endl;
+                if (!s.networkSSHUser().isEmpty()) outStream << "\t\t" << "ssh_user = " << s.networkSSHUser() << Qt::endl;
+                if (s.networkSSHPort() > 0) outStream << "\t\t" << "ssh_port = " << s.networkSSHPort() << Qt::endl;
+                if (!s.networkClientCmd().isEmpty()) outStream << "\t\t" << "client_cmd = \"" << s.networkClientCmd() << "\"" << Qt::endl;
+            }
+        }
+    }
+    outStream << "end" << Qt::endl << Qt::endl;
 
     outStream << "section: options" << Qt::endl;
-
+    outStream << "\t" << "server = " << config.m_ServerName << Qt::endl;
+    outStream << "\t" << "port = " << config.port() << Qt::endl;
+    outStream << "\t" << "cryptoEnabled = " << (config.cryptoEnabled() ? "true" : "false") << Qt::endl;
+    outStream << "\t" << "requireClientCertificate = " << (config.requireClientCertificate() ? "true" : "false") << Qt::endl;
+    outStream << "\t" << "logLevel = " << config.logLevel() << Qt::endl;
+    outStream << "\t" << "logToFile = " << (config.logToFile() ? "true" : "false") << Qt::endl;
+    outStream << "\t" << "logFilename = " << config.logFilename() << Qt::endl;
+    if (!config.networkInterface().isEmpty()) {
+        outStream << "\t" << "networkInterface = " << config.networkInterface() << Qt::endl;
+    }
+    
     if (config.hasHeartbeat())
         outStream << "\t" << "heartbeat = " << config.heartbeat() << Qt::endl;
 

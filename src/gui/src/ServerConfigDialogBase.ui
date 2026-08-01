@@ -525,6 +525,27 @@ Double click on a screen to edit its settings.</string>
             </property>
            </widget>
           </item>
+          <item row="7" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayoutDragDropDir">
+            <item>
+             <widget class="QLabel" name="labelDragDropDir">
+              <property name="text">
+               <string>Drag and drop directory:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="m_pLineEditDragDropDir"/>
+            </item>
+            <item>
+             <widget class="QPushButton" name="m_pButtonBrowseDragDropDir">
+              <property name="text">
+               <string>Browse...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
           <item row="4" column="0">
            <widget class="QCheckBox" name="m_pCheckBoxIgnoreAutoConfigClient">
             <property name="text">

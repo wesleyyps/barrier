@@ -39,6 +39,7 @@ Config::Config(IEventQueue* events) :
 	m_inputFilter(events),
 	m_hasLockToScreenAction(false),
 	m_events(events),
+	m_clientAutoConfig(false),
 	m_enableDragDrop(false)
 {
 	// do nothing
@@ -524,7 +525,17 @@ const Config::NetworkMap& Config::getNetworkNodes() const
 
 const std::string& Config::getServerName() const
 {
-    return m_serverName;
+	return m_serverName;
+}
+
+const std::string& Config::getServerIp() const
+{
+	return m_serverIp;
+}
+
+bool Config::getClientAutoConfig() const
+{
+	return m_clientAutoConfig;
 }
 
 bool Config::getEnableDragDrop() const
@@ -758,6 +769,12 @@ Config::readSectionOptions(ConfigReadContext& s)
 		else if (name == "server") {
 			m_serverName = value;
 		}
+		else if (name == "serverIp") {
+			m_serverIp = value;
+		}
+		else if (name == "autoConfig") {
+			m_clientAutoConfig = s.parseBoolean(value);
+		}
 		else if (name == "enableDragDrop") {
 			m_enableDragDrop = s.parseBoolean(value);
 		}
@@ -799,6 +816,11 @@ Config::readSectionOptions(ConfigReadContext& s)
 		}
 		else if (name == "clipboardSharing") {
 			addOption("", kOptionClipboardSharing, s.parseBoolean(value));
+		}
+		else if (name == "logLevel" || name == "logToFile" || name == "logFilename" || 
+                 name == "cryptoEnabled" || name == "requireClientCertificate" || 
+                 name == "serverIp" || name == "autoConfig" || name == "networkInterface" || name == "port") {
+			handled = true; // Ignore GUI-only options
 		}
 
 		else {

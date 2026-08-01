@@ -62,10 +62,14 @@ class ServerConfig : public BaseConfig
         const std::vector<Hotkey>& hotkeys() const { return m_Hotkeys; }
         bool ignoreAutoConfigClient() const { return m_IgnoreAutoConfigClient; }
         bool enableDragAndDrop() const { return m_EnableDragAndDrop; }
+        const QString& dragDropDirectory() const { return m_DragDropDirectory; }
         bool clipboardSharing() const { return m_ClipboardSharing; }
+        const QString& serverName() const { return m_ServerName; }
+        void setServerName(const QString& name) { m_ServerName = name; }
 
         void saveSettings();
         void loadSettings();
+        bool loadFromConf(const QString& path);
         bool save(const QString& fileName) const;
         void save(QFile& file) const;
         int numScreens() const;
@@ -91,12 +95,36 @@ class ServerConfig : public BaseConfig
         void setSwitchCornerSize(int val) { m_SwitchCornerSize = val; }
         void setIgnoreAutoConfigClient(bool on) { m_IgnoreAutoConfigClient = on; }
         void setEnableDragAndDrop(bool on) { m_EnableDragAndDrop = on; }
+        void setDragDropDirectory(const QString& dir) { m_DragDropDirectory = dir; }
         void setClipboardSharing(bool on) { m_ClipboardSharing = on; }
         QList<bool>& switchCorners() { return m_SwitchCorners; }
         std::vector<Hotkey>& hotkeys() { return m_Hotkeys; }
 
         void init();
         int adjacentScreenIndex(int idx, int deltaColumn, int deltaRow) const;
+
+    public:
+        // Custom GUI fields stored in .conf
+        int port() const { return m_port; }
+        void setPort(int port) { m_port = port; }
+        
+        bool cryptoEnabled() const { return m_cryptoEnabled; }
+        void setCryptoEnabled(bool enabled) { m_cryptoEnabled = enabled; }
+        
+        bool requireClientCertificate() const { return m_requireClientCertificate; }
+        void setRequireClientCertificate(bool req) { m_requireClientCertificate = req; }
+        
+        int logLevel() const { return m_logLevel; }
+        void setLogLevel(int level) { m_logLevel = level; }
+        
+        bool logToFile() const { return m_logToFile; }
+        void setLogToFile(bool log) { m_logToFile = log; }
+        
+        QString logFilename() const { return m_logFilename; }
+        void setLogFilename(const QString& name) { m_logFilename = name; }
+        
+        QString networkInterface() const { return m_networkInterface; }
+        void setNetworkInterface(const QString& net) { m_networkInterface = net; }
 
     private:
         bool findScreenName(const QString& name, int& index);
@@ -106,6 +134,15 @@ class ServerConfig : public BaseConfig
 
     private:
         QSettings* m_pSettings;
+        int m_port = 24800;
+        bool m_cryptoEnabled = false;
+        bool m_requireClientCertificate = false;
+        int m_logLevel = 2; // INFO
+        bool m_logToFile = false;
+        QString m_logFilename;
+        QString m_networkInterface;
+        
+        typedef QList<Screen*> ScreenList;
         std::vector<Screen> m_Screens;
         int m_NumColumns;
         int m_NumRows;
@@ -124,6 +161,7 @@ class ServerConfig : public BaseConfig
         QString m_ServerName;
         bool m_IgnoreAutoConfigClient;
         bool m_EnableDragAndDrop;
+        QString m_DragDropDirectory;
         bool m_ClipboardSharing;
         MainWindow* m_pMainWindow;
 };

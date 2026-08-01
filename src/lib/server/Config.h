@@ -404,6 +404,8 @@ public:
     NetworkMap&         getNetworkNodesMap();
 
     const std::string&  getServerName() const;
+    const std::string&  getServerIp() const;
+    bool                getClientAutoConfig() const;
     bool                getEnableDragDrop() const;
     const std::string&  getDropTarget() const;
 
@@ -486,6 +488,8 @@ private:
     NameMap                m_nameToCanonicalName;
     NetworkMap             m_networkNodes;
     std::string            m_serverName;
+    std::string            m_serverIp;
+    bool                m_clientAutoConfig;
     bool                m_enableDragDrop;
     std::string            m_dropTarget;
     NetworkAddress        m_barrierAddress;

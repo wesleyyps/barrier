@@ -72,6 +72,18 @@ class Screen : public BaseConfig
         QString& name() { return m_Name; }
         void setName(const QString& name) { m_Name = name; }
 
+        const QString& networkIP() const { return m_NetworkIP; }
+        void setNetworkIP(const QString& ip) { m_NetworkIP = ip; }
+        
+        const QString& networkSSHUser() const { return m_NetworkSSHUser; }
+        void setNetworkSSHUser(const QString& user) { m_NetworkSSHUser = user; }
+        
+        int networkSSHPort() const { return m_NetworkSSHPort; }
+        void setNetworkSSHPort(int port) { m_NetworkSSHPort = port; }
+        
+        const QString& networkClientCmd() const { return m_NetworkClientCmd; }
+        void setNetworkClientCmd(const QString& cmd) { m_NetworkClientCmd = cmd; }
+
     protected:
         void init();
         QPixmap* pixmap() { return &m_Pixmap; }
@@ -99,6 +111,11 @@ class Screen : public BaseConfig
         QList<bool> m_Fixes;
 
         bool m_Swapped;
+
+        QString m_NetworkIP;
+        QString m_NetworkSSHUser;
+        int m_NetworkSSHPort;
+        QString m_NetworkClientCmd;
 };
 
 QDataStream& operator<<(QDataStream& outStream, const Screen& screen);

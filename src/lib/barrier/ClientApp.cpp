@@ -598,6 +598,18 @@ bool ClientApp::loadConfig(const String& pathname) {
             args().m_name = config.getServerName();
             LOG((CLOG_NOTE "Client name dynamically set to %s via config options", args().m_name.c_str()));
         }
+
+        if (!config.getServerIp().empty() && args().m_barrierAddress.empty()) {
+            args().m_barrierAddress = config.getServerIp();
+            try {
+                if (m_serverAddress == nullptr) m_serverAddress = new NetworkAddress;
+                *m_serverAddress = NetworkAddress(args().m_barrierAddress, kDefaultPort);
+                m_serverAddress->resolve();
+                LOG((CLOG_NOTE "Server IP dynamically set to %s via config options", args().m_barrierAddress.c_str()));
+            } catch (...) {
+                LOG((CLOG_WARN "Failed to resolve Server IP from config"));
+            }
+        }
         
         return true;
     }
