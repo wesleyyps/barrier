@@ -44,8 +44,9 @@ public:
     const char* daemonInfo() const;
 
     // TODO: move to server only (not supported on client)
-    void loadConfig() { }
-    bool loadConfig(const String& pathname) { return false; }
+    void loadConfig() override;
+    bool loadConfig(const String& pathname) override;
+    virtual String      getConfigFilePath() const override;
 
     int foregroundStartup(int argc, char** argv);
     int standardStartup(int argc, char** argv);

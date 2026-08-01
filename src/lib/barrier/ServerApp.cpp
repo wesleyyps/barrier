@@ -247,6 +247,19 @@ ServerApp::loadConfig(const String& pathname)
         }
         configStream >> *args().m_config;
         LOG((CLOG_DEBUG "configuration read successfully"));
+        
+        // Check if server name is specified in config options
+        if (!args().m_config->getServerName().empty()) {
+            args().m_name = args().m_config->getServerName();
+            LOG((CLOG_NOTE "Server name dynamically set to %s via config options", args().m_name.c_str()));
+        }
+        if (args().m_config->getEnableDragDrop()) {
+            args().m_enableDragDrop = true;
+        }
+        if (!args().m_config->getDropTarget().empty()) {
+            args().m_dropTarget = args().m_config->getDropTarget();
+        }
+        
         return true;
     }
     catch (XConfigRead& e) {
@@ -255,6 +268,10 @@ ServerApp::loadConfig(const String& pathname)
             pathname.c_str(), e.what()));
     }
     return false;
+}
+
+String ServerApp::getConfigFilePath() const {
+    return args().m_configFile;
 }
 
 void
@@ -574,6 +591,34 @@ ServerApp::startServer()
         // regardless of which log level is set
         LOG((CLOG_PRINT "started server (%s), waiting for clients", family));
         m_serverState = kStarted;
+
+        // Auto-deploy clients via SSH
+        std::string serverIP;
+        for (const auto& nodePair : args().m_config->getNetworkNodes()) {
+            if (nodePair.first == args().m_name) {
+                serverIP = nodePair.second.ip;
+                break;
+            }
+        }
+        for (const auto& nodePair : args().m_config->getNetworkNodes()) {
+            const auto& node = nodePair.second;
+            if (nodePair.first == args().m_name) continue;
+            if (!node.sshUser.empty() && !node.ip.empty()) {
+                std::string cmd = node.clientCmd;
+                if (cmd.empty()) {
+                    cmd = "nohup barrierc -f --no-tray --name %c %s >/dev/null 2>&1 &";
+                }
+                size_t pos;
+                while ((pos = cmd.find("%c")) != std::string::npos) cmd.replace(pos, 2, nodePair.first);
+                while ((pos = cmd.find("%s")) != std::string::npos) cmd.replace(pos, 2, serverIP);
+                
+                std::string sshCmd = "ssh -p " + std::to_string(node.sshPort) + " " + node.sshUser + "@" + node.ip + " '" + cmd + "' &";
+                LOG((CLOG_NOTE "Auto-deploying client %s via SSH: %s", nodePair.first.c_str(), sshCmd.c_str()));
+                int ret = system(sshCmd.c_str());
+                (void)ret;
+            }
+        }
+
         return true;
     }
     catch (XSocketAddressInUse& e) {
@@ -737,6 +782,8 @@ ServerApp::mainLoop()
     // create socket multiplexer.  this must happen after daemonization
     // on unix because threads evaporate across a fork().
     setSocketMultiplexer(std::make_unique<SocketMultiplexer>());
+    
+    writePidFile();
 
     // if configuration has no screens then add this system
     // as the default
@@ -822,6 +869,8 @@ ServerApp::mainLoop()
     if (argsBase().m_enableIpc) {
         cleanupIpcClient();
     }
+    
+    removePidFile();
 
     return kExitSuccess;
 }

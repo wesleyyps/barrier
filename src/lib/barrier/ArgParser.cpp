@@ -107,6 +107,10 @@ ArgParser::parseClientArgs(ClientArgs& args, int argc, const char* const* argv)
             // define scroll
             args.m_yscroll = atoi(argv[++i]);
         }
+        else if (isArg(i, argc, argv, "-c", "--config", 1)) {
+            // save configuration file path
+            args.m_configFile = argv[++i];
+        }
         else {
             if (i + 1 == argc) {
                 args.m_barrierAddress = argv[i];
@@ -287,6 +291,9 @@ ArgParser::parseGenericArgs(int argc, const char* const* argv, int& i)
     }
     else if (isArg(i, argc, argv, nullptr, "--plugin-dir", 1)) {
         argsBase().m_pluginDirectory = barrier::fs::u8path(argv[++i]);
+    }
+    else if (isArg(i, argc, argv, nullptr, "--pid", 1)) {
+        argsBase().m_pidFile = argv[++i];
     }
     else {
         // option not supported here

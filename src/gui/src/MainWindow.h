@@ -156,10 +156,14 @@ public slots:
         bool event(QEvent* event);
         void retranslateMenuBar();
 #if defined(Q_OS_WIN)
+        bool isServiceRunning();
         bool isServiceRunning(QString name);
+        bool isProcessRunning(QString name);
 #else
         bool isServiceRunning();
+        bool isProcessRunning(QString name);
 #endif
+        int detectExistingInstance(QString* outConfigPath = nullptr);
         bool isBonjourRunning();
         void downloadBonjour();
         void promptAutoConfig();

@@ -21,6 +21,8 @@
 #include "client/Client.h"
 #include "barrier/ArgParser.h"
 #include "barrier/protocol_types.h"
+#include "server/Config.h"
+#include <fstream>
 #include "barrier/Screen.h"
 #include "barrier/XScreen.h"
 #include "barrier/ClientArgs.h"
@@ -448,6 +450,8 @@ ClientApp::mainLoop()
     // on unix because threads evaporate across a fork().
     setSocketMultiplexer(std::make_unique<SocketMultiplexer>());
 
+    writePidFile();
+
     // start client, etc
     appUtil().startNode();
 
@@ -487,6 +491,8 @@ ClientApp::mainLoop()
     if (argsBase().m_enableIpc) {
         cleanupIpcClient();
     }
+    
+    removePidFile();
 
     return kExitSuccess;
 }
@@ -562,5 +568,41 @@ ClientApp::startNode()
     LOG((CLOG_DEBUG1 "starting client"));
     if (!startClient()) {
         m_bye(kExitFailed);
+    }
+}
+
+void ClientApp::loadConfig() {
+    loadConfig(args().m_configFile);
+}
+
+String ClientApp::getConfigFilePath() const {
+    return args().m_configFile;
+}
+
+bool ClientApp::loadConfig(const String& pathname) {
+    if (pathname.empty()) {
+        return false;
+    }
+    
+    try {
+        std::ifstream configStream(pathname.c_str());
+        if (!configStream) {
+            LOG((CLOG_WARN "cannot read configuration \"%s\"", pathname.c_str()));
+            return false;
+        }
+
+        Config config(m_events);
+        configStream >> config;
+        
+        if (!config.getServerName().empty()) {
+            args().m_name = config.getServerName();
+            LOG((CLOG_NOTE "Client name dynamically set to %s via config options", args().m_name.c_str()));
+        }
+        
+        return true;
+    }
+    catch (XConfigRead& e) {
+        LOG((CLOG_ERR "configuration error: %s", e.what()));
+        return false;
     }
 }

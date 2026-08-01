@@ -36,6 +36,13 @@
 #include "net/FingerprintDatabase.h"
 #include "net/SecureUtils.h"
 
+#if defined(Q_OS_WIN)
+#include <windows.h>
+#else
+#include <unistd.h>
+#include <signal.h>
+#endif
+
 #include <QtCore>
 #include <QtGui>
 #include <QtNetwork>
@@ -215,10 +222,32 @@ void MainWindow::open()
         promptAutoConfig();
     }
 
+    QString runningConfigPath;
+    int externalInstance = detectExistingInstance(&runningConfigPath);
+    if (externalInstance > 0) {
+        if (externalInstance == 1) {
+            m_pGroupServer->setChecked(true);
+        } else if (externalInstance == 2) {
+            m_pGroupClient->setChecked(true);
+        }
+        
+        if (!runningConfigPath.isEmpty()) {
+            m_pRadioExternalConfig->setChecked(true);
+            m_pLineEditConfigFile->setText(runningConfigPath);
+        }
+
+        m_ExpectedRunningState = kStarted;
+        setBarrierState(barrierConnected);
+        m_pActionStopBarrier->setEnabled(false);
+        m_pActionStartBarrier->setEnabled(false);
+        m_pButtonToggleStart->setText(tr("Rodando Externamente"));
+        m_pButtonToggleStart->setEnabled(false);
+        appendLogInfo("Instância externa detectada. GUI em modo monitor.");
+    }
     // only start if user has previously started. this stops the gui from
     // auto hiding before the user has configured barrier (which of course
     // confuses first time users, who think barrier has crashed).
-    if (appConfig().startedBefore() && appConfig().getAutoStart()) {
+    else if (appConfig().startedBefore() && appConfig().getAutoStart()) {
         m_SuppressEmptyServerWarning = true;
         startBarrier();
         m_SuppressEmptyServerWarning = false;
@@ -1186,6 +1215,97 @@ bool MainWindow::isServiceRunning()
     return false;
 }
 #endif
+
+int MainWindow::detectExistingInstance(QString* outConfigPath)
+{
+    auto checkProcess = [&](const QString& exeName) -> bool {
+        // 1. Check PID file in default location
+        barrier::fs::path profile_path = barrier::DataDirectories::profile();
+        if (!profile_path.empty()) {
+            QString name = exeName;
+#if defined(Q_OS_WIN)
+            name += ".exe";
+#endif
+            QString pidFilePath = QString::fromStdString((profile_path / (name.toStdString() + ".pid")).u8string());
+
+            QFile pidFile(pidFilePath);
+            if (pidFile.exists() && pidFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                QTextStream in(&pidFile);
+                QString pidStr = in.readLine();
+                pidFile.close();
+                
+                bool ok = false;
+                long pid = pidStr.toLong(&ok);
+                if (ok && pid > 0) {
+#if defined(Q_OS_WIN)
+                    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid);
+                    if (hProcess != NULL) {
+                        CloseHandle(hProcess);
+                        ok = true;
+                    } else {
+                        ok = false;
+                    }
+#else
+                    if (kill(pid, 0) == 0 || errno == EPERM) {
+                        ok = true;
+                    } else {
+                        ok = false;
+                    }
+#endif
+                    if (ok) {
+                        if (outConfigPath) {
+                            QString confPathStr = pidFilePath;
+                            int lastDot = confPathStr.lastIndexOf('.');
+                            if (lastDot != -1) {
+                                confPathStr = confPathStr.left(lastDot) + ".confpath";
+                            } else {
+                                confPathStr += ".confpath";
+                            }
+                            QFile confFile(confPathStr);
+                            if (confFile.exists() && confFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                                QTextStream confIn(&confFile);
+                                *outConfigPath = confIn.readLine();
+                                confFile.close();
+                            }
+                        }
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        // 2. Fallback to OS process check if PID file is missing/wrong (e.g. user passed custom --pid)
+#if !defined(Q_OS_WIN)
+        QProcess pgrep;
+        pgrep.start("pgrep", QStringList() << "-x" << exeName);
+        pgrep.waitForFinished(500);
+        if (pgrep.exitCode() == 0) {
+            return true;
+        }
+#endif
+        return false;
+    };
+
+    if (checkProcess("barriers")) {
+        appendLogDebug("Detectada instância externa rodando (barriers).");
+        return 1; // Server
+    }
+    if (checkProcess("barrierc")) {
+        appendLogDebug("Detectada instância externa rodando (barrierc).");
+        return 2; // Client
+    }
+
+    // 3. IPC Check fallback
+    QTcpSocket socket;
+    socket.connectToHost(QHostAddress(QHostAddress::LocalHost), IPC_PORT);
+    if (socket.waitForConnected(100)) {
+        socket.disconnectFromHost();
+        appendLogDebug("Detectada instância externa rodando via porta IPC.");
+        return barrier_type() == BarrierType::Server ? 1 : 2;
+    }
+
+    return 0; // None
+}
 
 bool MainWindow::isBonjourRunning()
 {

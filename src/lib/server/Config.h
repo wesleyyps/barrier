@@ -141,6 +141,23 @@ private:
     typedef std::map<std::string, Cell, barrier::string::CaselessCmp> CellMap;
     typedef std::map<std::string, std::string, barrier::string::CaselessCmp> NameMap;
 
+    struct NetworkNode {
+        std::string ip;
+        std::string sshUser;
+        int sshPort;
+        std::string clientCmd;
+        
+        NetworkNode() : sshPort(22) {}
+        
+        bool operator==(const NetworkNode& x) const {
+            return ip == x.ip && sshUser == x.sshUser && sshPort == x.sshPort && clientCmd == x.clientCmd;
+        }
+        bool operator!=(const NetworkNode& x) const {
+            return !operator==(x);
+        }
+    };
+    typedef std::map<std::string, NetworkNode, barrier::string::CaselessCmp> NetworkMap;
+
 public:
     typedef Cell::const_iterator link_const_iterator;
     typedef CellMap::const_iterator internal_const_iterator;
@@ -383,6 +400,13 @@ public:
     const NetworkAddress&
                         getBarrierAddress() const;
 
+    const NetworkMap&   getNetworkNodes() const;
+    NetworkMap&         getNetworkNodesMap();
+
+    const std::string&  getServerName() const;
+    bool                getEnableDragDrop() const;
+    const std::string&  getDropTarget() const;
+
     //! Get the screen options
     /*!
     Returns all the added options for the named screen.  Returns NULL
@@ -444,6 +468,7 @@ private:
     void                readSectionScreens(ConfigReadContext&);
     void                readSectionLinks(ConfigReadContext&);
     void                readSectionAliases(ConfigReadContext&);
+    void                readSectionNetwork(ConfigReadContext&);
 
     InputFilter::Condition* parseCondition(ConfigReadContext&, const std::string& condition,
                                            const std::vector<std::string>& args);
@@ -459,6 +484,10 @@ private:
 private:
     CellMap                m_map;
     NameMap                m_nameToCanonicalName;
+    NetworkMap             m_networkNodes;
+    std::string            m_serverName;
+    bool                m_enableDragDrop;
+    std::string            m_dropTarget;
     NetworkAddress        m_barrierAddress;
     ScreenOptions        m_globalOptions;
     InputFilter            m_inputFilter;

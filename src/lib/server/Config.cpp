@@ -38,7 +38,8 @@ using namespace barrier::string;
 Config::Config(IEventQueue* events) :
 	m_inputFilter(events),
 	m_hasLockToScreenAction(false),
-	m_events(events)
+	m_events(events),
+	m_enableDragDrop(false)
 {
 	// do nothing
 }
@@ -511,6 +512,31 @@ Config::getBarrierAddress() const
 	return m_barrierAddress;
 }
 
+Config::NetworkMap& Config::getNetworkNodesMap()
+{
+    return m_networkNodes;
+}
+
+const Config::NetworkMap& Config::getNetworkNodes() const
+{
+    return m_networkNodes;
+}
+
+const std::string& Config::getServerName() const
+{
+    return m_serverName;
+}
+
+bool Config::getEnableDragDrop() const
+{
+    return m_enableDragDrop;
+}
+
+const std::string& Config::getDropTarget() const
+{
+    return m_dropTarget;
+}
+
 const Config::ScreenOptions* Config::getOptions(const std::string& name) const
 {
 	// find options
@@ -538,6 +564,24 @@ Config::hasLockToScreenAction() const
 bool
 Config::operator==(const Config& x) const
 {
+	if (m_serverName != x.m_serverName) {
+		return false;
+	}
+	if (m_enableDragDrop != x.m_enableDragDrop) {
+		return false;
+	}
+	if (m_dropTarget != x.m_dropTarget) {
+		return false;
+	}
+	if (m_networkNodes.size() != x.m_networkNodes.size()) {
+		return false;
+	}
+	for (auto i = m_networkNodes.begin(); i != m_networkNodes.end(); ++i) {
+		auto j = x.m_networkNodes.find(i->first);
+		if (j == x.m_networkNodes.end() || i->second != j->second) {
+			return false;
+		}
+	}
 	if (m_barrierAddress != x.m_barrierAddress) {
 		return false;
 	}
@@ -670,6 +714,9 @@ Config::readSection(ConfigReadContext& s)
 	else if (name == s_aliases) {
 		readSectionAliases(s);
 	}
+	else if (name == "network") {
+		readSectionNetwork(s);
+	}
 	else {
 		throw XConfigRead(s, "unknown section name \"%{1}\"", name);
 	}
@@ -707,6 +754,15 @@ Config::readSectionOptions(ConfigReadContext& s)
 			catch (XSocketAddress& e) {
                 throw XConfigRead(s, std::string("invalid address argument ") + e.what());
 			}
+		}
+		else if (name == "server") {
+			m_serverName = value;
+		}
+		else if (name == "enableDragDrop") {
+			m_enableDragDrop = s.parseBoolean(value);
+		}
+		else if (name == "dropTarget") {
+			m_dropTarget = value;
 		}
 		else if (name == "heartbeat") {
 			addOption("", kOptionHeartbeat, s.parseInt(value));
@@ -2279,4 +2335,64 @@ XConfigRead::~XConfigRead() noexcept
 std::string XConfigRead::getWhat() const noexcept
 {
 	return format("XConfigRead", "read error: %{1}", m_error.c_str());
+}
+
+void Config::readSectionNetwork(ConfigReadContext& s)
+{
+    std::string line;
+    std::string screen;
+    while (s.readLine(line)) {
+        if (line == "end") {
+            return;
+        }
+
+        if (line[line.size() - 1] == ':') {
+            screen = line.substr(0, line.size() - 1);
+            if (!isValidScreenName(screen)) {
+                throw XConfigRead(s, "invalid screen name \"%{1}\"", screen);
+            }
+        }
+        else if (screen.empty()) {
+            throw XConfigRead(s, "argument before first screen");
+        }
+        else {
+            std::string::size_type i = line.find_first_of(" \t=");
+            if (i == 0) {
+                throw XConfigRead(s, "missing argument name");
+            }
+            if (i == std::string::npos) {
+                throw XConfigRead(s, "missing =");
+            }
+            std::string name = line.substr(0, i);
+            i = line.find_first_not_of(" \t", i);
+            if (i == std::string::npos || line[i] != '=') {
+                throw XConfigRead(s, "missing =");
+            }
+            i = line.find_first_not_of(" \t", i + 1);
+            std::string value;
+            if (i != std::string::npos) {
+                value = line.substr(i);
+            }
+
+            if (name == "ip") {
+                m_networkNodes[screen].ip = value;
+            }
+            else if (name == "ssh_user") {
+                m_networkNodes[screen].sshUser = value;
+            }
+            else if (name == "ssh_port") {
+                m_networkNodes[screen].sshPort = s.parseInt(value);
+            }
+            else if (name == "client_cmd") {
+                if (value.size() > 1 && value.front() == '"' && value.back() == '"') {
+                    value = value.substr(1, value.size() - 2);
+                }
+                m_networkNodes[screen].clientCmd = value;
+            }
+            else {
+                throw XConfigRead(s, "unknown argument \"%{1}\"", name);
+            }
+        }
+    }
+    throw XConfigRead(s, "unexpected end of network section");
 }

@@ -88,6 +88,11 @@ public:
     // HACK: accept non-const, but make it const anyway
     void initApp(int argc, char** argv) { initApp(argc, (const char**)argv); }
 
+    void writePidFile();
+    void removePidFile();
+    String getPidFilePath() const;
+    virtual String getConfigFilePath() const { return ""; }
+
     ARCH_APP_UTIL& appUtil() { return m_appUtil; }
 
     virtual IArchTaskBarReceiver* taskBarReceiver() const { return m_taskBarReceiver; }
