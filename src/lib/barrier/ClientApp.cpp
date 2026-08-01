@@ -83,6 +83,40 @@ ClientApp::parseArgs(int argc, const char* const* argv)
         m_bye(kExitArgs);
     }
     else {
+        // Read configuration file if specified
+        if (!args().m_configFile.empty()) {
+            LOG((CLOG_DEBUG "opening configuration \"%s\"", args().m_configFile.c_str()));
+            std::ifstream configStream(args().m_configFile.c_str());
+            if (!configStream.is_open()) {
+                LOG((CLOG_ERR "cannot open configuration \"%s\"", args().m_configFile.c_str()));
+                m_bye(kExitConfig);
+            }
+            
+            try {
+                Config config(m_events);
+                configStream >> config;
+                LOG((CLOG_DEBUG "configuration read successfully"));
+                
+                if (!config.getServerIp().empty()) {
+                    // Only override if not set via command line or if it was empty
+                    if (args().m_barrierAddress.empty()) {
+                        args().m_barrierAddress = config.getServerIp();
+                        LOG((CLOG_NOTE "Server address dynamically set to %s via config options", args().m_barrierAddress.c_str()));
+                    }
+                }
+            }
+            catch (XConfigRead& e) {
+                LOG((CLOG_ERR "FATAL: %s", e.what()));
+                m_bye(kExitConfig);
+            }
+        }
+
+        // Check again if we have a server address (from args or from config)
+        if (args().m_barrierAddress.empty()) {
+            LOG((CLOG_PRINT "%s: a server address or name is required" BYE, args().m_exename.c_str()));
+            m_bye(kExitArgs);
+        }
+
         // save server address
         if (!args().m_barrierAddress.empty()) {
             try {

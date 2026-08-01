@@ -235,8 +235,21 @@ void MainWindow::open()
         if (!runningConfigPath.isEmpty()) {
             m_pCheckBoxExternalConfig->setChecked(true);
             m_pLineEditConfigFile->setText(runningConfigPath);
-            
-            QFile file(runningConfigPath);
+        }
+
+        m_ExpectedRunningState = kStarted;
+        m_bIsExternalDaemon = true;
+        setBarrierState(barrierConnected);
+        m_pActionStopBarrier->setEnabled(false);
+        m_pActionStartBarrier->setEnabled(false);
+        m_pButtonToggleStart->setText(tr("Rodando Externamente"));
+        m_pButtonToggleStart->setEnabled(false);
+    }
+    
+    if (m_pCheckBoxExternalConfig->isChecked()) {
+        QString confPath = m_pLineEditConfigFile->text();
+        if (!confPath.isEmpty()) {
+            QFile file(confPath);
             if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
                 QTextStream in(&file);
                 bool inOptions = false;
@@ -258,14 +271,6 @@ void MainWindow::open()
                 }
             }
         }
-
-        m_ExpectedRunningState = kStarted;
-        m_bIsExternalDaemon = true;
-        setBarrierState(barrierConnected);
-        m_pActionStopBarrier->setEnabled(false);
-        m_pActionStartBarrier->setEnabled(false);
-        m_pButtonToggleStart->setText(tr("Rodando Externamente"));
-        m_pButtonToggleStart->setEnabled(false);
         
         // Bloqueia toda a interface gráfica de ser editada quando há um daemon em execução
         m_pGroupServer->setCheckable(false); // Mantém o grupo acessível mas não checkable
@@ -1401,9 +1406,7 @@ int MainWindow::detectExistingInstance(QString* outConfigPath)
                             }
                         }
                         
-                        if (outConfigPath && !outConfigPath->isEmpty()) {
-                            return true;
-                        }
+                        return true;
                     }
                 }
             }
