@@ -8,7 +8,8 @@ if [ ! -f "$SCRIPT_DIR/.env" ]; then
 fi
 
 echo "Creating symlinks in /usr/local/bin (may prompt for password)..."
-sudo ln -sf "$SCRIPT_DIR/barrier-server.sh" /usr/local/bin/barrier-server
-sudo ln -sf "$SCRIPT_DIR/barrier-client-connect.sh" /usr/local/bin/barrier-client-connect
+sudo rm -f /usr/local/bin/barrier-server.sh /usr/local/bin/barrier-client-connect.sh
+sudo ln -sf "$SCRIPT_DIR/barrier-server.sh" /usr/local/bin/barrier-server.sh
+sudo ln -sf "$SCRIPT_DIR/barrier-client-connect.sh" /usr/local/bin/barrier-client-connect.sh
 
 echo "Setup complete!"

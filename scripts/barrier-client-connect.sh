@@ -18,5 +18,12 @@ export ASAN_OPTIONS="$ASAN_OPTIONS"
 export LSAN_OPTIONS="$LSAN_OPTIONS"
 export UBSAN_OPTIONS="$UBSAN_OPTIONS"
 
+if [ -z "$DISPLAY" ]; then
+    export DISPLAY=:1
+fi
+if [ -z "$XAUTHORITY" ]; then
+    export XAUTHORITY=$(ls /run/user/$(id -u)/gdm/Xauthority /run/user/$(id -u)/Xauthority $HOME/.Xauthority 2>/dev/null | head -n 1)
+fi
+
 $NOHUP_BIN $BARRIER_GUI_BIN >/dev/null 2>&1 &
-$NOHUP_BIN $BARRIER_CLI_BIN -f --display :1 -c $BARRIER_SRV_CONF "$REMOTE_IP"
+$NOHUP_BIN $BARRIER_CLI_BIN -f --display $DISPLAY -c $BARRIER_SRV_CONF "$REMOTE_IP"
