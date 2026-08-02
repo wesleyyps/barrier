@@ -44,6 +44,40 @@ void ScreenSetupModel::updateGridSize(int numColumns, int numRows)
     endResetModel();
 }
 
+void ScreenSetupModel::setConnectedClients(const QSet<QString>& clients)
+{
+    m_ConnectedClients = clients;
+    if (m_NumRows > 0 && m_NumColumns > 0) {
+        emit dataChanged(index(0, 0), index(m_NumRows - 1, m_NumColumns - 1));
+    }
+}
+
+void ScreenSetupModel::onClientConnected(const QString& name)
+{
+    m_ConnectedClients.insert(name);
+    for (int r = 0; r < m_NumRows; ++r) {
+        for (int c = 0; c < m_NumColumns; ++c) {
+            if (!screen(c, r).isNull() && screen(c, r).name() == name) {
+                emit dataChanged(index(r, c), index(r, c));
+                return;
+            }
+        }
+    }
+}
+
+void ScreenSetupModel::onClientDisconnected(const QString& name)
+{
+    m_ConnectedClients.remove(name);
+    for (int r = 0; r < m_NumRows; ++r) {
+        for (int c = 0; c < m_NumColumns; ++c) {
+            if (!screen(c, r).isNull() && screen(c, r).name() == name) {
+                emit dataChanged(index(r, c), index(r, c));
+                return;
+            }
+        }
+    }
+}
+
 QVariant ScreenSetupModel::data(const QModelIndex& index, int role) const
 {
     if (index.isValid() && index.row() < m_NumRows && index.column() < m_NumColumns)
@@ -68,8 +102,19 @@ QVariant ScreenSetupModel::data(const QModelIndex& index, int role) const
                     break;
                 return screen(index).name();
             case Qt::BackgroundRole:
-                if (!screen(index).isNull() && screen(index).name() == m_ServerName) {
-                    return QBrush(QColor(46, 125, 50)); // Dark green brush
+                if (!screen(index).isNull()) {
+                    if (screen(index).name() == m_ServerName) {
+                        return QBrush(QColor(25, 118, 210)); // Blue brush
+                    } else if (m_ConnectedClients.contains(screen(index).name())) {
+                        return QBrush(QColor(46, 125, 50)); // Green brush
+                    }
+                }
+                break;
+            case Qt::ForegroundRole:
+                if (!screen(index).isNull()) {
+                    if (screen(index).name() == m_ServerName || m_ConnectedClients.contains(screen(index).name())) {
+                        return QBrush(Qt::white);
+                    }
                 }
                 break;
             default:

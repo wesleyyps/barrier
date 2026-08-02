@@ -18,6 +18,8 @@
 
 #include "ServerConfigDialog.h"
 #include "ServerConfig.h"
+#include "NewScreenWidget.h"
+#include "MainWindow.h"
 #include "HotkeyDialog.h"
 #include "ActionDialog.h"
 
@@ -67,6 +69,12 @@ ServerConfigDialog::ServerConfigDialog(QWidget* parent, ServerConfig& config, co
     }
 
     m_pScreenSetupView->setModel(&m_ScreenSetupModel);
+
+    if (MainWindow* mw = qobject_cast<MainWindow*>(parent)) {
+        m_ScreenSetupModel.setConnectedClients(mw->connectedClients());
+        connect(mw, SIGNAL(clientConnected(QString)), &m_ScreenSetupModel, SLOT(onClientConnected(QString)));
+        connect(mw, SIGNAL(clientDisconnected(QString)), &m_ScreenSetupModel, SLOT(onClientDisconnected(QString)));
+    }
 
     m_pSpinBoxGridCols->setValue(serverConfig().numColumns());
     m_pSpinBoxGridRows->setValue(serverConfig().numRows());

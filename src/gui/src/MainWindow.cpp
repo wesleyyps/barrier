@@ -242,6 +242,23 @@ void MainWindow::open()
         setBarrierState(barrierConnected);
         m_pActionStopBarrier->setEnabled(false);
         m_pActionStartBarrier->setEnabled(false);
+
+        QString logPath = appConfig().logFilename();
+        if (logPath.isEmpty()) {
+            if (!runningConfigPath.isEmpty()) {
+                QFileInfo fi(runningConfigPath);
+                logPath = fi.absolutePath() + "/barrier.log";
+            }
+        }
+        
+        if (!logPath.isEmpty()) {
+            m_pExternalLogFile = new QFile(logPath, this);
+            if (m_pExternalLogFile->open(QIODevice::ReadOnly)) {
+                connect(&m_LogWatcher, SIGNAL(fileChanged(QString)), this, SLOT(onExternalLogChanged(QString)));
+                m_LogWatcher.addPath(logPath);
+                onExternalLogChanged(logPath);
+            }
+        }
         m_pButtonToggleStart->setText(tr("Rodando Externamente"));
         m_pButtonToggleStart->setEnabled(false);
     }
@@ -481,8 +498,39 @@ void MainWindow::updateFromLogLine(const QString &line)
     checkFingerprint(line);
 }
 
+void MainWindow::onExternalLogChanged(const QString&)
+{
+    if (m_pExternalLogFile && m_pExternalLogFile->isOpen()) {
+        while (!m_pExternalLogFile->atEnd()) {
+            QString line = QString::fromUtf8(m_pExternalLogFile->readLine()).trimmed();
+            if (!line.isEmpty()) {
+                checkConnected(line);
+            }
+        }
+    }
+}
+
 void MainWindow::checkConnected(const QString& line)
 {
+    // Check for client connections/disconnections
+    QRegExp connectRegex("client \"([^\"]+)\" has connected");
+    if (connectRegex.indexIn(line) != -1) {
+        QString clientName = connectRegex.cap(1);
+        if (!m_ConnectedClients.contains(clientName)) {
+            m_ConnectedClients.insert(clientName);
+            emit clientConnected(clientName);
+        }
+    }
+
+    QRegExp disconnectRegex("disconnecting client \"([^\"]+)\"");
+    if (disconnectRegex.indexIn(line) != -1) {
+        QString clientName = disconnectRegex.cap(1);
+        if (m_ConnectedClients.contains(clientName)) {
+            m_ConnectedClients.remove(clientName);
+            emit clientDisconnected(clientName);
+        }
+    }
+
     // TODO: implement ipc connection state messages to replace this hack.
     if (line.contains("started server") ||
         line.contains("connected to server") ||
@@ -854,6 +902,7 @@ void MainWindow::stopBarrier()
         stopDesktop();
     }
 
+    m_ConnectedClients.clear();
     setBarrierState(barrierDisconnected);
 
     // HACK: deleting the object deletes the physical file, which is
@@ -906,7 +955,8 @@ void MainWindow::barrierFinished(int exitCode, QProcess::ExitStatus)
         QTimer::singleShot(1000, this, SLOT(startBarrier()));
         appendLogInfo(QString("detected process not running, auto restarting"));
     }
-    else {
+    if (barrierProcess() != NULL) {
+        m_ConnectedClients.clear();
         setBarrierState(barrierDisconnected);
     }
 }

@@ -31,7 +31,6 @@ export ASAN_OPTIONS="$ASAN_OPTIONS"
 export LSAN_OPTIONS="$LSAN_OPTIONS"
 export UBSAN_OPTIONS="$UBSAN_OPTIONS"
 
-OS="$(uname -s)"
 if [ "$OS" = "Linux" ]; then
     if [ -z "$DISPLAY" ]; then
         export DISPLAY=:1
@@ -42,7 +41,6 @@ if [ "$OS" = "Linux" ]; then
     $NOHUP_BIN $BARRIER_GUI_BIN >/dev/null 2>&1 &
     $NOHUP_BIN $BARRIER_CLI_BIN -f --display $DISPLAY -c $BARRIER_SRV_CONF "$REMOTE_IP" > /dev/null 2>&1 &
 else
-    # Simple execution with direct logging to the home directory to avoid any silent failures
-    $NOHUP_BIN $BARRIER_GUI_BIN > /Users/wesley/barrier-gui.log 2>&1 &
-    $NOHUP_BIN $BARRIER_CLI_BIN -f -c $BARRIER_SRV_CONF "$REMOTE_IP" > /Users/wesley/barrier-client.log 2>&1 &
+    $NOHUP_BIN $BARRIER_GUI_BIN >/dev/null 2>&1 &
+    $NOHUP_BIN $BARRIER_CLI_BIN -f -c $BARRIER_SRV_CONF "$REMOTE_IP" >/dev/null 2>&1 &
 fi

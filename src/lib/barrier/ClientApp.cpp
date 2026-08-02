@@ -638,6 +638,23 @@ bool ClientApp::loadConfig(const String& pathname) {
             LOG((CLOG_NOTE "Client name dynamically set to %s via config options", args().m_name.c_str()));
         }
 
+        // Dynamically configure log file based on configuration
+        if (args().m_logFile == NULL) {
+            std::string logPath = config.getLogFilename();
+            if (logPath.empty()) {
+                size_t pos = pathname.find_last_of("/\\");
+                if (pos != String::npos) {
+                    logPath = pathname.substr(0, pos) + "/barrier.log";
+                } else {
+                    logPath = "barrier.log";
+                }
+            }
+            char* logFileStr = new char[logPath.length() + 1];
+            strcpy(logFileStr, logPath.c_str());
+            args().m_logFile = logFileStr;
+            setupFileLogging();
+        }
+
         if (!config.getServerIp().empty() && args().m_barrierAddress.empty()) {
             args().m_barrierAddress = config.getServerIp();
             try {

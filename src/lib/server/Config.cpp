@@ -550,9 +550,16 @@ bool Config::getRequireClientCertificate() const
 	return m_requireClientCertificate;
 }
 
-bool Config::getCryptoEnabled() const
+bool
+Config::getCryptoEnabled() const
 {
 	return m_cryptoEnabled;
+}
+
+std::string
+Config::getLogFilename() const
+{
+	return m_logFilename;
 }
 
 const std::string& Config::getDropTarget() const
@@ -838,7 +845,11 @@ Config::readSectionOptions(ConfigReadContext& s)
 		else if (name == "cryptoEnabled") {
 			m_cryptoEnabled = s.parseBoolean(value);
 		}
-		else if (name == "logLevel" || name == "logToFile" || name == "logFilename" || 
+		else if (name == "logFilename") {
+			m_logFilename = value;
+			handled = true;
+		}
+		else if (name == "logLevel" || name == "logToFile" || 
                  name == "serverIp" || name == "autoConfig" || name == "networkInterface" || name == "port" ||
                  name == "gridSize") {
 			handled = true; // Ignore GUI-only options

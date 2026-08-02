@@ -248,6 +248,24 @@ ServerApp::loadConfig(const String& pathname)
         configStream >> *args().m_config;
         LOG((CLOG_DEBUG "configuration read successfully"));
         
+        // Dynamically configure log file based on configuration
+        if (args().m_logFile == NULL) {
+            std::string logPath = args().m_config->getLogFilename();
+            if (logPath.empty()) {
+                size_t pos = pathname.find_last_of("/\\");
+                if (pos != String::npos) {
+                    logPath = pathname.substr(0, pos) + "/barrier.log";
+                } else {
+                    logPath = "barrier.log";
+                }
+            }
+            // Allocate a string that will live for the lifetime of the program
+            char* logFileStr = new char[logPath.length() + 1];
+            strcpy(logFileStr, logPath.c_str());
+            args().m_logFile = logFileStr;
+            setupFileLogging();
+        }
+
         // Check if server name is specified in config options
         if (!args().m_config->getServerName().empty()) {
             args().m_name = args().m_config->getServerName();

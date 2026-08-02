@@ -24,6 +24,7 @@
 #include <QList>
 #include <QString>
 #include <QStringList>
+#include <QSet>
 
 #include "Screen.h"
 
@@ -52,6 +53,11 @@ class ScreenSetupModel : public QAbstractTableModel
         QStringList mimeTypes() const;
         QMimeData* mimeData(const QModelIndexList& indexes) const;
         void updateGridSize(int numColumns, int numRows);
+        void setConnectedClients(const QSet<QString>& clients);
+
+    public slots:
+        void onClientConnected(const QString& name);
+        void onClientDisconnected(const QString& name);
 
     protected:
         bool dropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent);
@@ -65,6 +71,7 @@ class ScreenSetupModel : public QAbstractTableModel
         int m_NumRows;
         std::vector<Screen>& m_Screens;
         QString m_ServerName;
+        QSet<QString> m_ConnectedClients;
 
         static const QString m_MimeType;
 };

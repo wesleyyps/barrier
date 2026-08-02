@@ -29,6 +29,9 @@
 #include <QThread>
 
 #include "ui_MainWindowBase.h"
+#include <QNetworkReply>
+#include <QFileSystemWatcher>
+#include <QFile>
 
 #include "ServerConfig.h"
 #include "AppConfig.h"
@@ -68,6 +71,10 @@ class MainWindow : public QMainWindow, public Ui::MainWindowBase
     friend class QBarrierApplication;
     friend class SetupWizard;
     friend class SettingsDialog;
+
+    signals:
+        void clientConnected(const QString& name);
+        void clientDisconnected(const QString& name);
 
     public:
         enum qBarrierState
@@ -109,8 +116,10 @@ class MainWindow : public QMainWindow, public Ui::MainWindowBase
         void autoAddScreen(const QString name);
         void updateZeroconfService();
         void serverDetected(const QString name);
+        const QSet<QString>& connectedClients() const { return m_ConnectedClients; }
 
 public slots:
+        void onExternalLogChanged(const QString& path);
         void appendLogRaw(const QString& text);
         void appendLogInfo(const QString& text);
         void appendLogDebug(const QString& text);
@@ -203,6 +212,9 @@ public slots:
         SslCertificate* m_pSslCertificate;
         QStringList m_PendingClientNames;
         LogWindow *m_pLogWindow;
+        QSet<QString> m_ConnectedClients;
+        QFileSystemWatcher m_LogWatcher;
+        QFile* m_pExternalLogFile;
 
         bool m_fingerprint_expanded = false;
 
