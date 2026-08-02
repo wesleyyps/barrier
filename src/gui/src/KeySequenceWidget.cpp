@@ -126,7 +126,23 @@ void KeySequenceWidget::keyPressEvent(QKeyEvent* event)
     if (status() == Stopped)
         return;
 
-    if (m_KeySequence.appendKey(event->key(), event->modifiers()))
+    int key = event->key();
+
+    // Normalize shifted number keys so they are recorded as Shift+Number instead of Shift+Symbol
+    if ((event->modifiers() & Qt::ShiftModifier) != 0) {
+        if (key == Qt::Key_Exclam) key = Qt::Key_1;
+        else if (key == Qt::Key_At) key = Qt::Key_2;
+        else if (key == Qt::Key_NumberSign) key = Qt::Key_3;
+        else if (key == Qt::Key_Dollar) key = Qt::Key_4;
+        else if (key == Qt::Key_Percent) key = Qt::Key_5;
+        else if (key == Qt::Key_AsciiCircum || key == Qt::Key_diaeresis || key == Qt::Key_Dead_Diaeresis) key = Qt::Key_6;
+        else if (key == Qt::Key_Ampersand) key = Qt::Key_7;
+        else if (key == Qt::Key_Asterisk) key = Qt::Key_8;
+        else if (key == Qt::Key_ParenLeft) key = Qt::Key_9;
+        else if (key == Qt::Key_ParenRight) key = Qt::Key_0;
+    }
+
+    if (m_KeySequence.appendKey(key, event->modifiers()))
         stopRecording();
 
     updateOutput();

@@ -40,7 +40,8 @@ Config::Config(IEventQueue* events) :
 	m_hasLockToScreenAction(false),
 	m_events(events),
 	m_clientAutoConfig(false),
-	m_enableDragDrop(false)
+	m_enableDragDrop(false),
+	m_requireClientCertificate(true)
 {
 	// do nothing
 }
@@ -543,6 +544,11 @@ bool Config::getEnableDragDrop() const
     return m_enableDragDrop;
 }
 
+bool Config::getRequireClientCertificate() const
+{
+    return m_requireClientCertificate;
+}
+
 const std::string& Config::getDropTarget() const
 {
     return m_dropTarget;
@@ -579,6 +585,9 @@ Config::operator==(const Config& x) const
 		return false;
 	}
 	if (m_enableDragDrop != x.m_enableDragDrop) {
+		return false;
+	}
+	if (m_requireClientCertificate != x.m_requireClientCertificate) {
 		return false;
 	}
 	if (m_dropTarget != x.m_dropTarget) {
@@ -778,6 +787,9 @@ Config::readSectionOptions(ConfigReadContext& s)
 		else if (name == "enableDragDrop") {
 			m_enableDragDrop = s.parseBoolean(value);
 		}
+		else if (name == "requireClientCertificate") {
+			m_requireClientCertificate = s.parseBoolean(value);
+		}
 		else if (name == "dropTarget") {
 			m_dropTarget = value;
 		}
@@ -818,7 +830,7 @@ Config::readSectionOptions(ConfigReadContext& s)
 			addOption("", kOptionClipboardSharing, s.parseBoolean(value));
 		}
 		else if (name == "logLevel" || name == "logToFile" || name == "logFilename" || 
-                 name == "cryptoEnabled" || name == "requireClientCertificate" || 
+                 name == "cryptoEnabled" || 
                  name == "serverIp" || name == "autoConfig" || name == "networkInterface" || name == "port") {
 			handled = true; // Ignore GUI-only options
 		}

@@ -406,6 +406,7 @@ public:
     const std::string&  getServerName() const;
     const std::string&  getServerIp() const;
     bool                getClientAutoConfig() const;
+    bool                getRequireClientCertificate() const;
     bool                getEnableDragDrop() const;
     const std::string&  getDropTarget() const;
 
@@ -491,6 +492,7 @@ private:
     std::string            m_serverIp;
     bool                m_clientAutoConfig;
     bool                m_enableDragDrop;
+    bool                m_requireClientCertificate;
     std::string            m_dropTarget;
     NetworkAddress        m_barrierAddress;
     ScreenOptions        m_globalOptions;

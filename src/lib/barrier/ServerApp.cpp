@@ -253,6 +253,9 @@ ServerApp::loadConfig(const String& pathname)
             args().m_name = args().m_config->getServerName();
             LOG((CLOG_NOTE "Server name dynamically set to %s via config options", args().m_name.c_str()));
         }
+        
+        args().check_client_certificates = args().m_config->getRequireClientCertificate();
+        
         if (args().m_config->getEnableDragDrop()) {
             args().m_enableDragDrop = true;
         }
