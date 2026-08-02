@@ -10,7 +10,7 @@ NOHUP_BIN="/usr/bin/nohup"
 BARRIER_GUI_BIN="${BARRIER_BIN_PATH}barrier"
 BARRIER_SRV_BIN="${BARRIER_BIN_PATH}barriers"
 
-pkill -x 'barrier|barriers|barrierc'
+killall -q barrier barriers barrierc || true
 
 export ASAN_OPTIONS="$ASAN_OPTIONS"
 export LSAN_OPTIONS="$LSAN_OPTIONS"

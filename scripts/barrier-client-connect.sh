@@ -10,7 +10,7 @@ NOHUP_BIN="/usr/bin/nohup"
 BARRIER_GUI_BIN="${BARRIER_BIN_PATH}barrier"
 BARRIER_CLI_BIN="${BARRIER_BIN_PATH}barrierc"
 
-pkill -x 'barrier|barriers|barrierc'
+killall -q barrier barriers barrierc || true
 
 REMOTE_IP="[$1]:24800"
 
