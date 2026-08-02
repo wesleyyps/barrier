@@ -104,6 +104,11 @@ ClientApp::parseArgs(int argc, const char* const* argv)
                         LOG((CLOG_NOTE "Server address dynamically set to %s via config options", args().m_barrierAddress.c_str()));
                     }
                 }
+                
+                if (!config.getCryptoEnabled()) {
+                    argsBase().m_enableCrypto = false;
+                    LOG((CLOG_NOTE "Crypto disabled via config file"));
+                }
             }
             catch (XConfigRead& e) {
                 LOG((CLOG_ERR "FATAL: %s", e.what()));

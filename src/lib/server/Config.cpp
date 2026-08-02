@@ -41,7 +41,8 @@ Config::Config(IEventQueue* events) :
 	m_events(events),
 	m_clientAutoConfig(false),
 	m_enableDragDrop(false),
-	m_requireClientCertificate(true)
+	m_requireClientCertificate(true),
+	m_cryptoEnabled(true)
 {
 	// do nothing
 }
@@ -546,7 +547,12 @@ bool Config::getEnableDragDrop() const
 
 bool Config::getRequireClientCertificate() const
 {
-    return m_requireClientCertificate;
+	return m_requireClientCertificate;
+}
+
+bool Config::getCryptoEnabled() const
+{
+	return m_cryptoEnabled;
 }
 
 const std::string& Config::getDropTarget() const
@@ -829,8 +835,10 @@ Config::readSectionOptions(ConfigReadContext& s)
 		else if (name == "clipboardSharing") {
 			addOption("", kOptionClipboardSharing, s.parseBoolean(value));
 		}
+		else if (name == "cryptoEnabled") {
+			m_cryptoEnabled = s.parseBoolean(value);
+		}
 		else if (name == "logLevel" || name == "logToFile" || name == "logFilename" || 
-                 name == "cryptoEnabled" || 
                  name == "serverIp" || name == "autoConfig" || name == "networkInterface" || name == "port" ||
                  name == "gridSize") {
 			handled = true; // Ignore GUI-only options
