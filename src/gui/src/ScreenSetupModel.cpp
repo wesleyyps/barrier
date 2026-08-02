@@ -32,8 +32,16 @@ ScreenSetupModel::ScreenSetupModel(std::vector<Screen>& screens, int numColumns,
 {
     if (screens.size() < static_cast<std::vector<Screen>::size_type>(m_NumColumns * m_NumRows))
     {
-        qFatal("Not enough elements (%u) in screens QList for %d columns and %d rows", screens.size(), m_NumColumns, m_NumRows);
+        qFatal("Not enough elements (%u) in screens QList for %d columns and %d rows", static_cast<unsigned int>(screens.size()), m_NumColumns, m_NumRows);
     }
+}
+
+void ScreenSetupModel::updateGridSize(int numColumns, int numRows)
+{
+    beginResetModel();
+    m_NumColumns = numColumns;
+    m_NumRows = numRows;
+    endResetModel();
 }
 
 QVariant ScreenSetupModel::data(const QModelIndex& index, int role) const

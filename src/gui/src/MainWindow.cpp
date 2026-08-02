@@ -108,7 +108,7 @@ MainWindow::MainWindow(QSettings& settings, AppConfig& appConfig) :
     m_AppConfig(&appConfig),
     m_pBarrier(nullptr),
     m_BarrierState(barrierDisconnected),
-    m_ServerConfig(&m_Settings, 5, 3, m_AppConfig->screenName(), this),
+    m_ServerConfig(&m_Settings, 15, 15, m_AppConfig->screenName(), this),
     m_pTempConfigFile(nullptr),
     m_pTrayIcon(nullptr),
     m_pTrayIconMenu(nullptr),

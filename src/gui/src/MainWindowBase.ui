@@ -459,7 +459,7 @@
  </resources>
  <connections>
   <connection>
-   <sender>m_pRadioExternalConfig</sender>
+   <sender>m_pCheckBoxExternalConfig</sender>
    <signal>toggled(bool)</signal>
    <receiver>m_pLineEditConfigFile</receiver>
    <slot>setEnabled(bool)</slot>
@@ -475,7 +475,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>m_pRadioExternalConfig</sender>
+   <sender>m_pCheckBoxExternalConfig</sender>
    <signal>toggled(bool)</signal>
    <receiver>m_pButtonBrowseConfigFile</receiver>
    <slot>setEnabled(bool)</slot>
@@ -487,22 +487,6 @@
     <hint type="destinationlabel">
      <x>356</x>
      <y>211</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>m_pRadioInternalConfig</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>m_pButtonConfigureServer</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>204</x>
-     <y>244</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>212</x>
-     <y>274</y>
     </hint>
    </hints>
   </connection>

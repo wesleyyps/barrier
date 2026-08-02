@@ -44,7 +44,7 @@ static const std::array<NeighbourDir, 4> neighbourDirs =
 
 };
 
-const int serverDefaultIndex = 7;
+
 
 ServerConfig::ServerConfig(QSettings* settings, int numColumns, int numRows ,
                 QString serverName, MainWindow* mainWindow) :
@@ -107,6 +107,8 @@ bool ServerConfig::save(const QString& fileName) const
         mod.setOption("dropTarget", QString());
     }
     
+    mod.setOption("gridSize", QString("%1x%2").arg(m_NumColumns).arg(m_NumRows));
+
     if (hasSwitchDelay()) mod.setOption("switchDelay", QString::number(switchDelay()));
     if (hasSwitchDoubleTap()) mod.setOption("switchDoubleTap", QString::number(switchDoubleTap()));
     
@@ -294,18 +296,36 @@ void ServerConfig::loadSettings()
 #include <QSet>
 #include <QDebug>
 
+void ServerConfig::resizeGrid(int numColumns, int numRows)
+{
+    if (numColumns <= 0 || numRows <= 0) return;
+    
+    std::vector<Screen> oldScreens = m_Screens;
+    int oldCols = m_NumColumns;
+    int oldRows = m_NumRows;
+    
+    m_NumColumns = numColumns;
+    m_NumRows = numRows;
+    m_Screens.assign(m_NumColumns * m_NumRows, Screen());
+    
+    for (int r = 0; r < std::min(oldRows, numRows); ++r) {
+        for (int c = 0; c < std::min(oldCols, numColumns); ++c) {
+            m_Screens[r * m_NumColumns + c] = oldScreens[r * oldCols + c];
+        }
+    }
+}
+
 bool ServerConfig::loadFromConf(const QString& path)
 {
-    qDebug() << "loadFromConf called with path:" << path;
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-        return false;
+    m_Hotkeys.clear();
 
-    init(); // clear screens and switchCorners
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return false;
+    }
 
     QTextStream in(&file);
     QString currentSection = "";
-    
     struct Link { QString dir; QString target; };
     QMap<QString, QList<Link>> screenLinks;
     QMap<QString, QMap<QString, QString>> screenNetwork;
@@ -319,7 +339,6 @@ bool ServerConfig::loadFromConf(const QString& path)
             currentSection = line.mid(8).trimmed();
         } else if (line == "end") {
             currentSection = "";
-            currentLinkScreen = "";
         } else {
             if (currentSection == "options") {
                 if (line.startsWith("server =")) {
@@ -347,13 +366,27 @@ bool ServerConfig::loadFromConf(const QString& path)
                     setScreenSaverSync(line.mid(line.indexOf('=')+1).trimmed() == "true");
                 } else if (line.startsWith("win32KeepForeground =")) {
                     setWin32KeepForeground(line.mid(line.indexOf('=')+1).trimmed() == "true");
+                } else if (line.startsWith("enableDragDrop =")) {
+                    bool val = line.mid(line.indexOf('=')+1).trimmed() == "true";
+                    setEnableDragAndDrop(val);
+                    m_pSettings->setValue("enableDragDrop", val);
                 } else if (line.startsWith("dropTarget =")) {
                     QString target = line.mid(line.indexOf('=')+1).trimmed();
                     if (target.startsWith("\"") && target.endsWith("\"")) {
                         target = target.mid(1, target.length() - 2);
                     }
-                    setEnableDragAndDrop(true);
                     setDragDropDirectory(target);
+                    m_pSettings->setValue("dragDropDirectory", target);
+                } else if (line.startsWith("gridSize =")) {
+                    QString val = line.mid(line.indexOf('=')+1).trimmed();
+                    QStringList parts = val.split("x");
+                    if (parts.size() == 2) {
+                        int c = parts[0].toInt();
+                        int r = parts[1].toInt();
+                        if (c > 0 && r > 0) {
+                            resizeGrid(c, r);
+                        }
+                    }
                 } else if (line.startsWith("serverIp =")) {
                     // serverIp is parsed by the client connect script, no dedicated member in GUI ServerConfig yet,
                     // but we ensure it doesn't get wiped if we ever manage it.
@@ -369,10 +402,10 @@ bool ServerConfig::loadFromConf(const QString& path)
                     setSwitchCornerSize(line.mid(line.indexOf('=')+1).trimmed().toInt());
                 } else if (line.startsWith("switchCorners =")) {
                     QString cornersStr = line.mid(line.indexOf('=')+1).trimmed();
-                    if (cornersStr.startsWith("none")) {
-                        switchCorners().clear();
-                        for (int i = 0; i < static_cast<int>(BaseConfig::SwitchCorner::Count); i++) switchCorners() << false;
-                        
+                    for (int i = 0; i < static_cast<int>(BaseConfig::SwitchCorner::Count); i++) {
+                        switchCorners()[i] = false;
+                    }
+                    if (cornersStr != "none") {
 #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
                         QStringList parts = cornersStr.split("+", Qt::SkipEmptyParts);
 #else
@@ -380,7 +413,6 @@ bool ServerConfig::loadFromConf(const QString& path)
 #endif
                         for (int i = 0; i < parts.size(); ++i) {
                             QString c = parts[i].trimmed();
-                            if (c.startsWith("none")) continue;
                             for (int j = 0; j < static_cast<int>(BaseConfig::SwitchCorner::Count); j++) {
                                 if (c == switchCornerName(static_cast<BaseConfig::SwitchCorner>(j))) {
                                     switchCorners()[j] = true;
@@ -400,7 +432,6 @@ bool ServerConfig::loadFromConf(const QString& path)
                             QString actionsStr = line.mid(eqIdx + 1).trimmed();
                             Hotkey h;
                             h.setKeySequence(KeySequence::fromString(keyStr));
-                            
                             QStringList actionList;
                             int parenDepth = 0;
                             QString currentAction;
@@ -422,7 +453,7 @@ bool ServerConfig::loadFromConf(const QString& path)
                                 Action a = Action::fromString(actStr);
                                 h.appendAction(a);
                             }
-                            
+
                             hotkeys().push_back(h);
                         }
                     }
@@ -448,7 +479,7 @@ bool ServerConfig::loadFromConf(const QString& path)
                     QStringList parts = line.split("=");
                     if (parts.size() >= 2) {
                         QString key = parts[0].trimmed();
-                        QString val = parts.mid(1).join("=").trimmed(); // Value might contain '='
+                        QString val = parts.mid(1).join("=").trimmed();
                         if (val.startsWith("\"") && val.endsWith("\"")) {
                             val = val.mid(1, val.length() - 2);
                         }
@@ -459,52 +490,89 @@ bool ServerConfig::loadFromConf(const QString& path)
         }
     }
 
-    qDebug() << "loadFromConf: ServerName found as" << m_ServerName;
     if (m_ServerName.isEmpty()) {
         qDebug() << "loadFromConf: m_ServerName is empty, aborting grid rebuild";
         return true;
     }
 
-    m_Screens[serverDefaultIndex].setName(m_ServerName);
-    QQueue<int> queue;
-    QSet<int> visited;
-    queue.enqueue(serverDefaultIndex);
-    visited.insert(serverDefaultIndex);
-
-    while (!queue.isEmpty()) {
-        int idx = queue.dequeue();
-        QString currentName = m_Screens[idx].name();
-        qDebug() << "loadFromConf: Processing node" << currentName << "at index" << idx;
+    // Topological centering logic
+    QMap<QString, QPoint> coords;
+    coords[m_ServerName] = QPoint(0, 0);
+    
+    QQueue<QString> graphQueue;
+    graphQueue.enqueue(m_ServerName);
+    
+    int min_x = 0, max_x = 0, min_y = 0, max_y = 0;
+    
+    while (!graphQueue.isEmpty()) {
+        QString curr = graphQueue.dequeue();
+        QPoint p = coords[curr];
         
-        QList<Link> links = screenLinks.value(currentName);
+        QList<Link> links = screenLinks.value(curr);
         for (const Link& link : links) {
-            int dirX = 0, dirY = 0;
-            if (link.dir == "right") { dirX = 1; }
-            else if (link.dir == "left") { dirX = -1; }
-            else if (link.dir == "up") { dirY = -1; }
-            else if (link.dir == "down") { dirY = 1; }
+            if (coords.contains(link.target)) continue;
             
-            if (dirX != 0 || dirY != 0) {
-                int adjIdx = adjacentScreenIndex(idx, dirX, dirY);
-                if (adjIdx != -1 && m_Screens[adjIdx].isNull()) {
-                    m_Screens[adjIdx].setName(link.target);
-                    qDebug() << "loadFromConf: Placed" << link.target << "at index" << adjIdx;
-                    if (!visited.contains(adjIdx)) {
-                        visited.insert(adjIdx);
-                        queue.enqueue(adjIdx);
-                    }
-                }
-            }
+            QPoint tp = p;
+            if (link.dir == "right") tp.rx() += 1;
+            else if (link.dir == "left") tp.rx() -= 1;
+            else if (link.dir == "down") tp.ry() += 1;
+            else if (link.dir == "up") tp.ry() -= 1;
+            else continue;
+            
+            coords[link.target] = tp;
+            graphQueue.enqueue(link.target);
+            
+            if (tp.x() < min_x) min_x = tp.x();
+            if (tp.x() > max_x) max_x = tp.x();
+            if (tp.y() < min_y) min_y = tp.y();
+            if (tp.y() > max_y) max_y = tp.y();
         }
+    }
+    
+    int graph_width = max_x - min_x + 1;
+    int graph_height = max_y - min_y + 1;
+    
+    // Auto-expand grid if the graph doesn't fit
+    if (graph_width > m_NumColumns || graph_height > m_NumRows) {
+        int newCols = std::max(m_NumColumns, graph_width);
+        int newRows = std::max(m_NumRows, graph_height);
+        qDebug() << "loadFromConf: Expanding grid from" << m_NumColumns << "x" << m_NumRows 
+                 << "to" << newCols << "x" << newRows;
+        resizeGrid(newCols, newRows);
+    }
+    
+    // Clear existing screens
+    for (auto& s : m_Screens) { s = Screen(); }
+    
+    // Calculate precise center offsets
+    int offset_x = (m_NumColumns - graph_width) / 2 - min_x;
+    int offset_y = (m_NumRows - graph_height) / 2 - min_y;
+    
+    // Place all tracked screens in the centered grid
+    QMapIterator<QString, QPoint> i(coords);
+    while (i.hasNext()) {
+        i.next();
+        QString name = i.key();
+        QPoint p = i.value();
         
-        QMap<QString, QString> netProps = screenNetwork.value(currentName);
-        if (netProps.contains("ip")) m_Screens[idx].setNetworkIP(netProps["ip"]);
-        if (netProps.contains("ssh_user")) m_Screens[idx].setNetworkSSHUser(netProps["ssh_user"]);
-        if (netProps.contains("ssh_port")) m_Screens[idx].setNetworkSSHPort(netProps["ssh_port"].toInt());
-        if (netProps.contains("client_cmd")) m_Screens[idx].setNetworkClientCmd(netProps["client_cmd"]);
+        int gx = p.x() + offset_x;
+        int gy = p.y() + offset_y;
+        
+        if (gx >= 0 && gx < m_NumColumns && gy >= 0 && gy < m_NumRows) {
+            int arrayPos = gy * m_NumColumns + gx;
+            m_Screens[arrayPos].setName(name);
+            
+            QMap<QString, QString> netProps = screenNetwork.value(name);
+            if (netProps.contains("ip")) m_Screens[arrayPos].setNetworkIP(netProps["ip"]);
+            if (netProps.contains("ssh_user")) m_Screens[arrayPos].setNetworkSSHUser(netProps["ssh_user"]);
+            if (netProps.contains("ssh_port")) m_Screens[arrayPos].setNetworkSSHPort(netProps["ssh_port"].toInt());
+            if (netProps.contains("client_cmd")) m_Screens[arrayPos].setNetworkClientCmd(netProps["client_cmd"]);
+            
+            qDebug() << "loadFromConf: Placed" << name << "at grid(" << gx << "," << gy << ") index" << arrayPos;
+        }
     }
 
-    qDebug() << "loadFromConf: Grid rebuilt successfully.";
+    qDebug() << "loadFromConf: Grid rebuilt and centered successfully.";
     return true;
 }
 
@@ -597,6 +665,11 @@ QTextStream& operator<<(QTextStream& outStream, const ServerConfig& config)
     outStream << "\t" << "screenSaverSync = " << (config.screenSaverSync() ? "true" : "false") << Qt::endl;
     outStream << "\t" << "win32KeepForeground = " << (config.win32KeepForeground() ? "true" : "false") << Qt::endl;
     outStream << "\t" << "clipboardSharing = " << (config.clipboardSharing() ? "true" : "false") << Qt::endl;
+    outStream << "\t" << "enableDragDrop = " << (config.enableDragAndDrop() ? "true" : "false") << Qt::endl;
+    if (!config.dragDropDirectory().isEmpty()) {
+        outStream << "\t" << "dropTarget = \"" << config.dragDropDirectory() << "\"" << Qt::endl;
+    }
+    outStream << "\t" << "gridSize = " << config.numColumns() << "x" << config.numRows() << Qt::endl;
 
     if (config.hasSwitchDelay())
         outStream << "\t" << "switchDelay = " << config.switchDelay() << Qt::endl;
@@ -720,9 +793,9 @@ bool ServerConfig::findScreenName(const QString& name, int& index)
 bool ServerConfig::fixNoServer(const QString& name, int& index)
 {
     bool fixed = false;
-    if (screens()[serverDefaultIndex].isNull()) {
-        m_Screens[serverDefaultIndex].setName(name);
-        index = serverDefaultIndex;
+    if (screens()[serverDefaultIndex()].isNull()) {
+        m_Screens[serverDefaultIndex()].setName(name);
+        index = serverDefaultIndex();
         fixed = true;
     }
 

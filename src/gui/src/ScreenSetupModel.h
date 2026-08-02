@@ -51,6 +51,7 @@ class ScreenSetupModel : public QAbstractTableModel
         Qt::ItemFlags flags(const QModelIndex& index) const;
         QStringList mimeTypes() const;
         QMimeData* mimeData(const QModelIndexList& indexes) const;
+        void updateGridSize(int numColumns, int numRows);
 
     protected:
         bool dropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent);

@@ -68,6 +68,18 @@ ServerConfigDialog::ServerConfigDialog(QWidget* parent, ServerConfig& config, co
 
     m_pScreenSetupView->setModel(&m_ScreenSetupModel);
 
+    m_pSpinBoxGridCols->setValue(serverConfig().numColumns());
+    m_pSpinBoxGridRows->setValue(serverConfig().numRows());
+
+    connect(m_pSpinBoxGridCols, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), [this](int value) {
+        serverConfig().resizeGrid(value, m_pSpinBoxGridRows->value());
+        model().updateGridSize(value, m_pSpinBoxGridRows->value());
+    });
+    connect(m_pSpinBoxGridRows, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), [this](int value) {
+        serverConfig().resizeGrid(m_pSpinBoxGridCols->value(), value);
+        model().updateGridSize(m_pSpinBoxGridCols->value(), value);
+    });
+
     if (serverConfig().numScreens() == 0)
         model().screen(serverConfig().numColumns() / 2, serverConfig().numRows() / 2) = Screen(defaultScreenName);
 }

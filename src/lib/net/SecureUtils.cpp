@@ -162,31 +162,24 @@ void generate_pem_self_signed_cert(const std::string& path)
 {
     auto expiration_days = 365;
 
-    auto* private_key = EVP_PKEY_new();
-    if (!private_key) {
-        throw std::runtime_error("Could not allocate private key for certificate");
+    EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr);
+    if (!ctx) {
+        throw std::runtime_error("Could not allocate context for RSA key generation");
     }
-    auto private_key_free = finally([private_key](){ EVP_PKEY_free(private_key); });
+    auto ctx_free = finally([ctx](){ EVP_PKEY_CTX_free(ctx); });
 
-    auto* rsa = RSA_new();
-    if (rsa != nullptr) {
-        BIGNUM* e = BN_new();
-        if (e != nullptr) {
-            BN_set_word(e, RSA_F4);
-            if (RSA_generate_key_ex(rsa, 2048, e, nullptr) != 1) {
-                RSA_free(rsa);
-                rsa = nullptr;
-            }
-            BN_free(e);
-        } else {
-            RSA_free(rsa);
-            rsa = nullptr;
-        }
+    if (EVP_PKEY_keygen_init(ctx) <= 0) {
+        throw std::runtime_error("Failed to initialize RSA key generation");
     }
-    if (rsa == nullptr) {
+    if (EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, 2048) <= 0) {
+        throw std::runtime_error("Failed to set RSA key length");
+    }
+
+    EVP_PKEY* private_key = nullptr;
+    if (EVP_PKEY_keygen(ctx, &private_key) <= 0) {
         throw std::runtime_error("Failed to generate RSA key");
     }
-    EVP_PKEY_assign_RSA(private_key, rsa);
+    auto private_key_free = finally([private_key](){ EVP_PKEY_free(private_key); });
 
     auto* cert = X509_new();
     if (!cert) {

@@ -47,6 +47,8 @@ class ServerConfig : public BaseConfig
         const std::vector<Screen>& screens() const { return m_Screens; }
         int numColumns() const { return m_NumColumns; }
         int numRows() const { return m_NumRows; }
+        void resizeGrid(int numColumns, int numRows);
+        int serverDefaultIndex() const { return (m_NumRows / 2) * m_NumColumns + (m_NumColumns / 2); }
         bool hasHeartbeat() const { return m_HasHeartbeat; }
         int heartbeat() const { return m_Heartbeat; }
         bool relativeMouseMoves() const { return m_RelativeMouseMoves; }
