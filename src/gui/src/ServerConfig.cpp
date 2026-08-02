@@ -347,6 +347,16 @@ bool ServerConfig::loadFromConf(const QString& path)
                     setScreenSaverSync(line.mid(line.indexOf('=')+1).trimmed() == "true");
                 } else if (line.startsWith("win32KeepForeground =")) {
                     setWin32KeepForeground(line.mid(line.indexOf('=')+1).trimmed() == "true");
+                } else if (line.startsWith("dropTarget =")) {
+                    QString target = line.mid(line.indexOf('=')+1).trimmed();
+                    if (target.startsWith("\"") && target.endsWith("\"")) {
+                        target = target.mid(1, target.length() - 2);
+                    }
+                    setEnableDragAndDrop(true);
+                    setDragDropDirectory(target);
+                } else if (line.startsWith("serverIp =")) {
+                    // serverIp is parsed by the client connect script, no dedicated member in GUI ServerConfig yet,
+                    // but we ensure it doesn't get wiped if we ever manage it.
                 } else if (line.startsWith("clipboardSharing =")) {
                     setClipboardSharing(line.mid(line.indexOf('=')+1).trimmed() == "true");
                 } else if (line.startsWith("switchDelay =")) {
@@ -391,11 +401,23 @@ bool ServerConfig::loadFromConf(const QString& path)
                             Hotkey h;
                             h.setKeySequence(KeySequence::fromString(keyStr));
                             
-#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
-                            QStringList actionList = actionsStr.split(",", Qt::SkipEmptyParts);
-#else
-                            QStringList actionList = actionsStr.split(",", QString::SkipEmptyParts);
-#endif
+                            QStringList actionList;
+                            int parenDepth = 0;
+                            QString currentAction;
+                            for (int i = 0; i < actionsStr.length(); ++i) {
+                                QChar c = actionsStr[i];
+                                if (c == '(') parenDepth++;
+                                else if (c == ')') parenDepth--;
+                                else if (c == ',' && parenDepth == 0) {
+                                    actionList.append(currentAction.trimmed());
+                                    currentAction.clear();
+                                    continue;
+                                }
+                                currentAction += c;
+                            }
+                            if (!currentAction.trimmed().isEmpty()) {
+                                actionList.append(currentAction.trimmed());
+                            }
                             for (const QString& actStr : actionList) {
                                 Action a = Action::fromString(actStr);
                                 h.appendAction(a);

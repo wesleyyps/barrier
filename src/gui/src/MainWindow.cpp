@@ -361,6 +361,17 @@ void MainWindow::loadSettings()
     m_pLineEditConfigFile->setText(settings().value("configFile", QDir::homePath() + "/" + barrierConfigName).toString());
     m_pGroupClient->setChecked(settings().value("groupClientChecked", true).toBool());
     m_pLineEditHostname->setText(settings().value("serverHostname").toString());
+
+    if (m_pCheckBoxExternalConfig->isChecked() && !m_pLineEditConfigFile->text().isEmpty()) {
+        m_ServerConfig.loadFromConf(m_pLineEditConfigFile->text());
+        appConfig().setPort(m_ServerConfig.port());
+        appConfig().setCryptoEnabled(m_ServerConfig.cryptoEnabled());
+        appConfig().setRequireClientCertificate(m_ServerConfig.requireClientCertificate());
+        appConfig().setLogLevel(m_ServerConfig.logLevel());
+        appConfig().setLogToFile(m_ServerConfig.logToFile());
+        appConfig().setLogFilename(m_ServerConfig.logFilename());
+        appConfig().setNetworkInterface(m_ServerConfig.networkInterface());
+    }
 }
 
 void MainWindow::initConnections()

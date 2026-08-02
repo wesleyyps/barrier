@@ -63,6 +63,7 @@ class ServerConfig : public BaseConfig
         bool ignoreAutoConfigClient() const { return m_IgnoreAutoConfigClient; }
         bool enableDragAndDrop() const { return m_EnableDragAndDrop; }
         const QString& dragDropDirectory() const { return m_DragDropDirectory; }
+        void setDragDropDirectory(const QString& dir) { m_DragDropDirectory = dir; }
         bool clipboardSharing() const { return m_ClipboardSharing; }
         const QString& serverName() const { return m_ServerName; }
         void setServerName(const QString& name) { m_ServerName = name; }
@@ -95,7 +96,6 @@ class ServerConfig : public BaseConfig
         void setSwitchCornerSize(int val) { m_SwitchCornerSize = val; }
         void setIgnoreAutoConfigClient(bool on) { m_IgnoreAutoConfigClient = on; }
         void setEnableDragAndDrop(bool on) { m_EnableDragAndDrop = on; }
-        void setDragDropDirectory(const QString& dir) { m_DragDropDirectory = dir; }
         void setClipboardSharing(bool on) { m_ClipboardSharing = on; }
         QList<bool>& switchCorners() { return m_SwitchCorners; }
         std::vector<Hotkey>& hotkeys() { return m_Hotkeys; }
