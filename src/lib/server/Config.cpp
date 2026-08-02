@@ -831,7 +831,8 @@ Config::readSectionOptions(ConfigReadContext& s)
 		}
 		else if (name == "logLevel" || name == "logToFile" || name == "logFilename" || 
                  name == "cryptoEnabled" || 
-                 name == "serverIp" || name == "autoConfig" || name == "networkInterface" || name == "port") {
+                 name == "serverIp" || name == "autoConfig" || name == "networkInterface" || name == "port" ||
+                 name == "gridSize") {
 			handled = true; // Ignore GUI-only options
 		}
 
