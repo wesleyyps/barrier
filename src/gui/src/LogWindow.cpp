@@ -18,6 +18,7 @@
 #include "LogWindow.h"
 
 #include <QDateTime>
+#include <QTextStream>
 
 static QString getTimeStamp()
 {
@@ -32,6 +33,54 @@ LogWindow::LogWindow(QWidget *parent) :
     // repeatedly until Barrier is finished
     setAttribute(Qt::WA_DeleteOnClose, false);
     setupUi(this);
+}
+
+void LogWindow::tailLogFile(const QString& path)
+{
+    stopTailing();
+    
+    if (path.isEmpty()) return;
+    
+    m_pLogFile = new QFile(path, this);
+    if (m_pLogFile->open(QIODevice::ReadOnly | QIODevice::Text)) {
+        // Read existing content
+        QTextStream in(m_pLogFile);
+        QString text = in.readAll();
+        if (!text.isEmpty()) {
+            appendRaw(text);
+        }
+        
+        m_pWatcher = new QFileSystemWatcher(this);
+        m_pWatcher->addPath(path);
+        connect(m_pWatcher, SIGNAL(fileChanged(const QString&)), this, SLOT(onLogFileChanged(const QString&)));
+    } else {
+        delete m_pLogFile;
+        m_pLogFile = nullptr;
+    }
+}
+
+void LogWindow::stopTailing()
+{
+    if (m_pWatcher) {
+        m_pWatcher->deleteLater();
+        m_pWatcher = nullptr;
+    }
+    if (m_pLogFile) {
+        m_pLogFile->close();
+        delete m_pLogFile;
+        m_pLogFile = nullptr;
+    }
+}
+
+void LogWindow::onLogFileChanged(const QString& path)
+{
+    if (m_pLogFile && m_pLogFile->isOpen()) {
+        QTextStream in(m_pLogFile);
+        QString newData = in.readAll();
+        if (!newData.isEmpty()) {
+            appendRaw(newData);
+        }
+    }
 }
 
 void LogWindow::startNewInstance()

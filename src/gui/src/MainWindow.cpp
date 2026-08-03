@@ -1702,5 +1702,27 @@ void MainWindow::windowStateChanged()
 
 void MainWindow::showLogWindow()
 {
+    if (barrierProcess() == nullptr) {
+        QString logPath = appConfig().logFilename();
+        if (logPath.isEmpty()) {
+            QString runningConfigPath;
+            if (detectExistingInstance(&runningConfigPath) > 0 && !runningConfigPath.isEmpty()) {
+                QFileInfo fi(runningConfigPath);
+                logPath = fi.absolutePath() + "/barrier.log";
+            }
+        }
+        if (!logPath.isEmpty()) {
+            m_pLogWindow->tailLogFile(logPath);
+        }
+    } else {
+        m_pLogWindow->stopTailing();
+    }
+
+    if (!isVisible()) {
+        showNormal();
+    }
+    
     m_pLogWindow->show();
+    m_pLogWindow->raise();
+    m_pLogWindow->activateWindow();
 }

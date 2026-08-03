@@ -20,6 +20,8 @@
 #define LOGWINDOW__H
 
 #include <QDialog>
+#include <QFileSystemWatcher>
+#include <QFile>
 
 #include "ui_LogWindowBase.h"
 
@@ -37,10 +39,17 @@ class LogWindow : public QDialog, public Ui::LogWindowBase
         void appendDebug(const QString& text);
         void appendError(const QString& text);
 
+        void tailLogFile(const QString& path);
+        void stopTailing();
+
     private slots:
         void on_m_pButtonHide_clicked();
         void on_m_pButtonClearLog_clicked();
+        void onLogFileChanged(const QString& path);
 
+    private:
+        QFileSystemWatcher* m_pWatcher = nullptr;
+        QFile* m_pLogFile = nullptr;
 };
 
 #endif // LOGWINDOW__H
