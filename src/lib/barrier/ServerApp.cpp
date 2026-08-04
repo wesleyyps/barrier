@@ -50,6 +50,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include "platform/XWindowsScreen.h"
+#include "platform/WaylandScreen.h"
+#include <cstdlib>
 #elif WINAPI_CARBON
 #include "platform/OSXScreen.h"
 #endif
@@ -681,6 +683,10 @@ ServerApp::createScreen()
     return new barrier::Screen(new MSWindowsScreen(
         true, args().m_noHooks, args().m_stopOnDeskSwitch, m_events), m_events);
 #elif WINAPI_XWINDOWS
+    const char* waylandDisplay = std::getenv("WAYLAND_DISPLAY");
+    if (waylandDisplay != nullptr) {
+        return new barrier::Screen(new WaylandScreen(true, m_events), m_events);
+    }
     return new barrier::Screen(new XWindowsScreen(
         new XWindowsImpl(),
         args().m_display, true, args().m_disableXInitThreads, 0, m_events), m_events);

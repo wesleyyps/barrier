@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  barrier-server:
+    build:
+      context: .
+      args:
+        USER_ID: ${UID:-1000}
+        GROUP_ID: ${GID:-1000}
+    image: barrier-dev-ubuntu24
+    container_name: barrier-server
+    volumes:
+      - ../:/workspace
+    network_mode: "host"
+    environment:
+      - DISPLAY=:99
+    # Keep alive so we can run scripts manually
+    command: tail -f /dev/null
+
+  barrier-client:
+    image: barrier-dev-ubuntu24
+    container_name: barrier-client
+    volumes:
+      - ../:/workspace
+    network_mode: "host"
+    environment:
+      - WAYLAND_DISPLAY=wayland-1
+      - XDG_RUNTIME_DIR=/run/user/${UID:-1000}
+    # Keep alive
+    command: tail -f /dev/null

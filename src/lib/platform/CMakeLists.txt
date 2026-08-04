@@ -21,8 +21,8 @@ elseif (APPLE)
     file(GLOB headers "OSX*.h" "IOSX*.h")
     file(GLOB sources "OSX*.cpp" "IOSX*.cpp" "OSX*.m" "OSX*.mm")
 elseif (UNIX)
-    file(GLOB headers "XWindows*.h")
-    file(GLOB sources "XWindows*.cpp")
+    file(GLOB headers "XWindows*.h" "Wayland*.h")
+    file(GLOB sources "XWindows*.cpp" "Wayland*.cpp")
 endif()
 
 if (BARRIER_ADD_HEADERS)
@@ -40,7 +40,13 @@ add_library(platform STATIC ${sources})
 target_link_libraries(platform client ${libs})
 
 if (UNIX)
-    target_link_libraries(platform io net ipc synlib client ${libs})
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(DBUS REQUIRED dbus-1)
+    pkg_check_modules(LIBEI REQUIRED libei-1.0)
+    
+    include_directories(${DBUS_INCLUDE_DIRS} ${LIBEI_INCLUDE_DIRS})
+    
+    target_link_libraries(platform io net ipc synlib client ${libs} ${DBUS_LIBRARIES} ${LIBEI_LIBRARIES})
 endif()
 
 if (APPLE)
