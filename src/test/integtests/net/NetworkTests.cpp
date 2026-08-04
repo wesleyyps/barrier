@@ -140,8 +140,8 @@ TEST_F(NetworkTests, sendToClient_mockData)
     SocketMultiplexer clientSocketMultiplexer;
     TCPSocketFactory* clientSocketFactory = new TCPSocketFactory(&m_events, &clientSocketMultiplexer);
 
-    ON_CALL(clientScreen, getShape(_, _, _, _)).WillByDefault(Invoke(getScreenShape));
-    ON_CALL(clientScreen, getCursorPos(_, _)).WillByDefault(Invoke(getCursorPos));
+    ON_CALL(clientScreen, getShape(_, _, _, _)).WillByDefault(getScreenShape);
+    ON_CALL(clientScreen, getCursorPos(_, _)).WillByDefault(getCursorPos);
 
 
     ClientArgs clientArgs;
@@ -199,8 +199,8 @@ TEST_F(NetworkTests, sendToClient_mockFile)
     SocketMultiplexer clientSocketMultiplexer;
     TCPSocketFactory* clientSocketFactory = new TCPSocketFactory(&m_events, &clientSocketMultiplexer);
 
-    ON_CALL(clientScreen, getShape(_, _, _, _)).WillByDefault(Invoke(getScreenShape));
-    ON_CALL(clientScreen, getCursorPos(_, _)).WillByDefault(Invoke(getCursorPos));
+    ON_CALL(clientScreen, getShape(_, _, _, _)).WillByDefault(getScreenShape);
+    ON_CALL(clientScreen, getCursorPos(_, _)).WillByDefault(getCursorPos);
 
 
     ClientArgs clientArgs;
@@ -252,8 +252,8 @@ TEST_F(NetworkTests, sendToServer_mockData)
     SocketMultiplexer clientSocketMultiplexer;
     TCPSocketFactory* clientSocketFactory = new TCPSocketFactory(&m_events, &clientSocketMultiplexer);
 
-    ON_CALL(clientScreen, getShape(_, _, _, _)).WillByDefault(Invoke(getScreenShape));
-    ON_CALL(clientScreen, getCursorPos(_, _)).WillByDefault(Invoke(getCursorPos));
+    ON_CALL(clientScreen, getShape(_, _, _, _)).WillByDefault(getScreenShape);
+    ON_CALL(clientScreen, getCursorPos(_, _)).WillByDefault(getCursorPos);
 
     ClientArgs clientArgs;
     clientArgs.m_enableDragDrop = true;
@@ -310,8 +310,8 @@ TEST_F(NetworkTests, sendToServer_mockFile)
     SocketMultiplexer clientSocketMultiplexer;
     TCPSocketFactory* clientSocketFactory = new TCPSocketFactory(&m_events, &clientSocketMultiplexer);
 
-    ON_CALL(clientScreen, getShape(_, _, _, _)).WillByDefault(Invoke(getScreenShape));
-    ON_CALL(clientScreen, getCursorPos(_, _)).WillByDefault(Invoke(getCursorPos));
+    ON_CALL(clientScreen, getShape(_, _, _, _)).WillByDefault(getScreenShape);
+    ON_CALL(clientScreen, getCursorPos(_, _)).WillByDefault(getCursorPos);
 
     ClientArgs clientArgs;
     clientArgs.m_enableDragDrop = true;

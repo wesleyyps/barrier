@@ -47,6 +47,14 @@
 #include "platform/OSXDragSimulator.h"
 #endif
 
+#if SYSAPI_WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+#include <fstream>
+#include <cstdio>
+
 App* App::s_instance = nullptr;
 
 //
@@ -226,6 +234,65 @@ App::handleIpcMessage(const Event& e, void*)
         LOG((CLOG_INFO "got ipc shutdown message"));
         m_events->addEvent(Event(Event::kQuit));
     }
+}
+
+String App::getPidFilePath() const {
+    String path = argsBase().m_pidFile;
+    if (path.empty()) {
+        barrier::fs::path profile_path = barrier::DataDirectories::profile();
+        if (profile_path.empty()) {
+            return "";
+        }
+        path = (profile_path / (argsBase().m_exename + ".pid")).u8string();
+    }
+    return path;
+}
+
+void App::writePidFile() {
+    String path = getPidFilePath();
+    if (path.empty()) return;
+    std::ofstream pidFile(path.c_str());
+    if (pidFile.is_open()) {
+#if SYSAPI_WIN32
+        pidFile << GetCurrentProcessId();
+#else
+        pidFile << getpid();
+#endif
+        LOG((CLOG_DEBUG1 "wrote pid file: %s", path.c_str()));
+    } else {
+        LOG((CLOG_WARN "failed to write pid file: %s", path.c_str()));
+    }
+
+    if (!getConfigFilePath().empty()) {
+        String confPathStr = path;
+        size_t lastDot = confPathStr.find_last_of('.');
+        if (lastDot != String::npos) {
+            confPathStr = confPathStr.substr(0, lastDot) + ".confpath";
+        } else {
+            confPathStr += ".confpath";
+        }
+        std::ofstream confFile(confPathStr.c_str());
+        if (confFile.is_open()) {
+            confFile << getConfigFilePath();
+            LOG((CLOG_DEBUG1 "wrote config path file: %s", confPathStr.c_str()));
+        }
+    }
+}
+
+void App::removePidFile() {
+    String path = getPidFilePath();
+    if (path.empty()) return;
+    std::remove(path.c_str());
+    LOG((CLOG_DEBUG1 "removed pid file: %s", path.c_str()));
+
+    String confPathStr = path;
+    size_t lastDot = confPathStr.find_last_of('.');
+    if (lastDot != String::npos) {
+        confPathStr = confPathStr.substr(0, lastDot) + ".confpath";
+    } else {
+        confPathStr += ".confpath";
+    }
+    std::remove(confPathStr.c_str());
 }
 
 void App::run_events_loop()

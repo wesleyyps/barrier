@@ -21,6 +21,8 @@
 #include "client/Client.h"
 #include "barrier/ArgParser.h"
 #include "barrier/protocol_types.h"
+#include "server/Config.h"
+#include <fstream>
 #include "barrier/Screen.h"
 #include "barrier/XScreen.h"
 #include "barrier/ClientArgs.h"
@@ -81,6 +83,45 @@ ClientApp::parseArgs(int argc, const char* const* argv)
         m_bye(kExitArgs);
     }
     else {
+        // Read configuration file if specified
+        if (!args().m_configFile.empty()) {
+            LOG((CLOG_DEBUG "opening configuration \"%s\"", args().m_configFile.c_str()));
+            std::ifstream configStream(args().m_configFile.c_str());
+            if (!configStream.is_open()) {
+                LOG((CLOG_ERR "cannot open configuration \"%s\"", args().m_configFile.c_str()));
+                m_bye(kExitConfig);
+            }
+            
+            try {
+                Config config(m_events);
+                configStream >> config;
+                LOG((CLOG_DEBUG "configuration read successfully"));
+                
+                if (!config.getServerIp().empty()) {
+                    // Only override if not set via command line or if it was empty
+                    if (args().m_barrierAddress.empty()) {
+                        args().m_barrierAddress = config.getServerIp();
+                        LOG((CLOG_NOTE "Server address dynamically set to %s via config options", args().m_barrierAddress.c_str()));
+                    }
+                }
+                
+                if (!config.getCryptoEnabled()) {
+                    argsBase().m_enableCrypto = false;
+                    LOG((CLOG_NOTE "Crypto disabled via config file"));
+                }
+            }
+            catch (XConfigRead& e) {
+                LOG((CLOG_ERR "FATAL: %s", e.what()));
+                m_bye(kExitConfig);
+            }
+        }
+
+        // Check again if we have a server address (from args or from config)
+        if (args().m_barrierAddress.empty()) {
+            LOG((CLOG_PRINT "%s: a server address or name is required" BYE, args().m_exename.c_str()));
+            m_bye(kExitArgs);
+        }
+
         // save server address
         if (!args().m_barrierAddress.empty()) {
             try {
@@ -448,6 +489,8 @@ ClientApp::mainLoop()
     // on unix because threads evaporate across a fork().
     setSocketMultiplexer(std::make_unique<SocketMultiplexer>());
 
+    writePidFile();
+
     // start client, etc
     appUtil().startNode();
 
@@ -487,6 +530,8 @@ ClientApp::mainLoop()
     if (argsBase().m_enableIpc) {
         cleanupIpcClient();
     }
+    
+    removePidFile();
 
     return kExitSuccess;
 }
@@ -562,5 +607,70 @@ ClientApp::startNode()
     LOG((CLOG_DEBUG1 "starting client"));
     if (!startClient()) {
         m_bye(kExitFailed);
+    }
+}
+
+void ClientApp::loadConfig() {
+    loadConfig(args().m_configFile);
+}
+
+String ClientApp::getConfigFilePath() const {
+    return args().m_configFile;
+}
+
+bool ClientApp::loadConfig(const String& pathname) {
+    if (pathname.empty()) {
+        return false;
+    }
+    
+    try {
+        std::ifstream configStream(pathname.c_str());
+        if (!configStream) {
+            LOG((CLOG_WARN "cannot read configuration \"%s\"", pathname.c_str()));
+            return false;
+        }
+
+        Config config(m_events);
+        configStream >> config;
+        
+        if (!config.getServerName().empty()) {
+            args().m_name = config.getServerName();
+            LOG((CLOG_NOTE "Client name dynamically set to %s via config options", args().m_name.c_str()));
+        }
+
+        // Dynamically configure log file based on configuration
+        if (args().m_logFile == NULL) {
+            std::string logPath = config.getLogFilename();
+            if (logPath.empty()) {
+                size_t pos = pathname.find_last_of("/\\");
+                if (pos != String::npos) {
+                    logPath = pathname.substr(0, pos) + "/barrier.log";
+                } else {
+                    logPath = "barrier.log";
+                }
+            }
+            char* logFileStr = new char[logPath.length() + 1];
+            strcpy(logFileStr, logPath.c_str());
+            args().m_logFile = logFileStr;
+            setupFileLogging();
+        }
+
+        if (!config.getServerIp().empty() && args().m_barrierAddress.empty()) {
+            args().m_barrierAddress = config.getServerIp();
+            try {
+                if (m_serverAddress == nullptr) m_serverAddress = new NetworkAddress;
+                *m_serverAddress = NetworkAddress(args().m_barrierAddress, kDefaultPort);
+                m_serverAddress->resolve();
+                LOG((CLOG_NOTE "Server IP dynamically set to %s via config options", args().m_barrierAddress.c_str()));
+            } catch (...) {
+                LOG((CLOG_WARN "Failed to resolve Server IP from config"));
+            }
+        }
+        
+        return true;
+    }
+    catch (XConfigRead& e) {
+        LOG((CLOG_ERR "configuration error: %s", e.what()));
+        return false;
     }
 }

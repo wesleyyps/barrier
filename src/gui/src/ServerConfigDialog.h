@@ -38,8 +38,10 @@ class ServerConfigDialog : public QDialog, public Ui::ServerConfigDialogBase
         void accept();
         void showEvent(QShowEvent* event);
         void message(const QString& message) { m_Message = message; }
+        void setReadOnly(bool readOnly);
 
     protected slots:
+        void on_m_pButtonBrowseDragDropDir_clicked();
         void on_m_pButtonNewHotkey_clicked();
         void on_m_pListHotkeys_itemSelectionChanged();
         void on_m_pButtonEditHotkey_clicked();

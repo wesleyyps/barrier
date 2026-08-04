@@ -70,6 +70,7 @@ public:
     void reloadConfig(const Event&, void*);
     void loadConfig();
     bool loadConfig(const String& pathname);
+    virtual String      getConfigFilePath() const;
     void forceReconnect(const Event&, void*);
     void resetServer(const Event&, void*);
     void handleClientConnected(const Event&, void* vlistener);

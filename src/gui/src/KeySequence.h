@@ -32,6 +32,7 @@ class KeySequence
 
     public:
         QString toString() const;
+        static KeySequence fromString(const QString& str);
         bool appendKey(int key, int modifiers);
         bool appendMouseButton(int button);
         bool isMouseButton() const;

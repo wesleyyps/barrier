@@ -18,8 +18,12 @@
 
 #include "ServerConfigDialog.h"
 #include "ServerConfig.h"
+#include "NewScreenWidget.h"
+#include "MainWindow.h"
 #include "HotkeyDialog.h"
 #include "ActionDialog.h"
+
+#include <QFileDialog>
 
 #include <QtCore>
 #include <QtGui>
@@ -30,7 +34,8 @@ ServerConfigDialog::ServerConfigDialog(QWidget* parent, ServerConfig& config, co
     Ui::ServerConfigDialogBase(),
     m_OrigServerConfig(config),
     m_ServerConfig(config),
-    m_ScreenSetupModel(serverConfig().screens(), serverConfig().numColumns(), serverConfig().numRows()),
+    m_ScreenSetupModel(serverConfig().screens(), serverConfig().numColumns(), serverConfig().numRows(), 
+        serverConfig().serverName().isEmpty() ? defaultScreenName : serverConfig().serverName()),
     m_Message("")
 {
     setupUi(this);
@@ -55,9 +60,8 @@ ServerConfigDialog::ServerConfigDialog(QWidget* parent, ServerConfig& config, co
     m_pSpinBoxSwitchCornerSize->setValue(serverConfig().switchCornerSize());
 
     m_pCheckBoxIgnoreAutoConfigClient->setChecked(serverConfig().ignoreAutoConfigClient());
-
     m_pCheckBoxEnableDragAndDrop->setChecked(serverConfig().enableDragAndDrop());
-
+    m_pLineEditDragDropDir->setText(serverConfig().dragDropDirectory());
     m_pCheckBoxEnableClipboard->setChecked(serverConfig().clipboardSharing());
 
     for (const Hotkey& hotkey : serverConfig().hotkeys()) {
@@ -65,6 +69,24 @@ ServerConfigDialog::ServerConfigDialog(QWidget* parent, ServerConfig& config, co
     }
 
     m_pScreenSetupView->setModel(&m_ScreenSetupModel);
+
+    if (MainWindow* mw = qobject_cast<MainWindow*>(parent)) {
+        m_ScreenSetupModel.setConnectedClients(mw->connectedClients());
+        connect(mw, SIGNAL(clientConnected(QString)), &m_ScreenSetupModel, SLOT(onClientConnected(QString)));
+        connect(mw, SIGNAL(clientDisconnected(QString)), &m_ScreenSetupModel, SLOT(onClientDisconnected(QString)));
+    }
+
+    m_pSpinBoxGridCols->setValue(serverConfig().numColumns());
+    m_pSpinBoxGridRows->setValue(serverConfig().numRows());
+
+    connect(m_pSpinBoxGridCols, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), [this](int value) {
+        serverConfig().resizeGrid(value, m_pSpinBoxGridRows->value());
+        model().updateGridSize(value, m_pSpinBoxGridRows->value());
+    });
+    connect(m_pSpinBoxGridRows, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), [this](int value) {
+        serverConfig().resizeGrid(m_pSpinBoxGridCols->value(), value);
+        model().updateGridSize(m_pSpinBoxGridCols->value(), value);
+    });
 
     if (serverConfig().numScreens() == 0)
         model().screen(serverConfig().numColumns() / 2, serverConfig().numRows() / 2) = Screen(defaultScreenName);
@@ -107,6 +129,7 @@ void ServerConfigDialog::accept()
     serverConfig().setSwitchCornerSize(m_pSpinBoxSwitchCornerSize->value());
     serverConfig().setIgnoreAutoConfigClient(m_pCheckBoxIgnoreAutoConfigClient->isChecked());
     serverConfig().setEnableDragAndDrop(m_pCheckBoxEnableDragAndDrop->isChecked());
+    serverConfig().setDragDropDirectory(m_pLineEditDragDropDir->text());
     serverConfig().setClipboardSharing(m_pCheckBoxEnableClipboard->isChecked());
 
     // now that the dialog has been accepted, copy the new server config to the original one,
@@ -114,6 +137,27 @@ void ServerConfigDialog::accept()
     setOrigServerConfig(serverConfig());
 
     QDialog::accept();
+}
+
+void ServerConfigDialog::setReadOnly(bool readOnly)
+{
+    if (readOnly) {
+        m_pTabWidget->setEnabled(false);
+        QPushButton* okButton = m_pButtonBox->button(QDialogButtonBox::Ok);
+        if (okButton) okButton->setEnabled(false);
+    } else {
+        m_pTabWidget->setEnabled(true);
+        QPushButton* okButton = m_pButtonBox->button(QDialogButtonBox::Ok);
+        if (okButton) okButton->setEnabled(true);
+    }
+}
+
+void ServerConfigDialog::on_m_pButtonBrowseDragDropDir_clicked()
+{
+    QString dir = QFileDialog::getExistingDirectory(this, tr("Drag and Drop Directory"));
+    if (!dir.isNull()) {
+        m_pLineEditDragDropDir->setText(dir);
+    }
 }
 
 void ServerConfigDialog::on_m_pButtonNewHotkey_clicked()

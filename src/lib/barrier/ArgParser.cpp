@@ -107,6 +107,10 @@ ArgParser::parseClientArgs(ClientArgs& args, int argc, const char* const* argv)
             // define scroll
             args.m_yscroll = atoi(argv[++i]);
         }
+        else if (isArg(i, argc, argv, "-c", "--config", 1)) {
+            // save configuration file path
+            args.m_configFile = argv[++i];
+        }
         else {
             if (i + 1 == argc) {
                 args.m_barrierAddress = argv[i];
@@ -121,10 +125,10 @@ ArgParser::parseClientArgs(ClientArgs& args, int argc, const char* const* argv)
     if (args.m_shouldExit)
         return true;
 
-    // exactly one non-option argument (server-address)
-    if (i == argc) {
+    // exactly one non-option argument (server-address) if no config file
+    if (i == argc && args.m_configFile.empty()) {
         LOG((CLOG_PRINT "%s: a server address or name is required" BYE,
-            args.m_exename.c_str(), args.m_exename.c_str()));
+            args.m_exename.c_str()));
         return false;
     }
 
@@ -280,13 +284,17 @@ ArgParser::parseGenericArgs(int argc, const char* const* argv, int& i)
         LOG((CLOG_INFO "--enable-crypto is used by default. The option is deprecated."));
     }
     else if (isArg(i, argc, argv, nullptr, "--disable-crypto")) {
-        LOG((CLOG_WARN "Plaintext connections are no longer supported. --disable-crypto will be ignored."));
+        argsBase().m_enableCrypto = false;
+        LOG((CLOG_WARN "Plaintext connections are no longer supported by default. Using them may be insecure."));
     }
     else if (isArg(i, argc, argv, nullptr, "--profile-dir", 1)) {
         argsBase().m_profileDirectory = barrier::fs::u8path(argv[++i]);
     }
     else if (isArg(i, argc, argv, nullptr, "--plugin-dir", 1)) {
         argsBase().m_pluginDirectory = barrier::fs::u8path(argv[++i]);
+    }
+    else if (isArg(i, argc, argv, nullptr, "--pid", 1)) {
+        argsBase().m_pidFile = argv[++i];
     }
     else {
         // option not supported here

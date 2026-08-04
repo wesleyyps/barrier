@@ -491,6 +491,86 @@
     </layout>
    </item>
    <item>
+    <widget class="QGroupBox" name="m_pGroupNetwork">
+     <property name="title">
+      <string>Rede (Deploy Automático SSH)</string>
+     </property>
+     <layout class="QFormLayout" name="formLayoutNetwork">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_net_ip">
+        <property name="text">
+         <string>Endereço IP:</string>
+        </property>
+        <property name="buddy">
+         <cstring>m_pLineEditIP</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="m_pLineEditIP">
+        <property name="placeholderText">
+         <string>192.168.1.100</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_net_ssh_user">
+        <property name="text">
+         <string>Usuário SSH:</string>
+        </property>
+        <property name="buddy">
+         <cstring>m_pLineEditSSHUser</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="m_pLineEditSSHUser">
+        <property name="placeholderText">
+         <string>usuário</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_net_ssh_port">
+        <property name="text">
+         <string>Porta SSH:</string>
+        </property>
+        <property name="buddy">
+         <cstring>m_pSpinBoxSSHPort</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QSpinBox" name="m_pSpinBoxSSHPort">
+        <property name="maximum">
+         <number>65535</number>
+        </property>
+        <property name="value">
+         <number>22</number>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_net_client_cmd">
+        <property name="text">
+         <string>Comando Cliente:</string>
+        </property>
+        <property name="buddy">
+         <cstring>m_pLineEditClientCmd</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QLineEdit" name="m_pLineEditClientCmd">
+        <property name="placeholderText">
+         <string>/usr/local/bin/barrier-client-connect.sh %s</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
     <spacer>
      <property name="orientation">
       <enum>Qt::Vertical</enum>

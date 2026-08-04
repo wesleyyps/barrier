@@ -1260,45 +1260,48 @@ XWindowsScreen::handleSystemEvent(const Event& event, void*)
 	if (m_xi2detected) {
 		// Process RawMotion
 		XGenericEventCookie *cookie = (XGenericEventCookie*)&xevent->xcookie;
-            if (m_impl->XGetEventData(m_display, cookie) &&
-				cookie->type == GenericEvent &&
-				cookie->extension == xi_opcode) {
-			if (cookie->evtype == XI_RawMotion) {
-				// Get current pointer's position
-				Window root, child;
-				XMotionEvent xmotion;
-				xmotion.type = MotionNotify;
-				xmotion.send_event = False; // Raw motion
-				xmotion.display = m_display;
-				xmotion.window = m_window;
-				/* xmotion's time, state and is_hint are not used */
-				unsigned int msk;
-                    xmotion.same_screen = m_impl->XQueryPointer(
-						m_display, m_root, &xmotion.root, &xmotion.subwindow,
-						&xmotion.x_root,
-						&xmotion.y_root,
-						&xmotion.x,
-						&xmotion.y,
-						&msk);
-					onMouseMove(xmotion);
-                    m_impl->XFreeEventData(m_display, cookie);
-					return;
-			}
-			else if (cookie->evtype == XI_RawButtonRelease) {
-				XIRawEvent *rawEvent = (XIRawEvent*)cookie->data;
-				XButtonEvent xbutton;
-				memset(&xbutton, 0, sizeof(xbutton));
-				xbutton.type = ButtonRelease;
-				xbutton.display = m_display;
-				xbutton.window = m_window;
-				xbutton.button = rawEvent->detail;
-				xbutton.time = rawEvent->time;
-				onMouseRelease(xbutton);
-				m_impl->XFreeEventData(m_display, cookie);
-				return;
-			}
+            if (m_impl->XGetEventData(m_display, cookie)) {
+                if (cookie->type == GenericEvent && cookie->extension == xi_opcode) {
+                    if (cookie->evtype == XI_RawMotion) {
+                        // Get current pointer's position
+                        Window root, child;
+                        XMotionEvent xmotion;
+                        xmotion.type = MotionNotify;
+                        xmotion.send_event = False; // Raw motion
+                        xmotion.display = m_display;
+                        xmotion.window = m_window;
+                        /* xmotion's time, state and is_hint are not used */
+                        unsigned int msk;
+                        xmotion.same_screen = m_impl->XQueryPointer(
+                                m_display, m_root, &xmotion.root, &xmotion.subwindow,
+                                &xmotion.x_root,
+                                &xmotion.y_root,
+                                &xmotion.x,
+                                &xmotion.y,
+                                &msk);
+                        onMouseMove(xmotion);
+                    }
+                    else if (cookie->evtype == XI_RawButtonRelease) {
+                        XIRawEvent *rawEvent = (XIRawEvent*)cookie->data;
+                        if (rawEvent) {
+                            XButtonEvent xbutton;
+                            memset(&xbutton, 0, sizeof(xbutton));
+                            xbutton.type = ButtonRelease;
+                            xbutton.display = m_display;
+                            xbutton.window = m_window;
+                            xbutton.button = rawEvent->detail;
+                            xbutton.time = rawEvent->time;
+                            onMouseRelease(xbutton);
+                        } else {
+                            LOG((CLOG_WARN "XI_RawButtonRelease received but rawEvent is NULL"));
+                        }
+                    }
+                }
                 m_impl->XFreeEventData(m_display, cookie);
-		}
+                if (cookie->type == GenericEvent) {
+                    return;
+                }
+            }
 	}
 #endif
 

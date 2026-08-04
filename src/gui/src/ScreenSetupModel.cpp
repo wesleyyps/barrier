@@ -24,14 +24,58 @@
 
 const QString ScreenSetupModel::m_MimeType = "application/x-qbarrier-screen";
 
-ScreenSetupModel::ScreenSetupModel(std::vector<Screen>& screens, int numColumns, int numRows) :
-    QAbstractTableModel(nullptr),
-    m_Screens(screens),
+ScreenSetupModel::ScreenSetupModel(std::vector<Screen>& screens, int numColumns, int numRows, const QString& serverName) :
     m_NumColumns(numColumns),
-    m_NumRows(numRows)
+    m_NumRows(numRows),
+    m_Screens(screens),
+    m_ServerName(serverName)
 {
-    if (m_NumColumns * m_NumRows > screens.size())
-        qFatal("Not enough elements (%u) in screens QList for %d columns and %d rows", screens.size(), m_NumColumns, m_NumRows);
+    if (screens.size() < static_cast<std::vector<Screen>::size_type>(m_NumColumns * m_NumRows))
+    {
+        qFatal("Not enough elements (%u) in screens QList for %d columns and %d rows", static_cast<unsigned int>(screens.size()), m_NumColumns, m_NumRows);
+    }
+}
+
+void ScreenSetupModel::updateGridSize(int numColumns, int numRows)
+{
+    beginResetModel();
+    m_NumColumns = numColumns;
+    m_NumRows = numRows;
+    endResetModel();
+}
+
+void ScreenSetupModel::setConnectedClients(const QSet<QString>& clients)
+{
+    m_ConnectedClients = clients;
+    if (m_NumRows > 0 && m_NumColumns > 0) {
+        emit dataChanged(index(0, 0), index(m_NumRows - 1, m_NumColumns - 1));
+    }
+}
+
+void ScreenSetupModel::onClientConnected(const QString& name)
+{
+    m_ConnectedClients.insert(name);
+    for (int r = 0; r < m_NumRows; ++r) {
+        for (int c = 0; c < m_NumColumns; ++c) {
+            if (!screen(c, r).isNull() && screen(c, r).name() == name) {
+                emit dataChanged(index(r, c), index(r, c));
+                return;
+            }
+        }
+    }
+}
+
+void ScreenSetupModel::onClientDisconnected(const QString& name)
+{
+    m_ConnectedClients.remove(name);
+    for (int r = 0; r < m_NumRows; ++r) {
+        for (int c = 0; c < m_NumColumns; ++c) {
+            if (!screen(c, r).isNull() && screen(c, r).name() == name) {
+                emit dataChanged(index(r, c), index(r, c));
+                return;
+            }
+        }
+    }
 }
 
 QVariant ScreenSetupModel::data(const QModelIndex& index, int role) const
@@ -57,6 +101,22 @@ QVariant ScreenSetupModel::data(const QModelIndex& index, int role) const
                 if (screen(index).isNull())
                     break;
                 return screen(index).name();
+            case Qt::BackgroundRole:
+                if (!screen(index).isNull()) {
+                    if (screen(index).name() == m_ServerName) {
+                        return QBrush(QColor(25, 118, 210)); // Blue brush
+                    } else if (m_ConnectedClients.contains(screen(index).name())) {
+                        return QBrush(QColor(46, 125, 50)); // Green brush
+                    }
+                }
+                break;
+            case Qt::ForegroundRole:
+                if (!screen(index).isNull()) {
+                    if (screen(index).name() == m_ServerName || m_ConnectedClients.contains(screen(index).name())) {
+                        return QBrush(Qt::white);
+                    }
+                }
+                break;
             default:
                 break;
         }

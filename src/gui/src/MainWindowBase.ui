@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <ui version="4.0">
  <class>MainWindowBase</class>
  <widget class="QMainWindow" name="MainWindowBase">
@@ -49,21 +49,11 @@
          <item row="0" column="1">
           <widget class="QLabel" name="m_pLabelIpAddresses">
            <property name="text">
-            <string notr="true"/>
+            <string notr="true" />
            </property>
           </widget>
          </item>
         </layout>
-       </item>
-       <item>
-        <widget class="QRadioButton" name="m_pRadioInternalConfig">
-         <property name="text">
-          <string>Configure interactively:</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
        </item>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_4">
@@ -89,10 +79,87 @@
          </item>
         </layout>
        </item>
-       <item>
-        <widget class="QRadioButton" name="m_pRadioExternalConfig">
+       </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QGroupBox" name="m_pGroupClient">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="title">
+       <string>&amp;Client (use another computer's mouse and keyboard):</string>
+      </property>
+      <property name="checkable">
+       <bool>true</bool>
+      </property>
+      <property name="checked">
+       <bool>true</bool>
+      </property>
+      <layout class="QFormLayout" name="formLayout_3">
+       <property name="fieldGrowthPolicy">
+        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+       </property>
+       <item row="0" column="0">
+        <widget class="QLabel" name="label_5">
          <property name="text">
-          <string>Use existing configuration:</string>
+          <string>Screen name:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLabel" name="m_pLabelScreenName">
+         <property name="text">
+          <string notr="true" />
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="m_pLabelServerName">
+         <property name="text">
+          <string>&amp;Server IP:</string>
+         </property>
+         <property name="buddy">
+          <cstring>m_pLineEditHostname</cstring>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QLineEdit" name="m_pLineEditHostname" />
+       </item>
+       <item row="3" column="0">
+        <widget class="QCheckBox" name="m_pCheckBoxAutoConfig">
+         <property name="text">
+          <string>Auto config</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QComboBox" name="m_pComboServerList">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>120</width>
+           <height>0</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item><widget class="QGroupBox" name="m_pGroupConfiguration"><property name="title"><string>Configuration:</string></property><layout class="QVBoxLayout" name="verticalLayout_config"><item>
+        <widget class="QCheckBox" name="m_pCheckBoxExternalConfig">
+         <property name="text">
+          <string>Use existing configuration file:</string>
          </property>
         </widget>
        </item>
@@ -127,84 +194,7 @@
          </item>
         </layout>
        </item>
-      </layout>
-     </widget>
-    </item>
-    <item>
-     <widget class="QGroupBox" name="m_pGroupClient">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="title">
-       <string>&amp;Client (use another computer's mouse and keyboard):</string>
-      </property>
-      <property name="checkable">
-       <bool>true</bool>
-      </property>
-      <property name="checked">
-       <bool>true</bool>
-      </property>
-      <layout class="QFormLayout" name="formLayout_3">
-       <property name="fieldGrowthPolicy">
-        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-       </property>
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_5">
-         <property name="text">
-          <string>Screen name:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QLabel" name="m_pLabelScreenName">
-         <property name="text">
-          <string notr="true"/>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="m_pLabelServerName">
-         <property name="text">
-          <string>&amp;Server IP:</string>
-         </property>
-         <property name="buddy">
-          <cstring>m_pLineEditHostname</cstring>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QLineEdit" name="m_pLineEditHostname"/>
-       </item>
-       <item row="3" column="0">
-        <widget class="QCheckBox" name="m_pCheckBoxAutoConfig">
-         <property name="text">
-          <string>Auto config</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QComboBox" name="m_pComboServerList">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="minimumSize">
-          <size>
-           <width>120</width>
-           <height>0</height>
-          </size>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item>
+      </layout></widget></item><item>
      <layout class="QHBoxLayout" name="horizontalLayout_3">
       <item>
        <widget class="QLabel" name="m_pLabelFingerprint">
@@ -222,7 +212,7 @@
       <item>
        <widget class="QLabel" name="m_pLabelLocalFingerprint">
         <property name="text">
-         <string/>
+         <string />
         </property>
         <property name="textFormat">
          <enum>Qt::PlainText</enum>
@@ -261,7 +251,7 @@
           </font>
          </property>
          <property name="text">
-          <string/>
+          <string />
          </property>
          <property name="textInteractionFlags">
           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
@@ -278,7 +268,7 @@
        <item row="3" column="0" colspan="2">
         <widget class="QLabel" name="label_sha1_fingerprint_full">
          <property name="text">
-          <string/>
+          <string />
          </property>
          <property name="textInteractionFlags">
           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
@@ -295,7 +285,7 @@
        <item row="1" column="0">
         <widget class="QLabel" name="label_sha256_fingerprint_full">
          <property name="text">
-          <string/>
+          <string />
          </property>
          <property name="textInteractionFlags">
           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
@@ -316,7 +306,7 @@
          <bool>true</bool>
         </property>
         <property name="text">
-         <string/>
+         <string />
         </property>
         <property name="pixmap">
          <pixmap resource="../res/Barrier.qrc">:/res/icons/16x16/padlock.png</pixmap>
@@ -369,7 +359,7 @@
     <string>&amp;About Barrier...</string>
    </property>
    <property name="shortcut">
-    <string notr="true"/>
+    <string notr="true" />
    </property>
   </action>
   <action name="m_pActionQuit">
@@ -427,7 +417,7 @@
     <string>Show</string>
    </property>
    <property name="shortcut">
-    <string notr="true"/>
+    <string notr="true" />
    </property>
   </action>
   <action name="m_pActionSave">
@@ -465,11 +455,11 @@
   </action>
  </widget>
  <resources>
-  <include location="../res/Barrier.qrc"/>
+  <include location="../res/Barrier.qrc" />
  </resources>
  <connections>
   <connection>
-   <sender>m_pRadioExternalConfig</sender>
+   <sender>m_pCheckBoxExternalConfig</sender>
    <signal>toggled(bool)</signal>
    <receiver>m_pLineEditConfigFile</receiver>
    <slot>setEnabled(bool)</slot>
@@ -485,7 +475,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>m_pRadioExternalConfig</sender>
+   <sender>m_pCheckBoxExternalConfig</sender>
    <signal>toggled(bool)</signal>
    <receiver>m_pButtonBrowseConfigFile</receiver>
    <slot>setEnabled(bool)</slot>
@@ -497,22 +487,6 @@
     <hint type="destinationlabel">
      <x>356</x>
      <y>211</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>m_pRadioInternalConfig</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>m_pButtonConfigureServer</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>204</x>
-     <y>244</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>212</x>
-     <y>274</y>
     </hint>
    </hints>
   </connection>

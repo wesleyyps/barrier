@@ -114,6 +114,89 @@ QString Action::text() const
     return text;
 }
 
+Action Action::fromString(const QString& str)
+{
+    Action a;
+    QString s = str.trimmed();
+    if (s.isEmpty()) return a;
+
+    if (s.startsWith(";")) {
+        a.setActiveOnRelease(true);
+        s = s.mid(1).trimmed();
+    }
+
+    int parenOpen = s.indexOf('(');
+    int parenClose = s.lastIndexOf(')');
+    QString funcName;
+    QString argsStr;
+
+    if (parenOpen != -1 && parenClose != -1 && parenClose > parenOpen) {
+        funcName = s.left(parenOpen).trimmed();
+        argsStr = s.mid(parenOpen + 1, parenClose - parenOpen - 1).trimmed();
+    } else {
+        funcName = s;
+    }
+
+    for (int i = 0; i < m_ActionTypeNames.size(); ++i) {
+        if (funcName.compare(QString::fromUtf8(m_ActionTypeNames[i]), Qt::CaseInsensitive) == 0) {
+            a.setType(i);
+            break;
+        }
+    }
+
+    if (a.type() == keyDown || a.type() == keyUp || a.type() == keystroke ||
+        a.type() == mouseDown || a.type() == mouseUp || a.type() == mousebutton) 
+    {
+        if (a.type() >= mouseDown) {
+            a.setType(a.type() - static_cast<int>(mouseDown));
+        }
+
+        int commaIdx = argsStr.indexOf(',');
+        QString keyStr = argsStr;
+        if (commaIdx != -1) {
+            keyStr = argsStr.left(commaIdx).trimmed();
+            QString screensStr = argsStr.mid(commaIdx + 1).trimmed();
+            if (screensStr == "*") {
+                a.setHaveScreens(false);
+            } else {
+                a.setHaveScreens(true);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+                QStringList screens = screensStr.split(":", Qt::SkipEmptyParts);
+#else
+                QStringList screens = screensStr.split(":", QString::SkipEmptyParts);
+#endif
+                for (const QString& screenName : screens) {
+                    a.appendTypeScreenName(screenName.trimmed());
+                }
+            }
+        } else {
+            a.setHaveScreens(false);
+        }
+        a.setKeySequence(KeySequence::fromString(keyStr));
+    }
+    else if (a.type() == switchToScreen) {
+        a.setSwitchScreenName(argsStr);
+    }
+    else if (a.type() == switchInDirection) {
+        for (int i = 0; i < m_SwitchDirectionNames.size(); ++i) {
+            if (argsStr.compare(QString::fromUtf8(m_SwitchDirectionNames[i]), Qt::CaseInsensitive) == 0) {
+                a.setSwitchDirection(i);
+                break;
+            }
+        }
+    }
+    else if (a.type() == lockCursorToScreen) {
+        for (int i = 0; i < m_LockCursorModeNames.size(); ++i) {
+            if (argsStr.compare(QString::fromUtf8(m_LockCursorModeNames[i]), Qt::CaseInsensitive) == 0) {
+                a.setLockCursorMode(i);
+                break;
+            }
+        }
+    }
+
+    return a;
+}
+
 void Action::loadSettings(QSettings& settings)
 {
     m_KeySequence.loadSettings(settings);

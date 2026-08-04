@@ -45,6 +45,7 @@ class Action
 
     public:
         QString text() const;
+        static Action fromString(const QString& str);
         const KeySequence& keySequence() const { return m_KeySequence; }
         void setKeySequence(const KeySequence& seq) { m_KeySequence = seq; }
 

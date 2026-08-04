@@ -111,6 +111,79 @@ QString KeySequence::toString() const
     return result;
 }
 
+KeySequence KeySequence::fromString(const QString& str)
+{
+    KeySequence ks;
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+    QStringList parts = str.split("+", Qt::SkipEmptyParts);
+#else
+    QStringList parts = str.split("+", QString::SkipEmptyParts);
+#endif
+    for (int i = 0; i < parts.size(); ++i) {
+        QString p = parts[i].trimmed();
+        if (p.isEmpty()) continue;
+        
+        int key = 0;
+        if (p.compare("Shift", Qt::CaseInsensitive) == 0) key = Qt::Key_Shift;
+        else if (p.compare("Control", Qt::CaseInsensitive) == 0) key = Qt::Key_Control;
+        else if (p.compare("Alt", Qt::CaseInsensitive) == 0) key = Qt::Key_Alt;
+        else if (p.compare("Meta", Qt::CaseInsensitive) == 0 || p.compare("Super", Qt::CaseInsensitive) == 0) key = Qt::Key_Meta;
+        else {
+            bool found = false;
+            int idx = 0;
+            while (keyname[idx].name != nullptr) {
+                if (p.compare(QString::fromUtf8(keyname[idx].name), Qt::CaseInsensitive) == 0) {
+                    key = keyname[idx].key;
+                    found = true;
+                    break;
+                }
+                idx++;
+            }
+            if (!found) {
+                if (p.startsWith("F", Qt::CaseInsensitive) && p.length() > 1) {
+                    bool ok;
+                    int fNum = p.mid(1).toInt(&ok);
+                    if (ok && fNum >= 1 && fNum <= 35) {
+                        key = Qt::Key_F1 + fNum - 1;
+                        found = true;
+                    }
+                }
+                else if (p.startsWith("\\u", Qt::CaseInsensitive) && p.length() == 6) {
+                    bool ok;
+                    key = p.mid(2).toInt(&ok, 16);
+                    if (ok) found = true;
+                }
+                else if (p.length() == 1) {
+                    key = p[0].toUpper().unicode();
+                    found = true;
+                }
+                else if (p == "1" || p == "2" || p == "3" || p == "4" || p == "5") {
+                    if (p == "1") key = Qt::LeftButton;
+                    else if (p == "2") key = Qt::RightButton;
+                    else if (p == "3") key = Qt::MiddleButton;
+                    else key = Qt::ExtraButton1;
+                    found = true;
+                }
+            }
+        }
+        
+        if (key != 0) {
+            if (key == Qt::Key_Shift) {
+                ks.appendKey(key, Qt::ShiftModifier);
+            } else if (key == Qt::Key_Control) {
+                ks.appendKey(key, Qt::ControlModifier);
+            } else if (key == Qt::Key_Alt) {
+                ks.appendKey(key, Qt::AltModifier);
+            } else if (key == Qt::Key_Meta) {
+                ks.appendKey(key, Qt::MetaModifier);
+            } else {
+                ks.appendKey(key, 0);
+            }
+        }
+    }
+    return ks;
+}
+
 bool KeySequence::appendMouseButton(int button)
 {
     return appendKey(button, 0);
