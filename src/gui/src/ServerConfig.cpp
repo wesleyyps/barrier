@@ -306,11 +306,11 @@ void ServerConfig::resizeGrid(int numColumns, int numRows)
     
     m_NumColumns = numColumns;
     m_NumRows = numRows;
-    m_Screens.assign(m_NumColumns * m_NumRows, Screen());
+    m_Screens.assign(static_cast<size_t>(m_NumColumns) * static_cast<size_t>(m_NumRows), Screen());
     
     for (int r = 0; r < std::min(oldRows, numRows); ++r) {
         for (int c = 0; c < std::min(oldCols, numColumns); ++c) {
-            m_Screens[r * m_NumColumns + c] = oldScreens[r * oldCols + c];
+            m_Screens[static_cast<size_t>(r) * m_NumColumns + c] = oldScreens[static_cast<size_t>(r) * oldCols + c];
         }
     }
 }
