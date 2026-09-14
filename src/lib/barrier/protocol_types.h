@@ -21,6 +21,9 @@
 #include "base/EventTypes.h"
 
 #include <cstdint>
+#include <string>
+#include <vector>
+#include <sstream>
 
 // protocol version number
 // 1.0:  initial protocol
@@ -281,6 +284,10 @@ extern const char*        kMsgDFileTransfer;
 // of each object's directory.
 extern const char*        kMsgDDragInfo;
 
+// declared displays: secondary -> primary
+// $1 = serialized list of active displays on secondary screen
+extern const char*        kMsgDDisplays;
+
 //
 // query codes
 //
@@ -342,4 +349,49 @@ public:
     The current location of the mouse cursor.
     */
     SInt32                m_mx, m_my;
+};
+
+//! Display information for individual physical monitors attached to a host
+struct DisplayInfo {
+    std::string m_id;           // Unique identity: e.g. "SyncMaster:HQBSB03710", "eDP-1", "Color LCD"
+    std::string m_name;         // Human-friendly name: e.g. "SyncMaster", "Color LCD"
+    SInt32      m_x;            // Local bounding rect within host desktop
+    SInt32      m_y;
+    SInt32      m_w;
+    SInt32      m_h;
+    bool        m_isPrimary;
+
+    DisplayInfo() : m_x(0), m_y(0), m_w(0), m_h(0), m_isPrimary(false) {}
+    DisplayInfo(const std::string& id, const std::string& name, SInt32 x, SInt32 y, SInt32 w, SInt32 h, bool isPrimary)
+        : m_id(id), m_name(name), m_x(x), m_y(y), m_w(w), m_h(h), m_isPrimary(isPrimary) {}
+
+    static std::string serializeList(const std::vector<DisplayInfo>& list) {
+        std::ostringstream ss;
+        for (const auto& d : list) {
+            ss << d.m_id << "\t" << d.m_name << "\t"
+               << d.m_x << "\t" << d.m_y << "\t"
+               << d.m_w << "\t" << d.m_h << "\t"
+               << (d.m_isPrimary ? 1 : 0) << "\n";
+        }
+        return ss.str();
+    }
+
+    static std::vector<DisplayInfo> deserializeList(const std::string& str) {
+        std::vector<DisplayInfo> result;
+        std::istringstream ss(str);
+        std::string line;
+        while (std::getline(ss, line)) {
+            if (line.empty()) continue;
+            std::istringstream lineStream(line);
+            std::string id, name;
+            SInt32 x = 0, y = 0, w = 0, h = 0;
+            int isPrim = 0;
+            if (std::getline(lineStream, id, '\t') &&
+                std::getline(lineStream, name, '\t') &&
+                (lineStream >> x >> y >> w >> h >> isPrim)) {
+                result.emplace_back(id, name, x, y, w, h, isPrim != 0);
+            }
+        }
+        return result;
+    }
 };

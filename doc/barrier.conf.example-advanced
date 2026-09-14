@@ -1,55 +1,123 @@
-# sample barrier configuration file
+# ==============================================================================
+# Barrier Configuration Example: Advanced Multi-Screen & Percentage Layouts
+# ==============================================================================
 #
-# comments begin with the # character and continue to the end of
-# line.  comments may appear anywhere the syntax permits.
+# This example illustrates an advanced configuration with 3 computers:
+#   1. desktop1: Server machine with a single central display.
+#   2. desktop2: Client workstation with multiple connected displays arranged
+#                above and to the right of desktop1.
+#   3. laptop:   Client laptop positioned to the left of desktop1.
+#
+# DESK TOPOLOGY DIAGRAM:
+#
+#                         +--------------------+
+#                         | desktop2 (top)     |
+#                         | (0, 100)%          |
+#                         +--------------------+
+#                         +--------------------+ +--------------------+
+#                         | desktop1 (center)  | | desktop2 (right)   |
+#  +--------------------+ | [Server]           | |                    |
+#  | laptop (left)      | | (0, 50)%  (50, 100)% |                    |
+#  |                    | +--------------------+ +--------------------+
+#  +--------------------+
+#
+# Percentage links allow splitting a screen edge so that exiting from the top
+# or bottom half of a boundary enters different physical screens or positions.
+#
+# (Note: If you have standalone physical monitors that can be moved or plugged
+# into different computers via HDMI/DisplayPort, see "barrier.conf.example-monitors"
+# for the dynamic "section: monitors" architecture.)
+# ==============================================================================
 
-# This example uses 3 computers. A laptop and two desktops (one a mac)
-# They are arranged in the following configuration with Desktop1 acting as the server
-# Desktop 2 has 3 screens arranged around desktop1
-#
-#            +--------+ +---------+
-#            |Desktop2| |Desktop2 |
-#            |        | |         |
-#            +--------+ +---------+
-# +-------+  +--------+ +---------+
-# |Laptop |  |Desktop1| |Desktop2 |
-# |       |  |        | |         |
-# +-------+  +--------+ +---------+
-#
-# The laptop comes and goes but that doesn't really affect this configuration
-
-# The screens section is for the logical or short name of the computers
 section: screens
-	# three computers that are logically named:  desktop1, desktop2, and laptop
 	desktop1:
+		halfDuplexCapsLock = false
+		halfDuplexNumLock = false
+		halfDuplexScrollLock = false
+		xtestIsXineramaUnaware = false
+		preserveFocus = false
+		switchCorners = none
+		switchCornerSize = 0
+
 	desktop2:
+		halfDuplexCapsLock = false
+		halfDuplexNumLock = false
+		halfDuplexScrollLock = false
+		xtestIsXineramaUnaware = false
+		preserveFocus = false
+		switchCorners = none
+		switchCornerSize = 0
+
 	laptop:
+		halfDuplexCapsLock = false
+		halfDuplexNumLock = false
+		halfDuplexScrollLock = false
+		xtestIsXineramaUnaware = false
+		preserveFocus = false
+		switchCorners = none
+		switchCornerSize = 0
 end
 
 section: links
-	# larry is to the right of moe and curly is above moe
-	moe:
-		right = larry
-		up    = curly
+	# desktop1 (Center Server)
+	desktop1:
+		# Moving left enters the laptop
+		left  = laptop
 
-	# moe is to the left of larry and curly is above larry.
-	# note that curly is above both moe and larry and moe
-	# and larry have a symmetric connection (they're in
-	# opposite directions of each other).
-	larry:
-		left  = moe
-		up    = curly
+		# Moving up enters desktop2 (upper display)
+		up    = desktop2
 
-	# larry is below curly.  if you move up from moe and then
-	# down, you'll end up on larry.
-	curly:
-		down  = larry
+		# Moving right enters desktop2 (right display)
+		right = desktop2
+
+	# laptop (Left Client)
+	laptop:
+		# Moving right enters desktop1
+		right = desktop1
+
+	# desktop2 (Right and Top Client)
+	desktop2:
+		# Moving left from the lower half enters desktop1
+		left(0, 100) = desktop1
+
+		# Moving down from the upper screen enters desktop1
+		down(0, 100) = desktop1
 end
 
-# The aliases section is to map the full names of the computers to their logical names used in the screens section
-# One way to find the actual name of a computer is to run hostname from a command window
 section: aliases
-	# Laptop is actually known as John-Smiths-MacBook-3.local
-	John-Smiths-MacBook-3.local:
+	# Map actual operating system hostnames to friendly logical screen names.
+	# You can find the real hostname by running 'hostname' in a terminal.
+	John-Smiths-MacBook.local:
+		laptop
+
+	Office-Workstation-PC:
 		desktop2
+end
+
+section: options
+	# Designated server host screen
+	server = desktop1
+
+	# Network configuration
+	port = 24800
+	address = :24800
+
+	# Features
+	enableDragDrop = true
+	clipboardSharing = true
+	relativeMouseMoves = false
+	screenSaverSync = true
+	win32KeepForeground = false
+
+	# Security (set to true if using TLS encryption certificates)
+	cryptoEnabled = false
+	requireClientCertificate = false
+
+	# Direct switch hotkeys: Jump immediately to any screen via key combination
+	keystroke(Control+Alt+1) = switchToScreen(laptop)
+	keystroke(Control+Alt+2) = switchToScreen(desktop1)
+	keystroke(Control+Alt+3) = switchToScreen(desktop2)
+
+	# Lock mouse cursor to the current screen (toggle switch)
+	keystroke(Control+Alt+L) = lockCursorToScreen(toggle)
 end

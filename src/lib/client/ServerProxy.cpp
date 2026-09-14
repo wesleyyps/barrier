@@ -404,6 +404,13 @@ ServerProxy::sendInfo(const ClientInfo& info)
                                 info.m_x, info.m_y,
                                 info.m_w, info.m_h, 0,
                                 info.m_mx, info.m_my);
+
+    if (m_client != nullptr) {
+        std::vector<DisplayInfo> displays = m_client->getDisplays();
+        std::string payload = DisplayInfo::serializeList(displays);
+        LOG((CLOG_DEBUG "sending %d declared display(s) to server", (int)displays.size()));
+        ProtocolUtil::writef(m_stream, kMsgDDisplays, &payload);
+    }
 }
 
 KeyID

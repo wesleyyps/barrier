@@ -206,6 +206,15 @@ private:
 
     // jump to screen
     void                jumpToScreen(BaseClientProxy*);
+    void                jumpToScreen(BaseClientProxy*, SInt32 x, SInt32 y);
+
+    void                updateActiveMonitors();
+    bool                getActiveMonitorShape(BaseClientProxy* client, SInt32 x, SInt32 y,
+                                              SInt32& ax, SInt32& ay, SInt32& aw, SInt32& ah,
+                                              std::string& monitorName) const;
+    bool                hasLocalDisplayInDirection(BaseClientProxy* client, SInt32 x, SInt32 y,
+                                                  SInt32 ax, SInt32 ay, SInt32 aw, SInt32 ah,
+                                                  EDirection dir, std::string& outLocalMonName) const;
 
     // convert pixel position to fraction, using x or y depending on the
     // direction.
@@ -481,4 +490,18 @@ private:
 
     ClientListener*        m_clientListener;
     ServerArgs            m_args;
+
+public:
+    struct ActiveMonitor {
+        std::string m_logicalName;
+        BaseClientProxy* m_host;
+        DisplayInfo m_display;
+
+        ActiveMonitor() : m_host(nullptr) {}
+        ActiveMonitor(const std::string& name, BaseClientProxy* host, const DisplayInfo& disp)
+            : m_logicalName(name), m_host(host), m_display(disp) {}
+    };
+
+private:
+    std::map<std::string, ActiveMonitor> m_activeMonitors;
 };

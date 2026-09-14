@@ -18,6 +18,7 @@
 
 #include "server/Server.h"
 #include <array>
+#include <cstdint>
 
 #include "server/ClientProxy.h"
 #include "server/ClientProxyUnknown.h"
@@ -50,6 +51,38 @@
 #include <fstream>
 #include <ctime>
 #include <stdexcept>
+
+namespace {
+static bool wildcardMatch(const std::string& pattern, const std::string& str)
+{
+	if (pattern.empty() || pattern == "*") {
+		return true;
+	}
+	size_t p = 0, s = 0;
+	size_t starIdx = std::string::npos, match = 0;
+	while (s < str.size()) {
+		if (p < pattern.size() && (pattern[p] == '?' || tolower(pattern[p]) == tolower(str[s]))) {
+			p++;
+			s++;
+		} else if (p < pattern.size() && pattern[p] == '*') {
+			starIdx = p;
+			match = s;
+			p++;
+		} else if (starIdx != std::string::npos) {
+			p = starIdx + 1;
+			match++;
+			s = match;
+		} else {
+			return false;
+		}
+	}
+	while (p < pattern.size() && pattern[p] == '*') {
+		p++;
+	}
+	return p == pattern.size();
+}
+}
+
 //
 // Server
 //
@@ -594,6 +627,230 @@ Server::jumpToScreen(BaseClientProxy* newScreen)
 	switchScreen(newScreen, x, y, false);
 }
 
+void
+Server::jumpToScreen(BaseClientProxy* newScreen, SInt32 x, SInt32 y)
+{
+	assert(newScreen != NULL);
+
+	// record the current cursor position on the active screen
+	m_active->setJumpCursorPos(m_x, m_y);
+
+	switchScreen(newScreen, x, y, false);
+}
+
+void
+Server::updateActiveMonitors()
+{
+	m_activeMonitors.clear();
+	const auto& monConfigs = m_config->getMonitors();
+	if (monConfigs.empty()) {
+		return;
+	}
+
+	for (const auto& pair : monConfigs) {
+		const Config::MonitorConfig& cfg = pair.second;
+		bool found = false;
+
+		for (BaseClientProxy* client : m_clientSet) {
+			if (client == nullptr) continue;
+			std::vector<DisplayInfo> displays = client->getDisplays();
+			for (const auto& disp : displays) {
+				bool matched = false;
+				if (!cfg.matchPattern.empty()) {
+					if (wildcardMatch(cfg.matchPattern, disp.m_name) ||
+					    wildcardMatch(cfg.matchPattern, disp.m_id)) {
+						matched = true;
+					}
+				}
+				else if (wildcardMatch(cfg.name, disp.m_name) ||
+				         wildcardMatch(cfg.name, disp.m_id)) {
+					matched = true;
+				}
+
+				if (matched) {
+					m_activeMonitors[cfg.name] = ActiveMonitor(cfg.name, client, disp);
+					LOG((CLOG_NOTE "Monitor '%s' (%s, id=%s) matched to client '%s' at (%d,%d %dx%d)",
+						cfg.name.c_str(), disp.m_name.c_str(), disp.m_id.c_str(), getName(client).c_str(),
+						disp.m_x, disp.m_y, disp.m_w, disp.m_h));
+					found = true;
+					break;
+				}
+			}
+			if (found) break;
+		}
+
+		if (!found) {
+			LOG((CLOG_DEBUG1 "Monitor '%s' not active on any connected client", cfg.name.c_str()));
+		}
+	}
+}
+
+bool
+Server::getActiveMonitorShape(BaseClientProxy* client, SInt32 x, SInt32 y,
+                              SInt32& ax, SInt32& ay, SInt32& aw, SInt32& ah,
+                              std::string& monitorName) const
+{
+	if (client == nullptr) {
+		return false;
+	}
+
+	std::vector<DisplayInfo> displays = client->getDisplays();
+	if (!displays.empty()) {
+		auto resolveMonName = [this, client](const DisplayInfo& disp) -> std::string {
+			for (const auto& kv : m_activeMonitors) {
+				if (kv.second.m_host == client &&
+				    kv.second.m_display.m_x == disp.m_x &&
+				    kv.second.m_display.m_y == disp.m_y) {
+					return kv.first;
+				}
+			}
+			const auto& monConfigs = m_config->getMonitors();
+			for (const auto& monCfg : monConfigs) {
+				const Config::MonitorConfig& cfg = monCfg.second;
+				if (!cfg.matchPattern.empty()) {
+					if (wildcardMatch(cfg.matchPattern, disp.m_name) ||
+					    wildcardMatch(cfg.matchPattern, disp.m_id)) {
+						return cfg.name;
+					}
+				}
+				else if (wildcardMatch(cfg.name, disp.m_name) ||
+				         wildcardMatch(cfg.name, disp.m_id)) {
+					return cfg.name;
+				}
+			}
+			return getName(client);
+		};
+
+		// 1. Check exact containment inside display bounds
+		for (const auto& disp : displays) {
+			if (x >= disp.m_x && x < disp.m_x + disp.m_w &&
+			    y >= disp.m_y && y < disp.m_y + disp.m_h) {
+				ax = disp.m_x;
+				ay = disp.m_y;
+				aw = disp.m_w;
+				ah = disp.m_h;
+				monitorName = resolveMonName(disp);
+				return true;
+			}
+		}
+
+		// 2. Nearest display search if slightly outside (tolerance up to 50px)
+		const DisplayInfo* bestDisp = nullptr;
+		int64_t minDistanceSq = -1;
+		for (const auto& disp : displays) {
+			SInt32 cx = std::max(disp.m_x, std::min(x, disp.m_x + disp.m_w - 1));
+			SInt32 cy = std::max(disp.m_y, std::min(y, disp.m_y + disp.m_h - 1));
+			int64_t distSq = static_cast<int64_t>(x - cx) * (x - cx) + static_cast<int64_t>(y - cy) * (y - cy);
+			if (minDistanceSq < 0 || distSq < minDistanceSq) {
+				minDistanceSq = distSq;
+				bestDisp = &disp;
+			}
+		}
+
+		if (bestDisp != nullptr && minDistanceSq <= 2500) {
+			ax = bestDisp->m_x;
+			ay = bestDisp->m_y;
+			aw = bestDisp->m_w;
+			ah = bestDisp->m_h;
+			monitorName = resolveMonName(*bestDisp);
+			return true;
+		}
+	}
+
+	client->getShape(ax, ay, aw, ah);
+	monitorName = getName(client);
+	return false;
+}
+
+bool
+Server::hasLocalDisplayInDirection(BaseClientProxy* client, SInt32 x, SInt32 y,
+                                   SInt32 ax, SInt32 ay, SInt32 aw, SInt32 ah,
+                                   EDirection dir, std::string& outLocalMonName) const
+{
+	if (client == nullptr) {
+		return false;
+	}
+
+	std::vector<DisplayInfo> displays = client->getDisplays();
+	if (displays.size() <= 1) {
+		return false;
+	}
+
+	auto resolveMonName = [this, client](const DisplayInfo& disp) -> std::string {
+		for (const auto& kv : m_activeMonitors) {
+			if (kv.second.m_host == client &&
+			    kv.second.m_display.m_x == disp.m_x &&
+			    kv.second.m_display.m_y == disp.m_y) {
+				return kv.first;
+			}
+		}
+		const auto& monConfigs = m_config->getMonitors();
+		for (const auto& monCfg : monConfigs) {
+			const Config::MonitorConfig& cfg = monCfg.second;
+			if (!cfg.matchPattern.empty()) {
+				if (wildcardMatch(cfg.matchPattern, disp.m_name) ||
+				    wildcardMatch(cfg.matchPattern, disp.m_id)) {
+					return cfg.name;
+				}
+			}
+			else if (wildcardMatch(cfg.name, disp.m_name) ||
+			         wildcardMatch(cfg.name, disp.m_id)) {
+				return cfg.name;
+			}
+		}
+		return getName(client);
+	};
+
+	for (const auto& disp : displays) {
+		if (disp.m_x == ax && disp.m_y == ay && disp.m_w == aw && disp.m_h == ah) {
+			continue;
+		}
+
+		bool adjacent = false;
+		switch (dir) {
+		case kLeft:
+			if (std::abs((disp.m_x + disp.m_w) - ax) <= 50 &&
+			    std::max(ay, disp.m_y) < std::min(ay + ah, disp.m_y + disp.m_h)) {
+				adjacent = true;
+			}
+			break;
+
+		case kRight:
+			if (std::abs(disp.m_x - (ax + aw)) <= 50 &&
+			    std::max(ay, disp.m_y) < std::min(ay + ah, disp.m_y + disp.m_h)) {
+				adjacent = true;
+			}
+			break;
+
+		case kTop:
+			if (std::abs((disp.m_y + disp.m_h) - ay) <= 50 &&
+			    std::max(ax, disp.m_x) < std::min(ax + aw, disp.m_x + disp.m_w)) {
+				adjacent = true;
+			}
+			break;
+
+		case kBottom:
+			if (std::abs(disp.m_y - (ay + ah)) <= 50 &&
+			    std::max(ax, disp.m_x) < std::min(ax + aw, disp.m_x + disp.m_w)) {
+				adjacent = true;
+			}
+			break;
+
+		default:
+			break;
+		}
+
+		if (adjacent) {
+			outLocalMonName = resolveMonName(disp);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+
+
 float
 Server::mapToFraction(BaseClientProxy* client,
 				EDirection dir, SInt32 x, SInt32 y) const
@@ -650,7 +907,19 @@ Server::hasAnyNeighbor(BaseClientProxy* client, EDirection dir) const
 {
 	assert(client != NULL);
 
-	return m_config->hasNeighbor(getName(client), dir);
+	if (m_config->hasNeighbor(getName(client), dir)) {
+		return true;
+	}
+
+	for (const auto& kv : m_activeMonitors) {
+		if (kv.second.m_host == client) {
+			if (m_config->hasNeighbor(kv.first, dir)) {
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 BaseClientProxy*
@@ -661,18 +930,42 @@ Server::getNeighbor(BaseClientProxy* src,
 
 	assert(src != NULL);
 
-	// get source screen name
-    std::string srcName = getName(src);
+	// get source screen/monitor name
+	std::string srcName = getName(src);
+	SInt32 ax, ay, aw, ah;
+	std::string monName;
+	float t;
+	if (getActiveMonitorShape(src, x, y, ax, ay, aw, ah, monName) &&
+	    (m_config->isMonitor(monName) || m_config->hasNeighbor(monName, dir))) {
+		srcName = monName;
+		switch (dir) {
+		case kLeft:
+		case kRight:
+			t = static_cast<float>(y - ay + 0.5F) / static_cast<float>(ah);
+			break;
+		case kTop:
+		case kBottom:
+			t = static_cast<float>(x - ax + 0.5F) / static_cast<float>(aw);
+			break;
+		default:
+			t = 0.0F;
+			break;
+		}
+	}
+	else {
+		t = mapToFraction(src, dir, x, y);
+	}
+
+	if (t < 0.0F) t = 0.0F;
+	if (t >= 1.0F) t = 0.9999F;
+
 	assert(!srcName.empty());
 	LOG((CLOG_DEBUG2 "find neighbor on %s of \"%s\"", Config::dirName(dir), srcName.c_str()));
-
-	// convert position to fraction
-	float t = mapToFraction(src, dir, x, y);
 
 	// search for the closest neighbor that exists in direction dir
 	float tTmp;
 	for (;;) {
-        std::string dstName(m_config->getNeighbor(srcName, dir, t, &tTmp));
+		std::string dstName(m_config->getNeighbor(srcName, dir, t, &tTmp));
 
 		// if nothing in that direction then return NULL. if the
 		// destination is the source then we can make no more
@@ -683,13 +976,122 @@ Server::getNeighbor(BaseClientProxy* src,
 			return nullptr;
 		}
 
+		if (tTmp < 0.0F) tTmp = 0.0F;
+		if (tTmp >= 1.0F) tTmp = 0.9999F;
+
+		// check if destination is an active monitor
+		auto monIt = m_activeMonitors.find(dstName);
+		if (monIt != m_activeMonitors.end() && monIt->second.m_host != nullptr) {
+			BaseClientProxy* dstClient = monIt->second.m_host;
+			const DisplayInfo& disp = monIt->second.m_display;
+			LOG((CLOG_DEBUG2 "\"%s\" (monitor on \"%s\") is on %s of \"%s\" at %f",
+				dstName.c_str(), getName(dstClient).c_str(), Config::dirName(dir), srcName.c_str(), t));
+
+			switch (dir) {
+			case kLeft:
+				x = disp.m_x + disp.m_w - 1;
+				y = disp.m_y + static_cast<SInt32>(tTmp * disp.m_h);
+				break;
+			case kRight:
+				x = disp.m_x;
+				y = disp.m_y + static_cast<SInt32>(tTmp * disp.m_h);
+				break;
+			case kTop:
+				x = disp.m_x + static_cast<SInt32>(tTmp * disp.m_w);
+				y = disp.m_y + disp.m_h - 1;
+				break;
+			case kBottom:
+				x = disp.m_x + static_cast<SInt32>(tTmp * disp.m_w);
+				y = disp.m_y;
+				break;
+			default:
+				break;
+			}
+			if (x < disp.m_x) x = disp.m_x;
+			else if (x >= disp.m_x + disp.m_w) x = disp.m_x + disp.m_w - 1;
+			if (y < disp.m_y) y = disp.m_y;
+			else if (y >= disp.m_y + disp.m_h) y = disp.m_y + disp.m_h - 1;
+
+			return dstClient;
+		}
+
 		// look up neighbor cell.  if the screen is connected and
 		// ready then we can stop.
 		auto index = m_clients.find(dstName);
 		if (index != m_clients.end()) {
 			LOG((CLOG_DEBUG2 "\"%s\" is on %s of \"%s\" at %f", dstName.c_str(), Config::dirName(dir), srcName.c_str(), t));
-			mapToPixel(index->second, dir, tTmp, x, y);
-			return index->second;
+			BaseClientProxy* dstClient = index->second;
+			SInt32 sx, sy, sw, sh;
+			dstClient->getShape(sx, sy, sw, sh);
+			switch (dir) {
+			case kLeft:
+				x = sx + sw - 1;
+				y = sy + static_cast<SInt32>(tTmp * sh);
+				break;
+			case kRight:
+				x = sx;
+				y = sy + static_cast<SInt32>(tTmp * sh);
+				break;
+			case kTop:
+				x = sx + static_cast<SInt32>(tTmp * sw);
+				y = sy + sh - 1;
+				break;
+			case kBottom:
+				x = sx + static_cast<SInt32>(tTmp * sw);
+				y = sy;
+				break;
+			default:
+				break;
+			}
+			if (x < sx) x = sx;
+			else if (x >= sx + sw) x = sx + sw - 1;
+			if (y < sy) y = sy;
+			else if (y >= sy + sh) y = sy + sh - 1;
+
+			std::vector<DisplayInfo> dstDisplays = dstClient->getDisplays();
+			if (!dstDisplays.empty()) {
+				bool insideAny = false;
+				for (const auto& disp : dstDisplays) {
+					if (x >= disp.m_x && x < disp.m_x + disp.m_w &&
+					    y >= disp.m_y && y < disp.m_y + disp.m_h) {
+						insideAny = true;
+						break;
+					}
+				}
+				if (!insideAny) {
+					const DisplayInfo* bestEdgeDisp = nullptr;
+					for (const auto& disp : dstDisplays) {
+						if (dir == kLeft) {
+							if (bestEdgeDisp == nullptr || (disp.m_x + disp.m_w > bestEdgeDisp->m_x + bestEdgeDisp->m_w)) {
+								bestEdgeDisp = &disp;
+							}
+						}
+						else if (dir == kRight) {
+							if (bestEdgeDisp == nullptr || (disp.m_x < bestEdgeDisp->m_x)) {
+								bestEdgeDisp = &disp;
+							}
+						}
+						else if (dir == kTop) {
+							if (bestEdgeDisp == nullptr || (disp.m_y + disp.m_h > bestEdgeDisp->m_y + bestEdgeDisp->m_h)) {
+								bestEdgeDisp = &disp;
+							}
+						}
+						else if (dir == kBottom) {
+							if (bestEdgeDisp == nullptr || (disp.m_y < bestEdgeDisp->m_y)) {
+								bestEdgeDisp = &disp;
+							}
+						}
+					}
+					if (bestEdgeDisp != nullptr) {
+						if (x < bestEdgeDisp->m_x) x = bestEdgeDisp->m_x;
+						else if (x >= bestEdgeDisp->m_x + bestEdgeDisp->m_w) x = bestEdgeDisp->m_x + bestEdgeDisp->m_w - 1;
+						if (y < bestEdgeDisp->m_y) y = bestEdgeDisp->m_y;
+						else if (y >= bestEdgeDisp->m_y + bestEdgeDisp->m_h) y = bestEdgeDisp->m_y + bestEdgeDisp->m_h - 1;
+					}
+				}
+			}
+
+			return dstClient;
 		}
 
 		// skip over unconnected screen
@@ -705,109 +1107,14 @@ BaseClientProxy*
 Server::mapToNeighbor(BaseClientProxy* src,
 				EDirection srcSide, SInt32& x, SInt32& y) const
 {
-	// note -- must be locked on entry
-
 	assert(src != NULL);
 
-	// get the first neighbor
 	BaseClientProxy* dst = getNeighbor(src, srcSide, x, y);
 	if (dst == nullptr) {
 		return nullptr;
 	}
 
-	// get the source screen's size
-	SInt32 dx;
-	SInt32 dy;
-	SInt32 dw;
-	SInt32 dh;
-	BaseClientProxy* lastGoodScreen = src;
-	lastGoodScreen->getShape(dx, dy, dw, dh);
-
-	// find destination screen, adjusting x or y (but not both).  the
-	// searches are done in a sort of canonical screen space where
-	// the upper-left corner is 0,0 for each screen.  we adjust from
-	// actual to canonical position on entry to and from canonical to
-	// actual on exit from the search.
-	switch (srcSide) {
-	case kLeft:
-		x -= dx;
-		while (dst != nullptr) {
-			lastGoodScreen = dst;
-			lastGoodScreen->getShape(dx, dy, dw, dh);
-			x += dw;
-			if (x >= 0) {
-				break;
-			}
-			LOG((CLOG_DEBUG2 "skipping over screen %s", getName(dst).c_str()));
-			dst = getNeighbor(lastGoodScreen, srcSide, x, y);
-		}
-		assert(lastGoodScreen != NULL);
-		x += dx;
-		break;
-
-	case kRight:
-		x -= dx;
-		while (dst != nullptr) {
-			x -= dw;
-			lastGoodScreen = dst;
-			lastGoodScreen->getShape(dx, dy, dw, dh);
-			if (x < dw) {
-				break;
-			}
-			LOG((CLOG_DEBUG2 "skipping over screen %s", getName(dst).c_str()));
-			dst = getNeighbor(lastGoodScreen, srcSide, x, y);
-		}
-		assert(lastGoodScreen != NULL);
-		x += dx;
-		break;
-
-	case kTop:
-		y -= dy;
-		while (dst != nullptr) {
-			lastGoodScreen = dst;
-			lastGoodScreen->getShape(dx, dy, dw, dh);
-			y += dh;
-			if (y >= 0) {
-				break;
-			}
-			LOG((CLOG_DEBUG2 "skipping over screen %s", getName(dst).c_str()));
-			dst = getNeighbor(lastGoodScreen, srcSide, x, y);
-		}
-		assert(lastGoodScreen != NULL);
-		y += dy;
-		break;
-
-	case kBottom:
-		y -= dy;
-		while (dst != nullptr) {
-			y -= dh;
-			lastGoodScreen = dst;
-			lastGoodScreen->getShape(dx, dy, dw, dh);
-			if (y < dh) {
-				break;
-			}
-			LOG((CLOG_DEBUG2 "skipping over screen %s", getName(dst).c_str()));
-			dst = getNeighbor(lastGoodScreen, srcSide, x, y);
-		}
-		assert(lastGoodScreen != NULL);
-		y += dy;
-		break;
-
-	case kNoDirection:
-		assert(0 && "bad direction");
-		return nullptr;
-	}
-
-	// save destination screen
-	assert(lastGoodScreen != NULL);
-	dst = lastGoodScreen;
-
-	// if entering primary screen then be sure to move in far enough
-	// to avoid the jump zone.  if entering a side that doesn't have
-	// a neighbor (i.e. an asymmetrical side) then we don't need to
-	// move inwards because that side can't provoke a jump.
 	avoidJumpZone(dst, srcSide, x, y);
-
 	return dst;
 }
 
@@ -820,13 +1127,16 @@ Server::avoidJumpZone(BaseClientProxy* dst,
 		return;
 	}
 
-    const std::string dstName(getName(dst));
+	const std::string dstName(getName(dst));
 	SInt32 dx;
 	SInt32 dy;
 	SInt32 dw;
 	SInt32 dh;
-	dst->getShape(dx, dy, dw, dh);
-	float t = mapToFraction(dst, dir, x, y);
+	std::string monName;
+	getActiveMonitorShape(dst, x, y, dx, dy, dw, dh, monName);
+	float t = (dir == kLeft || dir == kRight) ?
+		static_cast<float>(y - dy + 0.5F) / static_cast<float>(dh) :
+		static_cast<float>(x - dx + 0.5F) / static_cast<float>(dw);
 	SInt32 z = getJumpZoneSize(dst);
 
 	// move in far enough to avoid the jump zone.  if entering a side
@@ -834,25 +1144,29 @@ Server::avoidJumpZone(BaseClientProxy* dst,
 	// don't need to move inwards because that side can't provoke a jump.
 	switch (dir) {
 	case kLeft:
-		if (!m_config->getNeighbor(dstName, kRight, t, nullptr).empty() &&
+		if ((!m_config->getNeighbor(dstName, kRight, t, nullptr).empty() ||
+		     (!monName.empty() && !m_config->getNeighbor(monName, kRight, t, nullptr).empty())) &&
 			x > dx + dw - 1 - z)
 			x = dx + dw - 1 - z;
 		break;
 
 	case kRight:
-		if (!m_config->getNeighbor(dstName, kLeft, t, nullptr).empty() &&
+		if ((!m_config->getNeighbor(dstName, kLeft, t, nullptr).empty() ||
+		     (!monName.empty() && !m_config->getNeighbor(monName, kLeft, t, nullptr).empty())) &&
 			x < dx + z)
 			x = dx + z;
 		break;
 
 	case kTop:
-		if (!m_config->getNeighbor(dstName, kBottom, t, nullptr).empty() &&
+		if ((!m_config->getNeighbor(dstName, kBottom, t, nullptr).empty() ||
+		     (!monName.empty() && !m_config->getNeighbor(monName, kBottom, t, nullptr).empty())) &&
 			y > dy + dh - 1 - z)
 			y = dy + dh - 1 - z;
 		break;
 
 	case kBottom:
-		if (!m_config->getNeighbor(dstName, kTop, t, nullptr).empty() &&
+		if ((!m_config->getNeighbor(dstName, kTop, t, nullptr).empty() ||
+		     (!monName.empty() && !m_config->getNeighbor(monName, kTop, t, nullptr).empty())) &&
 			y < dy + z)
 			y = dy + z;
 		break;
@@ -1093,12 +1407,15 @@ Server::getCorner(BaseClientProxy* client,
 {
 	assert(client != NULL);
 
-	// get client screen shape
+	// get client screen/monitor shape
 	SInt32 ax;
 	SInt32 ay;
 	SInt32 aw;
 	SInt32 ah;
-	client->getShape(ax, ay, aw, ah);
+	std::string monName;
+	if (!getActiveMonitorShape(client, x, y, ax, ay, aw, ah, monName)) {
+		client->getShape(ax, ay, aw, ah);
+	}
 
 	// check for x,y on the left or right
 	SInt32 xSide;
@@ -1267,6 +1584,7 @@ Server::handleShapeChanged(const Event&, void* vclient)
 	}
 
 	LOG((CLOG_DEBUG "screen \"%s\" shape changed", getName(client).c_str()));
+	updateActiveMonitors();
 
 	// update jump coordinate
 	SInt32 x;
@@ -1472,6 +1790,15 @@ Server::handleSwitchToScreenEvent(const Event& event, void*)
 	auto* info =
 		static_cast<SwitchToScreenInfo*>(event.getData());
 
+	auto monIt = m_activeMonitors.find(info->m_screen);
+	if (monIt != m_activeMonitors.end() && monIt->second.m_host != nullptr) {
+		BaseClientProxy* host = monIt->second.m_host;
+		SInt32 mx = monIt->second.m_display.m_x + monIt->second.m_display.m_w / 2;
+		SInt32 my = monIt->second.m_display.m_y + monIt->second.m_display.m_h / 2;
+		jumpToScreen(host, mx, my);
+		return;
+	}
+
 	ClientList::const_iterator index = m_clients.find(info->m_screen);
 	if (index == m_clients.end()) {
 		LOG((CLOG_DEBUG1 "screen \"%s\" not active", info->m_screen));
@@ -1514,7 +1841,7 @@ Server::handleSwitchInDirectionEvent(const Event& event, void*)
 		LOG((CLOG_DEBUG1 "no neighbor %s", Config::dirName(info->m_direction)));
 	}
 	else {
-		jumpToScreen(newScreen);
+		jumpToScreen(newScreen, x, y);
 	}
 }
 
@@ -1838,7 +2165,8 @@ Server::onMouseMovePrimary(SInt32 x, SInt32 y)
 	SInt32 ay;
 	SInt32 aw;
 	SInt32 ah;
-	m_active->getShape(ax, ay, aw, ah);
+	std::string monName;
+	getActiveMonitorShape(m_active, x, y, ax, ay, aw, ah, monName);
 	SInt32 zoneSize = getJumpZoneSize(m_active);
 
 	// clamp position to screen
@@ -1862,22 +2190,16 @@ Server::onMouseMovePrimary(SInt32 x, SInt32 y)
 	// horizontally or vertically.  check both directions.
 	EDirection dirh = kNoDirection;
 	EDirection dirv = kNoDirection;
-	SInt32 xh = x;
-	SInt32 yv = y;
 	if (x < ax + zoneSize) {
-		xh  -= zoneSize;
 		dirh = kLeft;
 	}
 	else if (x >= ax + aw - zoneSize) {
-		xh  += zoneSize;
 		dirh = kRight;
 	}
 	if (y < ay + zoneSize) {
-		yv  -= zoneSize;
 		dirv = kTop;
 	}
 	else if (y >= ay + ah - zoneSize) {
-		yv  += zoneSize;
 		dirv = kBottom;
 	}
 	if (dirh == kNoDirection && dirv == kNoDirection) {
@@ -1888,20 +2210,44 @@ Server::onMouseMovePrimary(SInt32 x, SInt32 y)
 
 	// check both horizontally and vertically
 	std::array<EDirection, 2> dirs = {{dirh, dirv}};
-	std::array<SInt32, 2> xs = {{xh, x}};
-	std::array<SInt32, 2> ys = {{y, yv}};
 	for (int i = 0; i < 2; ++i) {
 		EDirection dir = dirs[i];
 		if (dir == kNoDirection) {
 			continue;
 		}
-		x = xs[i], y = ys[i];
+
+		bool hasNeighbor = false;
+		if (m_config->isMonitor(monName) && m_config->hasNeighbor(monName, dir)) {
+			hasNeighbor = true;
+		}
+		else {
+			std::string nextLocalMon;
+			bool hasLocal = hasLocalDisplayInDirection(m_active, xc, yc, ax, ay, aw, ah, dir, nextLocalMon);
+			if (hasLocal) {
+				if (m_config->isMonitor(nextLocalMon) && m_config->hasNeighbor(monName, dir)) {
+					hasNeighbor = true;
+				}
+				else {
+					hasNeighbor = false;
+				}
+			}
+			else if (m_config->hasNeighbor(getName(m_active), dir)) {
+				hasNeighbor = true;
+			}
+		}
+
+		if (!hasNeighbor) {
+			continue;
+		}
+
+		SInt32 targetX = xc;
+		SInt32 targetY = yc;
 
 		// get jump destination
-		BaseClientProxy* newScreen = mapToNeighbor(m_active, dir, x, y);
+		BaseClientProxy* newScreen = mapToNeighbor(m_active, dir, targetX, targetY);
 
 		// should we switch or not?
-		if (isSwitchOkay(newScreen, dir, x, y, xc, yc)) {
+		if (newScreen != nullptr && isSwitchOkay(newScreen, dir, targetX, targetY, xc, yc)) {
 			if (m_args.m_enableDragDrop
 				&& m_screen->isDraggingStarted()
 				&& m_active != newScreen
@@ -1915,7 +2261,7 @@ Server::onMouseMovePrimary(SInt32 x, SInt32 y)
 			}
 
 			// switch screen
-			switchScreen(newScreen, x, y, false);
+			switchScreen(newScreen, targetX, targetY, false);
 			m_waitDragInfoThread = true;
 			return true;
 		}
@@ -2010,97 +2356,129 @@ Server::onMouseMoveSecondary(SInt32 dx, SInt32 dy)
 	m_x      += dx;
 	m_y      += dy;
 
-	// get screen shape
+	// get the monitor shape where the cursor was before this move
 	SInt32 ax;
 	SInt32 ay;
 	SInt32 aw;
 	SInt32 ah;
-	m_active->getShape(ax, ay, aw, ah);
+	std::string monName;
+	getActiveMonitorShape(m_active, xOld, yOld, ax, ay, aw, ah, monName);
 
-	// find direction of neighbor and get the neighbor
-	bool jump = true;
-	BaseClientProxy* newScreen;
-	do {
-		// clamp position to screen
-		SInt32 xc = m_x;
-		SInt32 yc = m_y;
-		if (xc < ax) {
-			xc = ax;
-		}
-		else if (xc >= ax + aw) {
-			xc = ax + aw - 1;
-		}
-		if (yc < ay) {
-			yc = ay;
-		}
-		else if (yc >= ay + ah) {
-			yc = ay + ah - 1;
-		}
+	// clamp position to current monitor
+	SInt32 xc = m_x;
+	SInt32 yc = m_y;
+	if (xc < ax) {
+		xc = ax;
+	}
+	else if (xc >= ax + aw) {
+		xc = ax + aw - 1;
+	}
+	if (yc < ay) {
+		yc = ay;
+	}
+	else if (yc >= ay + ah) {
+		yc = ay + ah - 1;
+	}
 
-		EDirection dir;
-		if (m_x < ax) {
-			dir = kLeft;
-		}
-		else if (m_x > ax + aw - 1) {
-			dir = kRight;
-		}
-		else if (m_y < ay) {
-			dir = kTop;
-		}
-		else if (m_y > ay + ah - 1) {
-			dir = kBottom;
+	// check if cursor crossed any boundary of current monitor
+	EDirection dir = kNoDirection;
+	if (m_x < ax) {
+		dir = kLeft;
+	}
+	else if (m_x > ax + aw - 1) {
+		dir = kRight;
+	}
+	else if (m_y < ay) {
+		dir = kTop;
+	}
+	else if (m_y > ay + ah - 1) {
+		dir = kBottom;
+	}
+
+	bool jump = false;
+	BaseClientProxy* newScreen = m_active;
+
+	if (dir != kNoDirection) {
+		// Check if current monitor or screen has a link configured in this direction
+		bool hasNeighbor = false;
+		if (m_config->isMonitor(monName) && m_config->hasNeighbor(monName, dir)) {
+			hasNeighbor = true;
 		}
 		else {
-			// we haven't left the screen
-			newScreen = m_active;
-			jump      = false;
-
-			// if waiting and mouse is not on the border we're waiting
-			// on then stop waiting.  also if it's not on the border
-			// then arm the double tap.
-			if (m_switchScreen != nullptr) {
-				bool clearWait;
-				SInt32 zoneSize = m_primaryClient->getJumpZoneSize();
-				switch (m_switchDir) {
-				case kLeft:
-					clearWait = (m_x >= ax + zoneSize);
-					break;
-
-				case kRight:
-					clearWait = (m_x <= ax + aw - 1 - zoneSize);
-					break;
-
-				case kTop:
-					clearWait = (m_y >= ay + zoneSize);
-					break;
-
-				case kBottom:
-					clearWait = (m_y <= ay + ah - 1 + zoneSize);
-					break;
-
-				default:
-					clearWait = false;
-					break;
+			std::string nextLocalMon;
+			bool hasLocal = hasLocalDisplayInDirection(m_active, xc, yc, ax, ay, aw, ah, dir, nextLocalMon);
+			if (hasLocal) {
+				if (m_config->isMonitor(nextLocalMon) && m_config->hasNeighbor(monName, dir)) {
+					hasNeighbor = true;
 				}
-				if (clearWait) {
-					// still on local screen
-					noSwitch(m_x, m_y);
+				else {
+					hasNeighbor = false;
 				}
 			}
-
-			// skip rest of block
-			break;
+			else if (m_config->hasNeighbor(getName(m_active), dir)) {
+				hasNeighbor = true;
+			}
 		}
 
-		// try to switch screen.  get the neighbor.
-		newScreen = mapToNeighbor(m_active, dir, m_x, m_y);
-
-		// see if we should switch
-		if (!isSwitchOkay(newScreen, dir, m_x, m_y, xc, yc)) {
-			newScreen = m_active;
-			jump      = false;
+		if (hasNeighbor) {
+			SInt32 targetX = xc;
+			SInt32 targetY = yc;
+			newScreen = mapToNeighbor(m_active, dir, targetX, targetY);
+			if (newScreen != nullptr && isSwitchOkay(newScreen, dir, targetX, targetY, xc, yc)) {
+				m_x = targetX;
+				m_y = targetY;
+				jump = true;
+			}
+			else {
+				newScreen = m_active;
+				m_x = xc;
+				m_y = yc;
+			}
 		}
-	} while (false);
+		else {
+			// No barrier link in this direction.
+			// Check if (m_x, m_y) falls within another display on the same client.
+			SInt32 nax, nay, naw, nah;
+			std::string nextMon;
+			if (getActiveMonitorShape(m_active, m_x, m_y, nax, nay, naw, nah, nextMon) &&
+			    (nax != ax || nay != ay || nextMon != monName)) {
+				// Transitioned to another monitor on the same machine locally!
+				// Keep m_x and m_y as is.
+			}
+			else {
+				// Hit the boundary of the client desktop with no neighbor. Clamp.
+				m_x = xc;
+				m_y = yc;
+			}
+		}
+	}
+	else {
+		// Within the same monitor
+		if (m_switchScreen != nullptr) {
+			bool clearWait;
+			SInt32 zoneSize = m_primaryClient->getJumpZoneSize();
+			switch (m_switchDir) {
+			case kLeft:
+				clearWait = (m_x >= ax + zoneSize);
+				break;
+			case kRight:
+				clearWait = (m_x <= ax + aw - 1 - zoneSize);
+				break;
+			case kTop:
+				clearWait = (m_y >= ay + zoneSize);
+				break;
+			case kBottom:
+				clearWait = (m_y <= ay + ah - 1 - zoneSize);
+				break;
+			default:
+				clearWait = false;
+				break;
+			}
+			if (clearWait) {
+				noSwitch(m_x, m_y);
+			}
+		}
+	}
 
 	if (jump) {
 		if (m_sendFileThread != nullptr) {
@@ -2109,33 +2487,10 @@ Server::onMouseMoveSecondary(SInt32 dx, SInt32 dy)
 			m_sendFileThread = nullptr;
 		}
 
-		SInt32 newX = m_x;
-		SInt32 newY = m_y;
-
-		// switch screens
-		switchScreen(newScreen, newX, newY, false);
+		switchScreen(newScreen, m_x, m_y, false);
+		return;
 	}
 	else {
-		// same screen.  clamp mouse to edge.
-		m_x = xOld + dx;
-		m_y = yOld + dy;
-		if (m_x < ax) {
-			m_x = ax;
-			LOG((CLOG_DEBUG2 "clamp to left of \"%s\"", getName(m_active).c_str()));
-		}
-		else if (m_x > ax + aw - 1) {
-			m_x = ax + aw - 1;
-			LOG((CLOG_DEBUG2 "clamp to right of \"%s\"", getName(m_active).c_str()));
-		}
-		if (m_y < ay) {
-			m_y = ay;
-			LOG((CLOG_DEBUG2 "clamp to top of \"%s\"", getName(m_active).c_str()));
-		}
-		else if (m_y > ay + ah - 1) {
-			m_y = ay + ah - 1;
-			LOG((CLOG_DEBUG2 "clamp to bottom of \"%s\"", getName(m_active).c_str()));
-		}
-
 		// warp cursor if it moved.
 		if (m_x != xOld || m_y != yOld) {
 			LOG((CLOG_DEBUG2 "move on %s to %d,%d", getName(m_active).c_str(), m_x, m_y));
@@ -2220,6 +2575,7 @@ Server::addClient(BaseClientProxy* client)
 
 	// tell primary client about the active sides
 	m_primaryClient->reconfigure(getActivePrimarySides());
+	updateActiveMonitors();
 
 	return true;
 }
@@ -2244,6 +2600,7 @@ Server::removeClient(BaseClientProxy* client)
 	// remove from list
 	m_clients.erase(getName(client));
 	m_clientSet.erase(i);
+	updateActiveMonitors();
 
 	return true;
 }

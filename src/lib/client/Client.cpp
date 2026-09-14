@@ -252,6 +252,15 @@ Client::getCursorPos(SInt32& x, SInt32& y) const
     m_screen->getCursorPos(x, y);
 }
 
+std::vector<DisplayInfo>
+Client::getDisplays() const
+{
+    if (m_screen != nullptr) {
+        return m_screen->getDisplays();
+    }
+    return std::vector<DisplayInfo>();
+}
+
 void
 Client::enter(SInt32 xAbs, SInt32 yAbs, UInt32, KeyModifierMask mask, bool)
 {

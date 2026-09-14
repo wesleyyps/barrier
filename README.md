@@ -66,6 +66,15 @@ You should now be able to move the mouse between all the screens as if they were
 
 Note that if the keyboard's Scroll Lock is active then this will prevent the mouse from switching screens.
 
+### Dynamic Physical Monitors & Multi-Display Setups
+
+Barrier supports standalone physical displays and dynamic hardware matching via `section: monitors`. This allows you to:
+- Treat external monitors as independent spatial tiles on your desk, even if their video cable is plugged into a different computer or swapped between machines.
+- Automatically identify monitors by hardware EDID / model patterns (e.g., `*SyncMaster*`, `*Retina*`, `*DELL*`) via native display subsystems (CoreGraphics on macOS, XRandR on Linux).
+- Move smoothly across multi-display laptops without premature screen jumping.
+
+See [doc/barrier.conf.example-monitors](doc/barrier.conf.example-monitors) for architectural details, visual desk diagrams, and complete configuration examples.
+
 ### Contact & support
 
 Please be aware that the *only* way to draw our attention to a bug is to create a new issue in [the issue tracker](https://github.com/debauchee/barrier/issues). Write a clear, concise, detailed report and you will get a clear, concise, detailed response. Priority is always given to issues that affect a wider range of users.

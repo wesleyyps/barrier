@@ -518,6 +518,70 @@ XWindowsScreen::getCursorPos(SInt32& x, SInt32& y) const
 	}
 }
 
+std::vector<DisplayInfo>
+XWindowsScreen::getDisplays() const
+{
+	std::vector<DisplayInfo> result;
+#if HAVE_X11_EXTENSIONS_XRANDR_H
+	if (m_display != nullptr && m_xrandr) {
+		XRRScreenResources* res = XRRGetScreenResourcesCurrent(m_display, m_root);
+		if (res != nullptr) {
+			for (int i = 0; i < res->noutput; ++i) {
+				XRROutputInfo* outputInfo = XRRGetOutputInfo(m_display, res, res->outputs[i]);
+				if (outputInfo != nullptr) {
+					if (outputInfo->connection == RR_Connected && outputInfo->crtc != 0) {
+						XRRCrtcInfo* crtcInfo = XRRGetCrtcInfo(m_display, res, outputInfo->crtc);
+						if (crtcInfo != nullptr) {
+							std::string name = outputInfo->name ? outputInfo->name : "Unknown";
+							std::string id = name;
+							Atom edidAtom = XInternAtom(m_display, "EDID", True);
+							if (edidAtom != None) {
+								Atom actualType;
+								int actualFormat;
+								unsigned long nitems = 0, bytesAfter = 0;
+								unsigned char* prop = nullptr;
+								if (XRRGetOutputProperty(m_display, res->outputs[i], edidAtom,
+								                         0, 128, False, False, AnyPropertyType,
+								                         &actualType, &actualFormat, &nitems, &bytesAfter, &prop) == Success && prop != nullptr) {
+									if (nitems >= 128) {
+										for (int b = 54; b <= 108; b += 18) {
+											if (prop[b] == 0 && prop[b+1] == 0 && prop[b+2] == 0 && prop[b+3] == 0xfc) {
+												char descName[14] = {0};
+												memcpy(descName, &prop[b+5], 13);
+												for (int k = 12; k >= 0 && (descName[k] == '\n' || descName[k] == '\r' || descName[k] == ' ' || descName[k] == '\0'); --k) {
+													descName[k] = '\0';
+												}
+												if (descName[0] != '\0') {
+													name = descName;
+													id = name + ":" + (outputInfo->name ? outputInfo->name : "");
+												}
+											}
+										}
+									}
+									XFree(prop);
+								}
+							}
+							bool isPrimary = result.empty();
+							result.emplace_back(id, name,
+							                    (SInt32)crtcInfo->x, (SInt32)crtcInfo->y,
+							                    (SInt32)crtcInfo->width, (SInt32)crtcInfo->height,
+							                    isPrimary);
+							XRRFreeCrtcInfo(crtcInfo);
+						}
+					}
+					XRRFreeOutputInfo(outputInfo);
+				}
+			}
+			XRRFreeScreenResources(res);
+		}
+	}
+#endif
+	if (result.empty()) {
+		result.emplace_back("Display:0", "Display", m_x, m_y, m_w, m_h, true);
+	}
+	return result;
+}
+
 void
 XWindowsScreen::reconfigure(UInt32)
 {
