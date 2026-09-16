@@ -540,7 +540,7 @@ Client::setupTimer()
 {
     assert(m_timer == NULL);
 
-    m_timer = m_events->newOneShotTimer(15.0, nullptr);
+    m_timer = m_events->newOneShotTimer(4.0, nullptr);
     m_events->adoptHandler(Event::kTimer, m_timer,
                             new TMethodEventJob<Client>(this,
                                 &Client::handleConnectTimeout));
@@ -850,3 +850,12 @@ Client::sendDragInfo(UInt32 fileCount, std::string& info, size_t size)
 {
     m_server->sendDragInfo(fileCount, info.c_str(), size);
 }
+
+void
+Client::onServerAddressesReceived(const String& addresses)
+{
+    auto* info = new String(addresses);
+    Event event(m_events->forClient().serverAddressesReceived(), getEventTarget(), info, Event::kDontFreeData);
+    m_events->addEvent(event);
+}
+

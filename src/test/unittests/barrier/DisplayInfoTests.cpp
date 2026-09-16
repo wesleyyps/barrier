@@ -151,3 +151,52 @@ TEST(DisplayInfoTests, monitorTargetCoordinateCalculation)
     EXPECT_EQ(y, 384);
 }
 
+TEST(DisplayInfoTests, hostTargetCoordinateExcludesClaimedMonitors)
+{
+    // Simulate setup where host has 2 displays:
+    // Display 0: SyncMaster [0, 0, 1360, 768] (assigned to active monitor "syncmaster")
+    // Display 1: Laptop LCD [1360, 0, 1920, 1080] (host's primary/unassigned display)
+    DisplayInfo syncmaster("SyncMaster:1", "SyncMaster", 0, 0, 1360, 768, false);
+    DisplayInfo laptopLcd("eDP-1", "Built-in Display", 1360, 0, 1920, 1080, true);
+
+    std::vector<DisplayInfo> hostDisplays = {syncmaster, laptopLcd};
+
+    // Filter displays for the host screen (excluding claimed monitor displays)
+    std::vector<DisplayInfo> targetDisplays;
+    for (const auto& disp : hostDisplays) {
+        if (disp.m_x == syncmaster.m_x && disp.m_y == syncmaster.m_y &&
+            disp.m_w == syncmaster.m_w && disp.m_h == syncmaster.m_h) {
+            // Claimed by "syncmaster"
+            continue;
+        }
+        targetDisplays.push_back(disp);
+    }
+
+    ASSERT_EQ(targetDisplays.size(), 1u);
+    EXPECT_EQ(targetDisplays[0].m_x, 1360);
+    EXPECT_EQ(targetDisplays[0].m_w, 1920);
+
+    SInt32 sx = targetDisplays[0].m_x;
+    SInt32 sy = targetDisplays[0].m_y;
+    SInt32 sw = targetDisplays[0].m_w;
+    SInt32 sh = targetDisplays[0].m_h;
+
+    float t = 0.5f;
+
+    // Moving Right from "syncmaster" into the host computer:
+    // Must enter the laptop display at x = 1360, NOT x = 0 (which would wrap back to syncmaster!)
+    SInt32 x = sx;
+    SInt32 y = sy + static_cast<SInt32>(t * sh);
+    EXPECT_EQ(x, 1360);
+    EXPECT_EQ(y, 540);
+    EXPECT_GE(x, laptopLcd.m_x);
+    EXPECT_LT(x, laptopLcd.m_x + laptopLcd.m_w);
+
+    // Moving Left into the host computer from its right:
+    // Must enter at the right edge of laptop LCD: 1360 + 1920 - 1 = 3279
+    x = sx + sw - 1;
+    EXPECT_EQ(x, 3279);
+    EXPECT_GE(x, laptopLcd.m_x);
+    EXPECT_LT(x, laptopLcd.m_x + laptopLcd.m_w);
+}
+

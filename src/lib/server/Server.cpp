@@ -17,6 +17,7 @@
  */
 
 #include "server/Server.h"
+#include <algorithm>
 #include <array>
 #include <cstdint>
 
@@ -29,6 +30,7 @@
 #include "barrier/DropHelper.h"
 #include "barrier/option_types.h"
 #include "barrier/protocol_types.h"
+#include "barrier/ProtocolUtil.h"
 #include "barrier/XScreen.h"
 #include "barrier/XBarrier.h"
 #include "barrier/StreamChunker.h"
@@ -44,6 +46,14 @@
 #include "base/IEventQueue.h"
 #include "base/Log.h"
 #include "base/TMethodEventJob.h"
+
+#if !defined(_WIN32)
+#include <ifaddrs.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <net/if.h>
+#include <netdb.h>
+#endif
 
 #include <cstring>
 #include <cstdlib>
@@ -427,6 +437,12 @@ Server::adoptClient(BaseClientProxy* client)
 	// send configuration options to client
 	sendOptions(client);
 
+	// send server physical addresses for dynamic failover
+	auto* proxy = dynamic_cast<ClientProxy*>(client);
+	if (proxy != nullptr) {
+		sendServerAddresses(proxy);
+	}
+
 	// activate screen saver on new client if active on the primary screen
 	if (m_activeSaver != nullptr) {
 		client->screensaver(true);
@@ -623,6 +639,46 @@ Server::jumpToScreen(BaseClientProxy* newScreen)
 	SInt32 x;
 	SInt32 y;
 	newScreen->getJumpCursorPos(x, y);
+
+	// Ensure cursor does not land on a display claimed by an active standalone monitor
+	std::vector<DisplayInfo> displays = newScreen->getDisplays();
+	std::vector<DisplayInfo> hostDisplays;
+	for (const auto& disp : displays) {
+		bool claimed = false;
+		for (const auto& kv : m_activeMonitors) {
+			if (kv.second.m_host == newScreen) {
+				if (kv.second.m_display.m_x == disp.m_x && kv.second.m_display.m_y == disp.m_y &&
+				    kv.second.m_display.m_w == disp.m_w && kv.second.m_display.m_h == disp.m_h) {
+					claimed = true;
+					break;
+				}
+			}
+		}
+		if (!claimed) {
+			hostDisplays.push_back(disp);
+		}
+	}
+
+	bool insideHost = false;
+	for (const auto& disp : hostDisplays) {
+		if (x >= disp.m_x && x < disp.m_x + disp.m_w &&
+		    y >= disp.m_y && y < disp.m_y + disp.m_h) {
+			insideHost = true;
+			break;
+		}
+	}
+
+	if (!insideHost && !hostDisplays.empty()) {
+		const DisplayInfo* targetDisp = &hostDisplays[0];
+		for (const auto& disp : hostDisplays) {
+			if (disp.m_isPrimary) {
+				targetDisp = &disp;
+				break;
+			}
+		}
+		x = targetDisp->m_x + targetDisp->m_w / 2;
+		y = targetDisp->m_y + targetDisp->m_h / 2;
+	}
 
 	switchScreen(newScreen, x, y, false);
 }
@@ -1021,8 +1077,48 @@ Server::getNeighbor(BaseClientProxy* src,
 		if (index != m_clients.end()) {
 			LOG((CLOG_DEBUG2 "\"%s\" is on %s of \"%s\" at %f", dstName.c_str(), Config::dirName(dir), srcName.c_str(), t));
 			BaseClientProxy* dstClient = index->second;
+			std::vector<DisplayInfo> dstDisplays = dstClient->getDisplays();
+			std::vector<DisplayInfo> targetDisplays;
+			for (const auto& disp : dstDisplays) {
+				bool claimedByOther = false;
+				for (const auto& kv : m_activeMonitors) {
+					if (kv.first != dstName && kv.second.m_host == dstClient) {
+						if (kv.second.m_display.m_x == disp.m_x && kv.second.m_display.m_y == disp.m_y &&
+						    kv.second.m_display.m_w == disp.m_w && kv.second.m_display.m_h == disp.m_h) {
+							claimedByOther = true;
+							break;
+						}
+					}
+				}
+				if (!claimedByOther) {
+					targetDisplays.push_back(disp);
+				}
+			}
+			if (targetDisplays.empty()) {
+				targetDisplays = dstDisplays;
+			}
+
 			SInt32 sx, sy, sw, sh;
-			dstClient->getShape(sx, sy, sw, sh);
+			if (!targetDisplays.empty()) {
+				SInt32 minX = targetDisplays[0].m_x;
+				SInt32 minY = targetDisplays[0].m_y;
+				SInt32 maxX = targetDisplays[0].m_x + targetDisplays[0].m_w;
+				SInt32 maxY = targetDisplays[0].m_y + targetDisplays[0].m_h;
+				for (size_t i = 1; i < targetDisplays.size(); ++i) {
+					minX = std::min(minX, targetDisplays[i].m_x);
+					minY = std::min(minY, targetDisplays[i].m_y);
+					maxX = std::max(maxX, targetDisplays[i].m_x + targetDisplays[i].m_w);
+					maxY = std::max(maxY, targetDisplays[i].m_y + targetDisplays[i].m_h);
+				}
+				sx = minX;
+				sy = minY;
+				sw = maxX - minX;
+				sh = maxY - minY;
+			}
+			else {
+				dstClient->getShape(sx, sy, sw, sh);
+			}
+
 			switch (dir) {
 			case kLeft:
 				x = sx + sw - 1;
@@ -1048,10 +1144,9 @@ Server::getNeighbor(BaseClientProxy* src,
 			if (y < sy) y = sy;
 			else if (y >= sy + sh) y = sy + sh - 1;
 
-			std::vector<DisplayInfo> dstDisplays = dstClient->getDisplays();
-			if (!dstDisplays.empty()) {
+			if (!targetDisplays.empty()) {
 				bool insideAny = false;
-				for (const auto& disp : dstDisplays) {
+				for (const auto& disp : targetDisplays) {
 					if (x >= disp.m_x && x < disp.m_x + disp.m_w &&
 					    y >= disp.m_y && y < disp.m_y + disp.m_h) {
 						insideAny = true;
@@ -1060,7 +1155,7 @@ Server::getNeighbor(BaseClientProxy* src,
 				}
 				if (!insideAny) {
 					const DisplayInfo* bestEdgeDisp = nullptr;
-					for (const auto& disp : dstDisplays) {
+					for (const auto& disp : targetDisplays) {
 						if (dir == kLeft) {
 							if (bestEdgeDisp == nullptr || (disp.m_x + disp.m_w > bestEdgeDisp->m_x + bestEdgeDisp->m_w)) {
 								bestEdgeDisp = &disp;
@@ -1518,6 +1613,75 @@ Server::sendOptions(BaseClientProxy* client) const
 	client->setOptions(optionsList);
 }
 
+std::vector<std::string>
+Server::discoverLocalAddresses() const
+{
+	std::vector<std::string> result;
+#if !defined(_WIN32)
+	struct ifaddrs* ifaddr = nullptr;
+	if (getifaddrs(&ifaddr) == -1) {
+		return result;
+	}
+
+	for (struct ifaddrs* ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
+		if (!ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_INET) {
+			continue;
+		}
+
+		// Must be UP and not LOOPBACK
+		if (!(ifa->ifa_flags & IFF_UP) || (ifa->ifa_flags & IFF_LOOPBACK)) {
+			continue;
+		}
+
+		std::string name = ifa->ifa_name ? ifa->ifa_name : "";
+
+		// Filter out virtual/container/bridge/VPN interfaces
+		if (name.rfind("docker", 0) == 0 ||
+			name.rfind("br-", 0) == 0 ||
+			name.rfind("veth", 0) == 0 ||
+			name.rfind("virbr", 0) == 0 ||
+			name.rfind("tun", 0) == 0 ||
+			name.rfind("tap", 0) == 0 ||
+			name.rfind("utun", 0) == 0) {
+			continue;
+		}
+
+		char host[NI_MAXHOST];
+		if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in),
+						host, NI_MAXHOST, nullptr, 0, NI_NUMERICHOST) == 0) {
+			std::string ip = host;
+			if (std::find(result.begin(), result.end(), ip) == result.end()) {
+				result.push_back(ip);
+			}
+		}
+	}
+	freeifaddrs(ifaddr);
+#endif
+	return result;
+}
+
+void
+Server::sendServerAddresses(ClientProxy* client) const
+{
+	std::vector<std::string> addrs = discoverLocalAddresses();
+	if (addrs.empty()) {
+		return;
+	}
+
+	std::string joined;
+	for (size_t i = 0; i < addrs.size(); ++i) {
+		if (i > 0) {
+			joined += ",";
+		}
+		joined += addrs[i];
+	}
+
+	LOG((CLOG_NOTE "advertising server physical addresses to client \"%s\": %s",
+		 getName(client).c_str(), joined.c_str()));
+	String payload = joined;
+	ProtocolUtil::writef(client->getStream(), kMsgDServerAddresses, &payload);
+}
+
 void
 Server::processOptions()
 {
@@ -1790,7 +1954,8 @@ Server::handleSwitchToScreenEvent(const Event& event, void*)
 	auto* info =
 		static_cast<SwitchToScreenInfo*>(event.getData());
 
-	auto monIt = m_activeMonitors.find(info->m_screen);
+	std::string screenName = info->m_screen;
+	auto monIt = m_activeMonitors.find(screenName);
 	if (monIt != m_activeMonitors.end() && monIt->second.m_host != nullptr) {
 		BaseClientProxy* host = monIt->second.m_host;
 		SInt32 mx = monIt->second.m_display.m_x + monIt->second.m_display.m_w / 2;
@@ -1799,12 +1964,52 @@ Server::handleSwitchToScreenEvent(const Event& event, void*)
 		return;
 	}
 
-	ClientList::const_iterator index = m_clients.find(info->m_screen);
+	ClientList::const_iterator index = m_clients.find(screenName);
 	if (index == m_clients.end()) {
-		LOG((CLOG_DEBUG1 "screen \"%s\" not active", info->m_screen));
+		std::string canon = m_config->getCanonicalName(screenName);
+		if (!canon.empty()) {
+			index = m_clients.find(canon);
+		}
+	}
+
+	if (index == m_clients.end()) {
+		LOG((CLOG_DEBUG1 "screen \"%s\" not active", screenName.c_str()));
 	}
 	else {
-		jumpToScreen(index->second);
+		BaseClientProxy* client = index->second;
+		std::vector<DisplayInfo> displays = client->getDisplays();
+		std::vector<DisplayInfo> hostDisplays;
+		for (const auto& disp : displays) {
+			bool claimed = false;
+			for (const auto& kv : m_activeMonitors) {
+				if (kv.second.m_host == client) {
+					if (kv.second.m_display.m_x == disp.m_x && kv.second.m_display.m_y == disp.m_y &&
+					    kv.second.m_display.m_w == disp.m_w && kv.second.m_display.m_h == disp.m_h) {
+						claimed = true;
+						break;
+					}
+				}
+			}
+			if (!claimed) {
+				hostDisplays.push_back(disp);
+			}
+		}
+
+		if (!hostDisplays.empty()) {
+			const DisplayInfo* targetDisp = &hostDisplays[0];
+			for (const auto& disp : hostDisplays) {
+				if (disp.m_isPrimary) {
+					targetDisp = &disp;
+					break;
+				}
+			}
+			SInt32 hx = targetDisp->m_x + targetDisp->m_w / 2;
+			SInt32 hy = targetDisp->m_y + targetDisp->m_h / 2;
+			jumpToScreen(client, hx, hy);
+		}
+		else {
+			jumpToScreen(client);
+		}
 	}
 }
 

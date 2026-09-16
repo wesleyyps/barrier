@@ -34,6 +34,7 @@
 #include "common/stdvector.h"
 
 class BaseClientProxy;
+class ClientProxy;
 class EventQueueTimer;
 class PrimaryClient;
 class InputFilter;
@@ -377,6 +378,12 @@ private:
 
     // send drag info to new client screen
     void                sendDragInfo(BaseClientProxy* newScreen);
+
+    // discovers local physical IPv4 addresses for client failover
+    std::vector<std::string> discoverLocalAddresses() const;
+
+    // send server physical addresses to a client proxy
+    void                sendServerAddresses(ClientProxy* client) const;
 
 public:
     bool                m_mock;

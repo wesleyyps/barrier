@@ -526,6 +526,7 @@ XWindowsScreen::getDisplays() const
 	if (m_display != nullptr && m_xrandr) {
 		XRRScreenResources* res = XRRGetScreenResourcesCurrent(m_display, m_root);
 		if (res != nullptr) {
+			RROutput primaryOutput = XRRGetOutputPrimary(m_display, m_root);
 			for (int i = 0; i < res->noutput; ++i) {
 				XRROutputInfo* outputInfo = XRRGetOutputInfo(m_display, res, res->outputs[i]);
 				if (outputInfo != nullptr) {
@@ -561,7 +562,7 @@ XWindowsScreen::getDisplays() const
 									XFree(prop);
 								}
 							}
-							bool isPrimary = result.empty();
+							bool isPrimary = (primaryOutput != None && res->outputs[i] == primaryOutput);
 							result.emplace_back(id, name,
 							                    (SInt32)crtcInfo->x, (SInt32)crtcInfo->y,
 							                    (SInt32)crtcInfo->width, (SInt32)crtcInfo->height,
@@ -573,6 +574,28 @@ XWindowsScreen::getDisplays() const
 				}
 			}
 			XRRFreeScreenResources(res);
+
+			bool hasPrimary = false;
+			for (const auto& d : result) {
+				if (d.m_isPrimary) {
+					hasPrimary = true;
+					break;
+				}
+			}
+			if (!hasPrimary && !result.empty()) {
+				bool foundInternal = false;
+				for (auto& d : result) {
+					if (d.m_id.find("eDP") != std::string::npos || d.m_id.find("LVDS") != std::string::npos ||
+					    d.m_name.find("eDP") != std::string::npos || d.m_name.find("LVDS") != std::string::npos) {
+						d.m_isPrimary = true;
+						foundInternal = true;
+						break;
+					}
+				}
+				if (!foundInternal) {
+					result[0].m_isPrimary = true;
+				}
+			}
 		}
 	}
 #endif
@@ -1029,8 +1052,9 @@ XWindowsScreen::openDisplay(const char* displayName)
 	int dummyError;
     m_xrandr = m_impl->XRRQueryExtension(display, &m_xrandrEventBase, &dummyError);
 	if (m_xrandr) {
-		// enable XRRScreenChangeNotifyEvent
-        m_impl->XRRSelectInput(display, DefaultRootWindow(display), RRScreenChangeNotifyMask | RRCrtcChangeNotifyMask);
+		// enable XRRScreenChangeNotifyEvent, CRTC changes, and Output changes (plug/unplug)
+        m_impl->XRRSelectInput(display, DefaultRootWindow(display),
+                               RRScreenChangeNotifyMask | RRCrtcChangeNotifyMask | RROutputChangeNotifyMask);
 	}
 #endif
 
@@ -1505,8 +1529,9 @@ XWindowsScreen::handleSystemEvent(const Event& event, void*)
 		if (m_xrandr) {
 			if (xevent->type == m_xrandrEventBase + RRScreenChangeNotify ||
 			    (xevent->type == m_xrandrEventBase + RRNotify &&
-			     reinterpret_cast<XRRNotifyEvent *>(xevent)->subtype == RRNotify_CrtcChange)) {
-				LOG((CLOG_INFO "XRRScreenChangeNotifyEvent or RRNotify_CrtcChange received"));
+			     (reinterpret_cast<XRRNotifyEvent *>(xevent)->subtype == RRNotify_CrtcChange ||
+			      reinterpret_cast<XRRNotifyEvent *>(xevent)->subtype == RRNotify_OutputChange))) {
+				LOG((CLOG_INFO "XRRScreenChangeNotifyEvent, RRNotify_CrtcChange or RRNotify_OutputChange received"));
 
 				// we're required to call back into XLib so XLib can update its internal state
 				XRRUpdateConfiguration(xevent);

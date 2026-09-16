@@ -288,6 +288,10 @@ extern const char*        kMsgDDragInfo;
 // $1 = serialized list of active displays on secondary screen
 extern const char*        kMsgDDisplays;
 
+// server network addresses: primary -> secondary
+// $1 = comma-separated list of active server IPv4 addresses for failover
+extern const char*        kMsgDServerAddresses;
+
 //
 // query codes
 //

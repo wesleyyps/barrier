@@ -72,12 +72,20 @@ public:
     */
     Event::Type        disconnected();
 
+    //! Get server addresses received event type
+    /*!
+    Returns the event type sent when the client receives the list of physical
+    server addresses from the server for dynamic failover.
+    */
+    Event::Type        serverAddressesReceived();
+
     //@}
 
 private:
     Event::Type        m_connected;
     Event::Type        m_connectionFailed;
     Event::Type        m_disconnected;
+    Event::Type        m_serverAddressesReceived;
 };
 
 class IStreamEvents : public EventTypes {

@@ -119,6 +119,9 @@ public:
     */
     NetworkAddress        getServerAddress() const;
 
+    //! Set address of server
+    void                setServerAddress(const NetworkAddress& address) { m_serverAddress = address; }
+
     //! Return true if received file size is valid
     bool                isReceivedFileSizeValid();
 
@@ -130,6 +133,9 @@ public:
 
     //! Return drag file list
     DragFileList        getDragFileList() { return m_dragFileList; }
+
+    //! Called when server physical addresses are received from server
+    void                onServerAddressesReceived(const String& addresses);
 
     //@}
 

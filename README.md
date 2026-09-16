@@ -150,6 +150,17 @@ __Q: Is it possible to use Barrier on Mac OS X / OS X versions prior to 10.12?__
 >    serverhostname=<AAA.BBB.CCC.DDD>
 >```
 
+**Q: Why does Barrier disconnect or fail to connect when I turn on a VPN (NordLayer, NordVPN, WireGuard, OpenVPN)?**
+
+> A: Most VPN clients hijack the default gateway (`0.0.0.0/0`), and enterprise VPNs enforce strict kill switches or isolate secondary network adapters (such as a dedicated Ethernet adapter used alongside Wi-Fi).
+>
+> To resolve this:
+> 1. Enable **Allow Local Network Access** (and disable **Invisibility on LAN**) in your VPN preferences.
+> 2. Configure **Split Tunneling** to bypass the Barrier process (`barrierc` / `barriers`) or your local subnet (`192.168.x.x`).
+> 3. If running dual network adapters, bind the Barrier route explicitly to your physical interface (e.g., `sudo route -n add -host <server_ip> -interface <adapter>`).
+>
+> See the complete [VPN Setup & Troubleshooting Guide](doc/vpn-setup.md) for full macOS, Linux, and Windows steps.
+
 **Q: Are there any other significant limitations with the current version of Barrier?**
 
 > A: Currently:
