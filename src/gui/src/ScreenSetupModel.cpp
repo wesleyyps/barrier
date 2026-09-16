@@ -92,6 +92,15 @@ QVariant ScreenSetupModel::data(const QModelIndex& index, int role) const
             case Qt::ToolTipRole:
                 if (screen(index).isNull())
                     break;
+                if (screen(index).isMonitor()) {
+                    QString match = screen(index).monitorMatch();
+                    return QString(tr(
+                                "<center>Monitor: <b>%1</b></center>"
+                                "<br>Padrão: <code>%2</code>"
+                                "<br><i>(Teclas e fixes herdados do computador conectado)</i>"
+                                "<br>Duplo clique para editar configurações"
+                                "<br>Arraste para a lixeira para remover")).arg(screen(index).name(), match.isEmpty() ? QString("*%1*").arg(screen(index).name()) : match);
+                }
                 return QString(tr(
                             "<center>Screen: <b>%1</b></center>"
                             "<br>Double click to edit settings"
@@ -103,7 +112,15 @@ QVariant ScreenSetupModel::data(const QModelIndex& index, int role) const
                 return screen(index).name();
             case Qt::BackgroundRole:
                 if (!screen(index).isNull()) {
-                    if (screen(index).name() == m_ServerName) {
+                    bool isServer = (screen(index).name() == m_ServerName);
+                    if (!isServer && !m_ServerName.isEmpty()) {
+                        QString sn = screen(index).name().toLower();
+                        QString srv = m_ServerName.toLower();
+                        if (sn.contains("macbook") && srv.contains("macbook")) {
+                            isServer = true;
+                        }
+                    }
+                    if (isServer) {
                         return QBrush(QColor(25, 118, 210)); // Blue brush
                     } else if (m_ConnectedClients.contains(screen(index).name())) {
                         return QBrush(QColor(46, 125, 50)); // Green brush
@@ -112,7 +129,15 @@ QVariant ScreenSetupModel::data(const QModelIndex& index, int role) const
                 break;
             case Qt::ForegroundRole:
                 if (!screen(index).isNull()) {
-                    if (screen(index).name() == m_ServerName || m_ConnectedClients.contains(screen(index).name())) {
+                    bool isServer = (screen(index).name() == m_ServerName);
+                    if (!isServer && !m_ServerName.isEmpty()) {
+                        QString sn = screen(index).name().toLower();
+                        QString srv = m_ServerName.toLower();
+                        if (sn.contains("macbook") && srv.contains("macbook")) {
+                            isServer = true;
+                        }
+                    }
+                    if (isServer || m_ConnectedClients.contains(screen(index).name())) {
                         return QBrush(Qt::white);
                     }
                 }

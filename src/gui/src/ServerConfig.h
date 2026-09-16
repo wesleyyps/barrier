@@ -128,6 +128,12 @@ class ServerConfig : public BaseConfig
         QString networkInterface() const { return m_networkInterface; }
         void setNetworkInterface(const QString& net) { m_networkInterface = net; }
 
+        const QMap<QString, QMap<QString, QString>>& monitors() const { return m_Monitors; }
+        void setMonitors(const QMap<QString, QMap<QString, QString>>& monitors) { m_Monitors = monitors; }
+
+        const QMap<QString, QStringList>& confAliases() const { return m_ConfAliases; }
+        const QMap<QString, QStringList>& confExtraScreens() const { return m_ConfExtraScreens; }
+
     private:
         bool findScreenName(const QString& name, int& index);
         bool fixNoServer(const QString& name, int& index);
@@ -143,6 +149,9 @@ class ServerConfig : public BaseConfig
         bool m_logToFile = false;
         QString m_logFilename;
         QString m_networkInterface;
+        QMap<QString, QMap<QString, QString>> m_Monitors;
+        QMap<QString, QStringList> m_ConfAliases;
+        QMap<QString, QStringList> m_ConfExtraScreens;
         
         typedef QList<Screen*> ScreenList;
         std::vector<Screen> m_Screens;

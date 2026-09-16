@@ -45,6 +45,7 @@
 #include <AvailabilityMacros.h>
 #include <IOKit/hidsystem/event_status_driver.h>
 #include <AppKit/NSEvent.h>
+#import <AppKit/NSScreen.h>
 
 // This isn't in any Apple SDK that I know of as of yet.
 enum {
@@ -259,6 +260,46 @@ OSXScreen::getCursorPos(SInt32& x, SInt32& y) const
 	m_xCursor        = x;
 	m_yCursor        = y;
 	CFRelease(event);
+}
+
+std::vector<DisplayInfo>
+OSXScreen::getDisplays() const
+{
+	std::vector<DisplayInfo> result;
+	@autoreleasepool {
+		NSArray* screens = [NSScreen screens];
+		for (NSScreen* screen in screens) {
+			NSDictionary* desc = [screen deviceDescription];
+			NSNumber* screenNum = [desc objectForKey:@"NSScreenNumber"];
+			if (screenNum == nil) {
+				continue;
+			}
+			CGDirectDisplayID dID = [screenNum unsignedIntValue];
+			CGRect bounds = CGDisplayBounds(dID);
+
+			NSString* nsName = [screen localizedName];
+			std::string name = (nsName != nil) ? [nsName UTF8String] : "Unknown Display";
+
+			uint32_t serial = CGDisplaySerialNumber(dID);
+			std::string id = name;
+			if (serial != 0 && serial != 0xFFFFFFFF) {
+				id += ":" + std::to_string(serial);
+			}
+			else if (CGDisplayIsBuiltin(dID)) {
+				id += ":builtin";
+			}
+
+			bool isPrimary = (CGMainDisplayID() == dID);
+			result.emplace_back(id, name,
+			                    (SInt32)bounds.origin.x, (SInt32)bounds.origin.y,
+			                    (SInt32)bounds.size.width, (SInt32)bounds.size.height,
+			                    isPrimary);
+		}
+	}
+	if (result.empty()) {
+		result.emplace_back("Display:0", "Display", m_x, m_y, m_w, m_h, true);
+	}
+	return result;
 }
 
 void

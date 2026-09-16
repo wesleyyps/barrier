@@ -78,6 +78,10 @@ ScreenSettingsDialog::ScreenSettingsDialog(QWidget* parent, Screen* pScreen) :
         m_pSpinBoxSSHPort->setValue(22);
     }
     m_pLineEditClientCmd->setText(m_pScreen->networkClientCmd());
+
+    m_pCheckBoxIsMonitor->setChecked(m_pScreen->isMonitor());
+    m_pLineEditMonitorMatch->setText(m_pScreen->monitorMatch());
+    updateMonitorUi(m_pScreen->isMonitor());
 }
 
 void ScreenSettingsDialog::accept()
@@ -91,9 +95,13 @@ void ScreenSettingsDialog::accept()
         return;
     }
 
+    bool isMonitor = m_pCheckBoxIsMonitor->isChecked();
+    QString match = m_pLineEditMonitorMatch->text().trimmed();
+
     m_pScreen->init();
 
     m_pScreen->setName(m_pLineEditName->text());
+    m_pScreen->setIsMonitor(isMonitor);
 
     for (int i = 0; i < m_pListAliases->count(); i++)
     {
@@ -109,16 +117,40 @@ void ScreenSettingsDialog::accept()
         m_pScreen->addAlias(alias);
     }
 
-    m_pScreen->setModifier(Screen::Modifier::Shift,
-                           static_cast<Screen::Modifier>(m_pComboBoxShift->currentIndex()));
-    m_pScreen->setModifier(Screen::Modifier::Ctrl,
-                           static_cast<Screen::Modifier>(m_pComboBoxCtrl->currentIndex()));
-    m_pScreen->setModifier(Screen::Modifier::Alt,
-                           static_cast<Screen::Modifier>(m_pComboBoxAlt->currentIndex()));
-    m_pScreen->setModifier(Screen::Modifier::Meta,
-                           static_cast<Screen::Modifier>(m_pComboBoxMeta->currentIndex()));
-    m_pScreen->setModifier(Screen::Modifier::Super,
-                           static_cast<Screen::Modifier>(m_pComboBoxSuper->currentIndex()));
+    if (isMonitor) {
+        if (match.isEmpty()) {
+            match = QString("*%1*").arg(m_pLineEditName->text().trimmed());
+        }
+        m_pScreen->setMonitorMatch(match);
+        m_pScreen->setNetworkIP("");
+        m_pScreen->setNetworkSSHUser("");
+        m_pScreen->setNetworkSSHPort(0);
+        m_pScreen->setNetworkClientCmd("");
+    } else {
+        m_pScreen->setMonitorMatch("");
+
+        m_pScreen->setModifier(Screen::Modifier::Shift,
+                               static_cast<Screen::Modifier>(m_pComboBoxShift->currentIndex()));
+        m_pScreen->setModifier(Screen::Modifier::Ctrl,
+                               static_cast<Screen::Modifier>(m_pComboBoxCtrl->currentIndex()));
+        m_pScreen->setModifier(Screen::Modifier::Alt,
+                               static_cast<Screen::Modifier>(m_pComboBoxAlt->currentIndex()));
+        m_pScreen->setModifier(Screen::Modifier::Meta,
+                               static_cast<Screen::Modifier>(m_pComboBoxMeta->currentIndex()));
+        m_pScreen->setModifier(Screen::Modifier::Super,
+                               static_cast<Screen::Modifier>(m_pComboBoxSuper->currentIndex()));
+
+        m_pScreen->setFix(Screen::Fix::CapsLock, m_pCheckBoxCapsLock->isChecked());
+        m_pScreen->setFix(Screen::Fix::NumLock, m_pCheckBoxNumLock->isChecked());
+        m_pScreen->setFix(Screen::Fix::ScrollLock, m_pCheckBoxScrollLock->isChecked());
+        m_pScreen->setFix(Screen::Fix::XTest, m_pCheckBoxXTest->isChecked());
+        m_pScreen->setFix(Screen::Fix::PreserveFocus, m_pCheckBoxPreserveFocus->isChecked());
+
+        m_pScreen->setNetworkIP(m_pLineEditIP->text().trimmed());
+        m_pScreen->setNetworkSSHUser(m_pLineEditSSHUser->text().trimmed());
+        m_pScreen->setNetworkSSHPort(m_pSpinBoxSSHPort->value());
+        m_pScreen->setNetworkClientCmd(m_pLineEditClientCmd->text().trimmed());
+    }
 
     m_pScreen->setSwitchCorner(Screen::SwitchCorner::TopLeft, m_pCheckBoxCornerTopLeft->isChecked());
     m_pScreen->setSwitchCorner(Screen::SwitchCorner::TopRight, m_pCheckBoxCornerTopRight->isChecked());
@@ -126,18 +158,28 @@ void ScreenSettingsDialog::accept()
     m_pScreen->setSwitchCorner(Screen::SwitchCorner::BottomRight, m_pCheckBoxCornerBottomRight->isChecked());
     m_pScreen->setSwitchCornerSize(m_pSpinBoxSwitchCornerSize->value());
 
-    m_pScreen->setFix(Screen::Fix::CapsLock, m_pCheckBoxCapsLock->isChecked());
-    m_pScreen->setFix(Screen::Fix::NumLock, m_pCheckBoxNumLock->isChecked());
-    m_pScreen->setFix(Screen::Fix::ScrollLock, m_pCheckBoxScrollLock->isChecked());
-    m_pScreen->setFix(Screen::Fix::XTest, m_pCheckBoxXTest->isChecked());
-    m_pScreen->setFix(Screen::Fix::PreserveFocus, m_pCheckBoxPreserveFocus->isChecked());
-
-    m_pScreen->setNetworkIP(m_pLineEditIP->text().trimmed());
-    m_pScreen->setNetworkSSHUser(m_pLineEditSSHUser->text().trimmed());
-    m_pScreen->setNetworkSSHPort(m_pSpinBoxSSHPort->value());
-    m_pScreen->setNetworkClientCmd(m_pLineEditClientCmd->text().trimmed());
-
     QDialog::accept();
+}
+
+void ScreenSettingsDialog::on_m_pCheckBoxIsMonitor_toggled(bool checked)
+{
+    updateMonitorUi(checked);
+}
+
+void ScreenSettingsDialog::updateMonitorUi(bool isMonitor)
+{
+    if (isMonitor) {
+        setWindowTitle(tr("Configurações do Monitor"));
+    } else {
+        setWindowTitle(tr("Screen Settings"));
+    }
+    m_pGroupModifiers->setEnabled(!isMonitor);
+    m_pGroupFixes->setEnabled(!isMonitor);
+    m_pGroupNetwork->setVisible(!isMonitor);
+    label_monitor_match->setVisible(isMonitor);
+    m_pLineEditMonitorMatch->setVisible(isMonitor);
+    m_pLabelMonitorNotice->setVisible(isMonitor);
+    adjustSize();
 }
 
 void ScreenSettingsDialog::on_m_pButtonAddAlias_clicked()

@@ -29,7 +29,45 @@
      <item>
       <widget class="QLineEdit" name="m_pLineEditName"/>
      </item>
+     <item>
+      <widget class="QCheckBox" name="m_pCheckBoxIsMonitor">
+       <property name="text">
+        <string>Monitor Físico</string>
+       </property>
+      </widget>
+     </item>
     </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="layoutMonitorMatch">
+     <item>
+      <widget class="QLabel" name="label_monitor_match">
+       <property name="text">
+        <string>Padrão do Monitor (EDID/Nome):</string>
+       </property>
+       <property name="buddy">
+        <cstring>m_pLineEditMonitorMatch</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="m_pLineEditMonitorMatch">
+       <property name="placeholderText">
+        <string>*SyncMaster* ou *Retina*</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="m_pLabelMonitorNotice">
+     <property name="text">
+      <string>&lt;i style=&quot;color: #777;&quot;&gt;Nota: Teclas modificadoras e fixes são herdados automaticamente do computador que estiver conectado a este monitor.&lt;/i&gt;</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
    </item>
    <item>
     <layout class="QHBoxLayout">

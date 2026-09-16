@@ -159,6 +159,17 @@ private:
     typedef std::map<std::string, NetworkNode, barrier::string::CaselessCmp> NetworkMap;
 
 public:
+    struct MonitorConfig {
+        std::string name;
+        std::string matchPattern;
+        std::string defaultHost;
+
+        MonitorConfig() {}
+        MonitorConfig(const std::string& n, const std::string& m, const std::string& h = "")
+            : name(n), matchPattern(m), defaultHost(h) {}
+    };
+    typedef std::map<std::string, MonitorConfig, barrier::string::CaselessCmp> MonitorMap;
+
     typedef Cell::const_iterator link_const_iterator;
     typedef CellMap::const_iterator internal_const_iterator;
     typedef NameMap::const_iterator all_const_iterator;
@@ -403,6 +414,9 @@ public:
     const NetworkMap&   getNetworkNodes() const;
     NetworkMap&         getNetworkNodesMap();
 
+    const MonitorMap&   getMonitors() const { return m_monitors; }
+    bool                isMonitor(const std::string& name) const { return m_monitors.find(name) != m_monitors.end(); }
+
     const std::string&  getServerName() const;
     const std::string&  getServerIp() const;
     bool                getClientAutoConfig() const;
@@ -474,6 +488,7 @@ private:
     void                readSectionLinks(ConfigReadContext&);
     void                readSectionAliases(ConfigReadContext&);
     void                readSectionNetwork(ConfigReadContext&);
+    void                readSectionMonitors(ConfigReadContext&);
 
     InputFilter::Condition* parseCondition(ConfigReadContext&, const std::string& condition,
                                            const std::vector<std::string>& args);
@@ -490,6 +505,7 @@ private:
     CellMap                m_map;
     NameMap                m_nameToCanonicalName;
     NetworkMap             m_networkNodes;
+    MonitorMap             m_monitors;
     std::string            m_serverName;
     std::string            m_serverIp;
     bool                m_clientAutoConfig;

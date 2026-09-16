@@ -318,6 +318,9 @@ ServerProxy::parseMessage(const UInt8* code)
     else if (memcmp(code, kMsgDDragInfo, 4) == 0) {
         dragInfoReceived();
     }
+    else if (memcmp(code, kMsgDServerAddresses, 4) == 0) {
+        serverAddressesReceived();
+    }
 
     else if (memcmp(code, kMsgCClose, 4) == 0) {
         // server wants us to hangup
@@ -404,6 +407,13 @@ ServerProxy::sendInfo(const ClientInfo& info)
                                 info.m_x, info.m_y,
                                 info.m_w, info.m_h, 0,
                                 info.m_mx, info.m_my);
+
+    if (m_client != nullptr) {
+        std::vector<DisplayInfo> displays = m_client->getDisplays();
+        std::string payload = DisplayInfo::serializeList(displays);
+        LOG((CLOG_DEBUG "sending %d declared display(s) to server", (int)displays.size()));
+        ProtocolUtil::writef(m_stream, kMsgDDisplays, &payload);
+    }
 }
 
 KeyID
@@ -930,4 +940,13 @@ ServerProxy::sendDragInfo(UInt32 fileCount, const char* info, size_t size)
 {
     std::string data(info, size);
     ProtocolUtil::writef(m_stream, kMsgDDragInfo, fileCount, &data);
+}
+
+void
+ServerProxy::serverAddressesReceived()
+{
+    String addrs;
+    ProtocolUtil::readf(m_stream, kMsgDServerAddresses + 4, &addrs);
+    LOG((CLOG_NOTE "received server physical addresses from server: %s", addrs.c_str()));
+    m_client->onServerAddressesReceived(addrs);
 }
