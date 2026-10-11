@@ -20,9 +20,11 @@
 
 #include "barrier/PlatformScreen.h"
 #include "barrier/KeyMap.h"
+#include "barrier/protocol_types.h"
 #include "common/stdset.h"
 #include "common/stdvector.h"
 #include "XWindowsImpl.h"
+#include <vector>
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
@@ -50,6 +52,7 @@ public:
     virtual void        getShape(SInt32& x, SInt32& y,
                             SInt32& width, SInt32& height) const;
     virtual void        getCursorPos(SInt32& x, SInt32& y) const;
+    virtual std::vector<DisplayInfo> getDisplays() const override;
 
     // IPrimaryScreen overrides
     virtual void        reconfigure(UInt32 activeSides);

@@ -28,5 +28,20 @@ export ASAN_OPTIONS="$ASAN_OPTIONS"
 export LSAN_OPTIONS="$LSAN_OPTIONS"
 export UBSAN_OPTIONS="$UBSAN_OPTIONS"
 
+if [ "$OS" = "Linux" ]; then
+    if [ -z "$DISPLAY" ]; then
+        export DISPLAY=:1
+    fi
+    if [ -z "$XAUTHORITY" ]; then
+        export XAUTHORITY=$(ls /run/user/$(id -u)/gdm/Xauthority /run/user/$(id -u)/Xauthority $HOME/.Xauthority 2>/dev/null | head -n 1)
+    fi
+    $NOHUP_BIN $BARRIER_SRV_BIN -f -c $BARRIER_SRV_CONF >/dev/null 2>&1 &
+else
+    if [ -n "$SSH_CONNECTION" ]; then
+        open -a "Barrier Server"
+    else
+        exec $BARRIER_SRV_BIN -f -c $BARRIER_SRV_CONF >/dev/null 2>&1
+    fi
+fi
+
 $NOHUP_BIN $BARRIER_GUI_BIN >/dev/null 2>&1 &
-$NOHUP_BIN $BARRIER_SRV_BIN -f -c $BARRIER_SRV_CONF >/dev/null 2>&1 &

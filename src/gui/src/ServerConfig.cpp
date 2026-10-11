@@ -318,6 +318,9 @@ void ServerConfig::resizeGrid(int numColumns, int numRows)
 bool ServerConfig::loadFromConf(const QString& path)
 {
     m_Hotkeys.clear();
+    m_Monitors.clear();
+    m_ConfAliases.clear();
+    m_ConfExtraScreens.clear();
 
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -337,10 +340,35 @@ bool ServerConfig::loadFromConf(const QString& path)
 
         if (line.startsWith("section:")) {
             currentSection = line.mid(8).trimmed();
+            currentLinkScreen = "";
         } else if (line == "end") {
             currentSection = "";
+            currentLinkScreen = "";
         } else {
-            if (currentSection == "options") {
+            if (currentSection == "screens") {
+                if (line.endsWith(":")) {
+                    currentLinkScreen = line.left(line.length() - 1).trimmed();
+                } else if (!currentLinkScreen.isEmpty()) {
+                    m_ConfExtraScreens[currentLinkScreen].append(line);
+                }
+            } else if (currentSection == "monitors") {
+                if (line.endsWith(":")) {
+                    currentLinkScreen = line.left(line.length() - 1).trimmed();
+                } else if (!currentLinkScreen.isEmpty() && line.contains("=")) {
+                    QStringList parts = line.split("=");
+                    if (parts.size() >= 2) {
+                        QString key = parts[0].trimmed();
+                        QString val = parts.mid(1).join("=").trimmed();
+                        m_Monitors[currentLinkScreen][key] = val;
+                    }
+                }
+            } else if (currentSection == "aliases") {
+                if (line.endsWith(":")) {
+                    currentLinkScreen = line.left(line.length() - 1).trimmed();
+                } else if (!currentLinkScreen.isEmpty()) {
+                    m_ConfAliases[currentLinkScreen].append(line);
+                }
+            } else if (currentSection == "options") {
                 if (line.startsWith("server =")) {
                     m_ServerName = line.mid(line.indexOf('=')+1).trimmed();
                 } else if (line.startsWith("port =")) {
@@ -490,48 +518,133 @@ bool ServerConfig::loadFromConf(const QString& path)
         }
     }
 
-    if (m_ServerName.isEmpty()) {
-        qDebug() << "loadFromConf: m_ServerName is empty, aborting grid rebuild";
+    // Build bidirectional adjacency graph from screenLinks
+    struct Neighbor {
+        QString name;
+        int dx;
+        int dy;
+    };
+    QMap<QString, QList<Neighbor>> adj;
+    QSet<QString> allLinkedScreens;
+
+    for (auto it = screenLinks.begin(); it != screenLinks.end(); ++it) {
+        QString src = it.key();
+        allLinkedScreens.insert(src);
+        for (const Link& link : it.value()) {
+            allLinkedScreens.insert(link.target);
+            int dx = 0, dy = 0;
+            if (link.dir == "right") dx = 1;
+            else if (link.dir == "left") dx = -1;
+            else if (link.dir == "down") dy = 1;
+            else if (link.dir == "up") dy = -1;
+            else continue;
+
+            adj[src].append({link.target, dx, dy});
+            adj[link.target].append({src, -dx, -dy});
+        }
+    }
+
+    for (auto it = m_Monitors.begin(); it != m_Monitors.end(); ++it) {
+        allLinkedScreens.insert(it.key());
+    }
+
+    if (allLinkedScreens.isEmpty()) {
+        if (!m_ServerName.isEmpty()) {
+            for (auto& s : m_Screens) { s = Screen(); }
+            int gx = m_NumColumns / 2;
+            int gy = m_NumRows / 2;
+            int arrayPos = gy * m_NumColumns + gx;
+            if (arrayPos >= 0 && arrayPos < static_cast<int>(m_Screens.size())) {
+                m_Screens[arrayPos].setName(m_ServerName);
+            }
+        }
         return true;
     }
 
-    // Topological centering logic
-    QMap<QString, QPoint> coords;
-    coords[m_ServerName] = QPoint(0, 0);
-    
-    QQueue<QString> graphQueue;
-    graphQueue.enqueue(m_ServerName);
-    
-    int min_x = 0, max_x = 0, min_y = 0, max_y = 0;
-    
-    while (!graphQueue.isEmpty()) {
-        QString curr = graphQueue.dequeue();
-        QPoint p = coords[curr];
-        
-        QList<Link> links = screenLinks.value(curr);
-        for (const Link& link : links) {
-            if (coords.contains(link.target)) continue;
-            
-            QPoint tp = p;
-            if (link.dir == "right") tp.rx() += 1;
-            else if (link.dir == "left") tp.rx() -= 1;
-            else if (link.dir == "down") tp.ry() += 1;
-            else if (link.dir == "up") tp.ry() -= 1;
-            else continue;
-            
-            coords[link.target] = tp;
-            graphQueue.enqueue(link.target);
-            
-            if (tp.x() < min_x) min_x = tp.x();
-            if (tp.x() > max_x) max_x = tp.x();
-            if (tp.y() < min_y) min_y = tp.y();
-            if (tp.y() > max_y) max_y = tp.y();
+    // Determine root screen for BFS
+    QString startScreen;
+    if (allLinkedScreens.contains(m_ServerName)) {
+        startScreen = m_ServerName;
+    } else {
+        QString sLower = m_ServerName.toLower();
+        for (const QString& name : allLinkedScreens) {
+            QString nLower = name.toLower();
+            if (sLower.contains(nLower) || nLower.contains(sLower)) {
+                startScreen = name;
+                break;
+            }
+            QStringList tokens = sLower.split(QRegExp("[^a-z0-9]"), Qt::SkipEmptyParts);
+            bool tokenMatch = false;
+            for (const QString& t : tokens) {
+                if (t.length() >= 4 && nLower.contains(t)) {
+                    startScreen = name;
+                    tokenMatch = true;
+                    break;
+                }
+            }
+            if (tokenMatch) break;
+        }
+
+        if (startScreen.isEmpty() && !allLinkedScreens.isEmpty()) {
+            startScreen = *allLinkedScreens.begin();
         }
     }
-    
+
+    QMap<QString, QPoint> coords;
+    QQueue<QString> graphQueue;
+    QSet<QString> visited;
+
+    int min_x = 0, max_x = 0, min_y = 0, max_y = 0;
+    bool hasBounds = false;
+
+    auto runBfs = [&](const QString& root, QPoint startPt) {
+        coords[root] = startPt;
+        visited.insert(root);
+        graphQueue.enqueue(root);
+
+        if (!hasBounds) {
+            min_x = max_x = startPt.x();
+            min_y = max_y = startPt.y();
+            hasBounds = true;
+        } else {
+            if (startPt.x() < min_x) min_x = startPt.x();
+            if (startPt.x() > max_x) max_x = startPt.x();
+            if (startPt.y() < min_y) min_y = startPt.y();
+            if (startPt.y() > max_y) max_y = startPt.y();
+        }
+
+        while (!graphQueue.isEmpty()) {
+            QString curr = graphQueue.dequeue();
+            QPoint p = coords[curr];
+
+            const QList<Neighbor>& neighbors = adj.value(curr);
+            for (const Neighbor& n : neighbors) {
+                if (visited.contains(n.name)) continue;
+
+                QPoint tp(p.x() + n.dx, p.y() + n.dy);
+                coords[n.name] = tp;
+                visited.insert(n.name);
+                graphQueue.enqueue(n.name);
+
+                if (tp.x() < min_x) min_x = tp.x();
+                if (tp.x() > max_x) max_x = tp.x();
+                if (tp.y() < min_y) min_y = tp.y();
+                if (tp.y() > max_y) max_y = tp.y();
+            }
+        }
+    };
+
+    runBfs(startScreen, QPoint(0, 0));
+
+    for (const QString& s : allLinkedScreens) {
+        if (!visited.contains(s)) {
+            runBfs(s, QPoint(max_x + 2, 0));
+        }
+    }
+
     int graph_width = max_x - min_x + 1;
     int graph_height = max_y - min_y + 1;
-    
+
     // Auto-expand grid if the graph doesn't fit
     if (graph_width > m_NumColumns || graph_height > m_NumRows) {
         int newCols = std::max(m_NumColumns, graph_width);
@@ -540,34 +653,44 @@ bool ServerConfig::loadFromConf(const QString& path)
                  << "to" << newCols << "x" << newRows;
         resizeGrid(newCols, newRows);
     }
-    
+
     // Clear existing screens
     for (auto& s : m_Screens) { s = Screen(); }
-    
+
     // Calculate precise center offsets
     int offset_x = (m_NumColumns - graph_width) / 2 - min_x;
     int offset_y = (m_NumRows - graph_height) / 2 - min_y;
-    
+
     // Place all tracked screens in the centered grid
     QMapIterator<QString, QPoint> i(coords);
     while (i.hasNext()) {
         i.next();
         QString name = i.key();
         QPoint p = i.value();
-        
+
         int gx = p.x() + offset_x;
         int gy = p.y() + offset_y;
-        
+
         if (gx >= 0 && gx < m_NumColumns && gy >= 0 && gy < m_NumRows) {
             int arrayPos = gy * m_NumColumns + gx;
             m_Screens[arrayPos].setName(name);
-            
+
+            if (m_Monitors.contains(name)) {
+                m_Screens[arrayPos].setIsMonitor(true);
+                m_Screens[arrayPos].setMonitorMatch(m_Monitors[name].value("match"));
+            }
+
             QMap<QString, QString> netProps = screenNetwork.value(name);
-            if (netProps.contains("ip")) m_Screens[arrayPos].setNetworkIP(netProps["ip"]);
-            if (netProps.contains("ssh_user")) m_Screens[arrayPos].setNetworkSSHUser(netProps["ssh_user"]);
-            if (netProps.contains("ssh_port")) m_Screens[arrayPos].setNetworkSSHPort(netProps["ssh_port"].toInt());
-            if (netProps.contains("client_cmd")) m_Screens[arrayPos].setNetworkClientCmd(netProps["client_cmd"]);
-            
+            if (!m_Screens[arrayPos].isMonitor()) {
+                if (netProps.isEmpty() && (name == startScreen || name.toLower().contains("macbook"))) {
+                    netProps = screenNetwork.value(m_ServerName);
+                }
+                if (netProps.contains("ip")) m_Screens[arrayPos].setNetworkIP(netProps["ip"]);
+                if (netProps.contains("ssh_user")) m_Screens[arrayPos].setNetworkSSHUser(netProps["ssh_user"]);
+                if (netProps.contains("ssh_port")) m_Screens[arrayPos].setNetworkSSHPort(netProps["ssh_port"].toInt());
+                if (netProps.contains("client_cmd")) m_Screens[arrayPos].setNetworkClientCmd(netProps["client_cmd"]);
+            }
+
             qDebug() << "loadFromConf: Placed" << name << "at grid(" << gx << "," << gy << ") index" << arrayPos;
         }
     }
@@ -598,18 +721,67 @@ QTextStream& operator<<(QTextStream& outStream, const ServerConfig& config)
 {
     outStream << "section: screens" << Qt::endl;
 
+    QSet<QString> writtenScreens;
     for (const Screen& s : config.screens()) {
-        if (!s.isNull())
-            s.writeScreensSection(outStream);
+        if (!s.isNull()) {
+            if (!s.isMonitor()) {
+                s.writeScreensSection(outStream);
+            }
+            writtenScreens.insert(s.name());
+        }
+    }
+
+    for (auto it = config.confExtraScreens().begin(); it != config.confExtraScreens().end(); ++it) {
+        if (!writtenScreens.contains(it.key()) && !config.monitors().contains(it.key())) {
+            outStream << "\t" << it.key() << ":" << Qt::endl;
+            for (const QString& line : it.value()) {
+                outStream << "\t\t" << line << Qt::endl;
+            }
+            writtenScreens.insert(it.key());
+        }
     }
 
     outStream << "end" << Qt::endl << Qt::endl;
+
+    QMap<QString, QMap<QString, QString>> allMonitors = config.monitors();
+    for (const Screen& s : config.screens()) {
+        if (!s.isNull() && s.isMonitor()) {
+            QString pattern = s.monitorMatch();
+            if (pattern.isEmpty()) {
+                pattern = QString("*%1*").arg(s.name());
+            }
+            allMonitors[s.name()]["match"] = pattern;
+        }
+    }
+    for (const Screen& s : config.screens()) {
+        if (!s.isNull() && !s.isMonitor() && allMonitors.contains(s.name())) {
+            allMonitors.remove(s.name());
+        }
+    }
+
+    if (!allMonitors.isEmpty()) {
+        outStream << "section: monitors" << Qt::endl;
+        for (auto it = allMonitors.begin(); it != allMonitors.end(); ++it) {
+            outStream << "\t" << it.key() << ":" << Qt::endl;
+            for (auto propIt = it.value().begin(); propIt != it.value().end(); ++propIt) {
+                outStream << "\t\t" << propIt.key() << " = " << propIt.value() << Qt::endl;
+            }
+        }
+        outStream << "end" << Qt::endl << Qt::endl;
+    }
 
     outStream << "section: aliases" << Qt::endl;
 
     for (const Screen& s : config.screens()) {
         if (!s.isNull())
             s.writeAliasesSection(outStream);
+    }
+
+    for (auto it = config.confAliases().begin(); it != config.confAliases().end(); ++it) {
+        outStream << "\t" << it.key() << ":" << Qt::endl;
+        for (const QString& alias : it.value()) {
+            outStream << "\t\t" << alias << Qt::endl;
+        }
     }
 
     outStream << "end" << Qt::endl << Qt::endl;
@@ -633,7 +805,7 @@ QTextStream& operator<<(QTextStream& outStream, const ServerConfig& config)
     
     outStream << "section: network" << Qt::endl;
     for (int i = 0; i < config.screens().size(); i++) {
-        if (!config.screens()[i].isNull()) {
+        if (!config.screens()[i].isNull() && !config.screens()[i].isMonitor()) {
             const Screen& s = config.screens()[i];
             if (!s.networkIP().isEmpty() || !s.networkSSHUser().isEmpty() || s.networkSSHPort() > 0 || !s.networkClientCmd().isEmpty()) {
                 outStream << "\t" << s.name() << ":" << Qt::endl;

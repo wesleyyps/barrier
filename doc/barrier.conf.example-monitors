@@ -1,0 +1,229 @@
+# ==============================================================================
+# Barrier Configuration Example: Physical & Dynamic Monitors (section: monitors)
+# ==============================================================================
+#
+# This file demonstrates the dynamic monitor architecture in Barrier.
+#
+# BACKGROUND & THE PROBLEM:
+# In traditional Barrier/Synergy, each entry in "section: screens" represents an
+# entire host computer. However, modern multi-computer desks frequently have:
+#  1. Standalone external monitors physically positioned next to one computer,
+#     but cabled (via HDMI/DisplayPort/Thunderbolt) to another computer.
+#  2. Floating monitors that users move between laptops (e.g., unplugging an HDMI
+#     cable from a work laptop and plugging it into a personal desktop).
+#  3. Multi-monitor setups where jumping across machines should only occur at the
+#     outer desk boundaries, rather than prematurely hopping screens.
+#
+# THE SOLUTION: "section: monitors"
+# Barrier decouples the PHYSICAL MONITOR from the HOST COMPUTER that drives it:
+#  - "section: screens" defines host computers (which have CPU, OS, and network).
+#  - "section: monitors" defines standalone physical displays, matched by their
+#    hardware EDID or model name pattern (e.g. *SyncMaster*, *Dell*, *Retina*).
+#  - When client computers connect, they announce their connected displays via the
+#    DINF (Display Info) protocol using native display APIs:
+#       * macOS: CoreGraphics CGDirectDisplay queries and localized EDID model names.
+#       * Linux: XRandR monitor outputs, geometries, and EDID properties.
+#  - The server dynamically associates each monitor with the host computer currently
+#    driving it. If you move the cable from Computer A to Computer B, Barrier
+#    automatically re-routes cursor navigation without requiring configuration edits!
+#
+# ==============================================================================
+# PHYSICAL DESK ARRANGEMENT:
+#
+#  +------------------+   +-------------------+   +-------------------+   +------------------+
+#  | Physical Monitor |   | Linux Laptop Host |   | MacBook Host      |   | External Monitor |
+#  |  "syncmaster"    |<->|   "ubuntu-nb"     |<->| "macbook-retina"  |<->|   "dell-u27"     |
+#  | [EDID: SyncMaster]   | [Display: eDP-1]  |   | [Display: Retina] |   | [EDID: DELL U27] |
+#  +------------------+   +-------------------+   +-------------------+   +------------------+
+#           ^                                                                      ^
+#           |=========== HDMI cable plugged into "macbook-retina" =================|
+#           |                                                                      |
+#           +=========== (OR moved to "ubuntu-nb" when docked) ====================+
+#
+# In the diagram above, "syncmaster" is physically located to the left of the
+# Linux laptop, even though its display cable is plugged into the MacBook!
+# With "section: monitors", you link "syncmaster" directly to "ubuntu-nb" in
+# "section: links", and Barrier handles all coordinate translation seamlessly.
+# ==============================================================================
+
+section: screens
+	# --------------------------------------------------------------------------
+	# Host Computers (Network Nodes)
+	# Each host can act as a server or client. Hostnames must match the names
+	# reported in the Barrier GUI or by the 'hostname' command.
+	# --------------------------------------------------------------------------
+	ubuntu-nb:
+		halfDuplexCapsLock = false
+		halfDuplexNumLock = false
+		halfDuplexScrollLock = false
+		xtestIsXineramaUnaware = false
+		preserveFocus = false
+		switchCorners = none
+		switchCornerSize = 0
+
+	macbook-retina:
+		halfDuplexCapsLock = false
+		halfDuplexNumLock = false
+		halfDuplexScrollLock = false
+		xtestIsXineramaUnaware = false
+		preserveFocus = false
+		switchCorners = none
+		switchCornerSize = 0
+
+	windows-pc:
+		halfDuplexCapsLock = false
+		halfDuplexNumLock = false
+		halfDuplexScrollLock = false
+		xtestIsXineramaUnaware = false
+		preserveFocus = false
+		switchCorners = none
+		switchCornerSize = 0
+end
+
+section: monitors
+	# --------------------------------------------------------------------------
+	# Standalone Physical Monitors
+	#
+	# Each entry defines a physical screen name used in "section: links".
+	# The 'match' attribute specifies a case-insensitive glob wildcard pattern
+	# matched against the monitor's hardware EDID model name or output identifier:
+	#
+	# Examples of patterns:
+	#   match = *SyncMaster*      (Matches Samsung SyncMaster monitors)
+	#   match = *Retina*          (Matches Apple MacBook Built-in Retina displays)
+	#   match = *DELL U27*        (Matches Dell Ultrasharp 27" monitors)
+	#   match = *LG UltraWide*    (Matches LG UltraWide monitors)
+	#   match = *HDMI-1*          (Matches Linux display output name HDMI-1)
+	# --------------------------------------------------------------------------
+	syncmaster:
+		match = *SyncMaster*
+
+	macbook_retina:
+		match = *Retina*
+
+	dell-u27:
+		match = *DELL U27*
+end
+
+section: aliases
+	# --------------------------------------------------------------------------
+	# Hostname Aliases
+	# Map network fully-qualified domain names (FQDN) or zero-conf names
+	# to the screen names defined in "section: screens".
+	# --------------------------------------------------------------------------
+	MacBook-Pro.local:
+		macbook-retina
+
+	DESKTOP-WIN11.localdomain:
+		windows-pc
+end
+
+section: links
+	# --------------------------------------------------------------------------
+	# Spatial / Directional Links
+	#
+	# You can link standalone physical monitors and host computers interchangeably!
+	# The links define the physical layout of screens across your desk:
+	#
+	#  [syncmaster] <---> [ubuntu-nb] <---> [macbook_retina] <---> [dell-u27]
+	#
+	# Even if "syncmaster" is plugged into the MacBook, moving the cursor to the
+	# left of "ubuntu-nb" will transition into "syncmaster".
+	# --------------------------------------------------------------------------
+	syncmaster:
+		right = ubuntu-nb
+
+	ubuntu-nb:
+		left  = syncmaster
+		right = macbook_retina
+
+	macbook_retina:
+		left  = ubuntu-nb
+		right = dell-u27
+
+	dell-u27:
+		left  = macbook_retina
+end
+
+section: network
+	# --------------------------------------------------------------------------
+	# Optional Network Parameters
+	# Used by Barrier launch scripts to automatically connect clients over SSH
+	# or specific IP addresses when starting servers.
+	# --------------------------------------------------------------------------
+	ubuntu-nb:
+		ip = 192.168.1.101
+		ssh_user = wsousa
+		ssh_port = 22
+		client_cmd = "/usr/local/bin/barrier-client-connect.sh %s"
+
+	macbook-retina:
+		ip = 192.168.1.103
+		ssh_user = wesley
+		ssh_port = 22
+		client_cmd = "/usr/local/bin/barrier-client-connect.sh %s"
+
+	windows-pc:
+		ip = 192.168.1.100
+		ssh_user = dmais
+		ssh_port = 22
+		client_cmd = "/usr/local/bin/barrier-client-connect.sh %s"
+end
+
+section: options
+	# --------------------------------------------------------------------------
+	# Server & Behavior Options
+	# --------------------------------------------------------------------------
+	# Primary server screen name
+	server = macbook-retina
+
+	# Network port (default 24800)
+	port = 24800
+	address = :24800
+
+	# Features
+	enableDragDrop = true
+	clipboardSharing = true
+	relativeMouseMoves = false
+	screenSaverSync = true
+	win32KeepForeground = false
+
+	# Security (set to true to enable TLS encryption)
+	cryptoEnabled = false
+	requireClientCertificate = false
+
+	# Directory for received drag-and-drop files
+	dropTarget = "/Users/wesley/Downloads"
+
+	# Logging level (1=FATAL, 2=ERROR, 3=WARNING, 4=NOTE, 5=INFO, 6=DEBUG)
+	logLevel = 4
+	logToFile = false
+
+	# --------------------------------------------------------------------------
+	# Direct Switch Hotkeys
+	# You can bind hotkeys to jump directly to any computer OR standalone monitor!
+	# --------------------------------------------------------------------------
+	keystroke(Control+Shift+1) = switchToScreen(syncmaster)
+	keystroke(Control+Shift+2) = switchToScreen(ubuntu-nb)
+	keystroke(Control+Shift+3) = switchToScreen(macbook_retina)
+	keystroke(Control+Shift+4) = switchToScreen(dell-u27)
+
+	# Return to the host server
+	keystroke(Control+Shift+0) = switchToScreen(macbook_retina)
+end
+
+# ==============================================================================
+# MULTI-MONITOR TRAVERSAL RULES (FAQ):
+#
+# Q: What happens if a laptop has an attached monitor that is NOT listed in
+#    "section: monitors"?
+# A: Barrier automatically detects it as an internal secondary display of that
+#    laptop. The mouse moves smoothly between the laptop's screen and its attached
+#    monitor without prematurely hopping out to neighbor computers. Transitions
+#    to neighbor machines only trigger when reaching the outer edge of the
+#    laptop's entire combined desktop geometry.
+#
+# Q: What happens if a display IS listed in "section: monitors"?
+# A: It is treated as an independent spatial tile in the global desk layout,
+#    allowing you to place other computers in between it and its host machine.
+# ==============================================================================

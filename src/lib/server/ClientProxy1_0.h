@@ -60,6 +60,7 @@ public:
     virtual void        setOptions(const OptionsList& options);
     virtual void        sendDragInfo(UInt32 fileCount, const char* info, size_t size);
     virtual void        fileChunkSending(UInt8 mark, char* data, size_t dataSize);
+    virtual std::vector<DisplayInfo> getDisplays() const override { return m_declaredDisplays; }
 
 protected:
     virtual bool        parseHandshakeMessage(const UInt8* code);
@@ -81,6 +82,7 @@ private:
     void                handleFlatline(const Event&, void*);
 
     bool                recvInfo();
+    bool                recvDisplays();
     bool                recvGrabClipboard();
 
 protected:
@@ -104,4 +106,5 @@ private:
     EventQueueTimer*    m_heartbeatTimer;
     MessageParser        m_parser;
     IEventQueue*        m_events;
+    std::vector<DisplayInfo> m_declaredDisplays;
 };

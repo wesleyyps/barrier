@@ -198,6 +198,9 @@ ClientProxy1_0::parseHandshakeMessage(const UInt8* code)
             return true;
         }
     }
+    else if (memcmp(code, kMsgDDisplays, 4) == 0) {
+        return recvDisplays();
+    }
     return false;
 }
 
@@ -211,6 +214,9 @@ ClientProxy1_0::parseMessage(const UInt8* code)
             return true;
         }
         return false;
+    }
+    else if (memcmp(code, kMsgDDisplays, 4) == 0) {
+        return recvDisplays();
     }
     if (memcmp(code, kMsgCNoop, 4) == 0) {
         // discard no-ops
@@ -493,6 +499,23 @@ ClientProxy1_0::recvGrabClipboard()
     m_events->addEvent(Event(m_events->forClipboard().clipboardGrabbed(),
                             getEventTarget(), info));
 
+    return true;
+}
+
+bool
+ClientProxy1_0::recvDisplays()
+{
+    std::string payload;
+    if (!ProtocolUtil::readf(getStream(), kMsgDDisplays + 4, &payload)) {
+        return false;
+    }
+    m_declaredDisplays = DisplayInfo::deserializeList(payload);
+    LOG((CLOG_NOTE "client \"%s\" declared %d display(s)", getName().c_str(), (int)m_declaredDisplays.size()));
+    for (const auto& d : m_declaredDisplays) {
+        LOG((CLOG_NOTE "  display: id='%s' name='%s' bounds=[%d,%d %dx%d] primary=%d",
+             d.m_id.c_str(), d.m_name.c_str(), d.m_x, d.m_y, d.m_w, d.m_h, (int)d.m_isPrimary));
+    }
+    m_events->addEvent(Event(m_events->forIScreen().shapeChanged(), getEventTarget()));
     return true;
 }
 

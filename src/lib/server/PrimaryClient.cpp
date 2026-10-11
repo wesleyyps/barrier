@@ -277,3 +277,12 @@ PrimaryClient::setOptions(const OptionsList& options)
 {
     m_screen->setOptions(options);
 }
+
+std::vector<DisplayInfo>
+PrimaryClient::getDisplays() const
+{
+    if (m_screen != nullptr) {
+        return m_screen->getDisplays();
+    }
+    return std::vector<DisplayInfo>();
+}

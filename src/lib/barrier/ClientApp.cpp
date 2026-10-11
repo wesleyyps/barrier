@@ -23,6 +23,21 @@
 #include "barrier/protocol_types.h"
 #include "server/Config.h"
 #include <fstream>
+#include <sstream>
+#include "common/DataDirectories.h"
+
+#if SYSAPI_WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <fcntl.h>
+#include <unistd.h>
+#endif
+
 #include "barrier/Screen.h"
 #include "barrier/XScreen.h"
 #include "barrier/ClientArgs.h"
@@ -64,12 +79,17 @@ ClientApp::ClientApp(IEventQueue* events, CreateTaskBarReceiverFunc createTaskBa
     App(events, createTaskBarReceiver, new ClientArgs()),
     m_client(nullptr),
     m_clientScreen(nullptr),
-    m_serverAddress(nullptr)
+    m_serverAddress(nullptr),
+    m_currentFallbackIndex(0),
+    m_usingFallback(false),
+    m_failbackInProgress(false),
+    m_failbackProbeTimer(nullptr)
 {
 }
 
 ClientApp::~ClientApp()
 {
+    cleanupFailbackProbe();
     delete m_serverAddress;
 }
 
@@ -124,6 +144,13 @@ ClientApp::parseArgs(int argc, const char* const* argv)
 
         // save server address
         if (!args().m_barrierAddress.empty()) {
+            m_primaryServerAddress = args().m_barrierAddress;
+            m_primaryServerHost = m_primaryServerAddress;
+            size_t colon = m_primaryServerHost.find(':');
+            if (colon != std::string::npos) {
+                m_primaryServerHost = m_primaryServerHost.substr(0, colon);
+            }
+            loadFallbackAddressesFromCache();
             try {
                 *m_serverAddress = NetworkAddress(args().m_barrierAddress, kDefaultPort);
                 m_serverAddress->resolve();
@@ -329,7 +356,14 @@ ClientApp::handleClientConnected(const Event&, void*)
     // regardless of which log level is set
     LOG((CLOG_PRINT "connected to server"));
     resetRestartTimeout();
+    m_failbackInProgress = false;
     updateStatus();
+
+    if (m_usingFallback) {
+        LOG((CLOG_NOTE "connected to server via fallback address (%s). Scheduling failback probe for primary (%s)",
+             m_serverAddress->getHostname().c_str(), m_primaryServerAddress.c_str()));
+        scheduleFailbackProbe();
+    }
 }
 
 
@@ -340,6 +374,23 @@ ClientApp::handleClientFailed(const Event& e, void*)
         static_cast<Client::FailInfo*>(e.getData());
 
     updateStatus(String("Failed to connect to server: ") + info->m_what);
+
+    if (m_failbackInProgress) {
+        m_failbackInProgress = false;
+        LOG((CLOG_NOTE "dynamic failover: failback in progress, reconnecting to primary (%s)...",
+             m_primaryServerAddress.c_str()));
+        if (args().m_restartable && !m_suspended) {
+            scheduleClientRestart(0.1);
+        }
+        delete info;
+        return;
+    }
+
+    bool switched = false;
+    if (args().m_restartable && info->m_retry) {
+        switched = selectNextAddress();
+    }
+
     if (!args().m_restartable || !info->m_retry) {
         LOG((CLOG_ERR "failed to connect to server: %s", info->m_what.c_str()));
         m_events->addEvent(Event(Event::kQuit));
@@ -347,7 +398,8 @@ ClientApp::handleClientFailed(const Event& e, void*)
     else {
         LOG((CLOG_WARN "failed to connect to server: %s", info->m_what.c_str()));
         if (!m_suspended) {
-            scheduleClientRestart(nextRestartTimeout());
+            double retry = switched ? 0.5 : nextRestartTimeout();
+            scheduleClientRestart(retry);
         }
     }
     delete info;
@@ -358,11 +410,24 @@ void
 ClientApp::handleClientDisconnected(const Event&, void*)
 {
     LOG((CLOG_NOTE "disconnected from server"));
+    cleanupFailbackProbe();
     if (!args().m_restartable) {
         m_events->addEvent(Event(Event::kQuit));
     }
     else if (!m_suspended) {
-        scheduleClientRestart(nextRestartTimeout());
+        if (m_failbackInProgress) {
+            m_failbackInProgress = false;
+            LOG((CLOG_NOTE "dynamic failover: reconnecting to primary server (%s)...",
+                 m_primaryServerAddress.c_str()));
+            scheduleClientRestart(0.1);
+        } else {
+            bool switched = false;
+            if (!m_fallbackServerAddresses.empty()) {
+                switched = selectNextAddress();
+            }
+            double retry = switched ? 0.5 : nextRestartTimeout();
+            scheduleClientRestart(retry);
+        }
     }
     updateStatus();
 }
@@ -395,6 +460,11 @@ ClientApp::openClient(const String& name, const NetworkAddress& address,
             client->getEventTarget(),
             new TMethodEventJob<ClientApp>(this, &ClientApp::handleClientDisconnected));
 
+        m_events->adoptHandler(
+            m_events->forClient().serverAddressesReceived(),
+            client->getEventTarget(),
+            new TMethodEventJob<ClientApp>(this, &ClientApp::handleServerAddressesReceived));
+
     } catch (std::bad_alloc &ba) {
         delete client;
         throw ba;
@@ -414,6 +484,8 @@ ClientApp::closeClient(Client* client)
     m_events->removeHandler(m_events->forClient().connected(), client);
     m_events->removeHandler(m_events->forClient().connectionFailed(), client);
     m_events->removeHandler(m_events->forClient().disconnected(), client);
+    m_events->removeHandler(m_events->forClient().serverAddressesReceived(), client);
+    cleanupFailbackProbe();
     delete client;
 }
 
@@ -438,6 +510,9 @@ ClientApp::startClient()
                 *m_serverAddress, clientScreen);
             m_clientScreen  = clientScreen;
             LOG((CLOG_NOTE "started client"));
+        }
+        else if (m_client != nullptr && m_serverAddress != nullptr) {
+            m_client->setServerAddress(*m_serverAddress);
         }
 
         m_client->connect();
@@ -475,6 +550,7 @@ ClientApp::startClient()
 void
 ClientApp::stopClient()
 {
+    cleanupFailbackProbe();
     closeClient(m_client);
     closeClientScreen(m_clientScreen);
     m_client       = nullptr;
@@ -657,6 +733,13 @@ bool ClientApp::loadConfig(const String& pathname) {
 
         if (!config.getServerIp().empty() && args().m_barrierAddress.empty()) {
             args().m_barrierAddress = config.getServerIp();
+            m_primaryServerAddress = args().m_barrierAddress;
+            m_primaryServerHost = m_primaryServerAddress;
+            size_t colon = m_primaryServerHost.find(':');
+            if (colon != std::string::npos) {
+                m_primaryServerHost = m_primaryServerHost.substr(0, colon);
+            }
+            loadFallbackAddressesFromCache();
             try {
                 if (m_serverAddress == nullptr) m_serverAddress = new NetworkAddress;
                 *m_serverAddress = NetworkAddress(args().m_barrierAddress, kDefaultPort);
@@ -672,5 +755,294 @@ bool ClientApp::loadConfig(const String& pathname) {
     catch (XConfigRead& e) {
         LOG((CLOG_ERR "configuration error: %s", e.what()));
         return false;
+    }
+}
+
+void
+ClientApp::handleServerAddressesReceived(const Event& e, void*)
+{
+    auto* addrsStr = static_cast<String*>(e.getData());
+    if (addrsStr == nullptr) {
+        return;
+    }
+
+    LOG((CLOG_NOTE "dynamic failover: processing server advertised addresses: %s", addrsStr->c_str()));
+
+    std::stringstream ss(*addrsStr);
+    std::string ip;
+    std::vector<std::string> newFallbacks;
+
+    while (std::getline(ss, ip, ',')) {
+        ip.erase(0, ip.find_first_not_of(" \t\r\n"));
+        ip.erase(ip.find_last_not_of(" \t\r\n") + 1);
+        if (ip.empty()) continue;
+
+        if (ip != m_primaryServerHost && ip != m_primaryServerAddress) {
+            if (std::find(newFallbacks.begin(), newFallbacks.end(), ip) == newFallbacks.end()) {
+                newFallbacks.push_back(ip);
+            }
+        }
+    }
+
+    if (!newFallbacks.empty()) {
+        m_fallbackServerAddresses = newFallbacks;
+        saveFallbackAddressesToCache();
+        LOG((CLOG_NOTE "dynamic failover: updated %d fallback server address(es)", (int)m_fallbackServerAddresses.size()));
+    }
+
+    delete addrsStr;
+}
+
+bool
+ClientApp::selectNextAddress()
+{
+    if (m_fallbackServerAddresses.empty()) {
+        return false;
+    }
+
+    int port = (m_serverAddress != nullptr && m_serverAddress->getPort() != 0) ?
+               m_serverAddress->getPort() : kDefaultPort;
+
+    if (!m_usingFallback) {
+        m_usingFallback = true;
+        m_currentFallbackIndex = 0;
+        std::string fallbackIp = m_fallbackServerAddresses[m_currentFallbackIndex];
+        LOG((CLOG_NOTE "dynamic failover: primary server (%s) unreachable; switching to fallback address (%s:%d)",
+             m_primaryServerAddress.c_str(), fallbackIp.c_str(), port));
+        try {
+            if (m_serverAddress == nullptr) m_serverAddress = new NetworkAddress;
+            *m_serverAddress = NetworkAddress(fallbackIp, port);
+            m_serverAddress->resolve();
+            if (m_client != nullptr) {
+                m_client->setServerAddress(*m_serverAddress);
+            }
+            return true;
+        } catch (...) {
+            return false;
+        }
+    } else {
+        m_currentFallbackIndex++;
+        if (m_currentFallbackIndex < m_fallbackServerAddresses.size()) {
+            std::string fallbackIp = m_fallbackServerAddresses[m_currentFallbackIndex];
+            LOG((CLOG_NOTE "dynamic failover: switching to next fallback address (%s:%d)", fallbackIp.c_str(), port));
+            try {
+                if (m_serverAddress == nullptr) m_serverAddress = new NetworkAddress;
+                *m_serverAddress = NetworkAddress(fallbackIp, port);
+                m_serverAddress->resolve();
+                if (m_client != nullptr) {
+                    m_client->setServerAddress(*m_serverAddress);
+                }
+                return true;
+            } catch (...) {
+                return false;
+            }
+        } else {
+            resetToPrimaryAddress();
+            return true;
+        }
+    }
+}
+
+void
+ClientApp::resetToPrimaryAddress()
+{
+    if (m_usingFallback) {
+        m_usingFallback = false;
+        m_currentFallbackIndex = 0;
+        cleanupFailbackProbe();
+        LOG((CLOG_NOTE "dynamic failover: resetting connection target to primary address (%s)",
+             m_primaryServerAddress.c_str()));
+        try {
+            if (m_serverAddress == nullptr) m_serverAddress = new NetworkAddress;
+            std::string cleanHost = m_primaryServerAddress;
+            int cleanPort = kDefaultPort;
+            size_t colon = cleanHost.find(':');
+            if (colon != std::string::npos) {
+                cleanPort = std::stoi(cleanHost.substr(colon + 1));
+                cleanHost = cleanHost.substr(0, colon);
+            }
+            *m_serverAddress = NetworkAddress(cleanHost, cleanPort);
+            m_serverAddress->resolve();
+            if (m_client != nullptr) {
+                m_client->setServerAddress(*m_serverAddress);
+            }
+        } catch (...) {
+        }
+    }
+}
+
+void
+ClientApp::scheduleFailbackProbe()
+{
+    cleanupFailbackProbe();
+    if (!m_usingFallback || m_primaryServerAddress.empty()) {
+        return;
+    }
+    // Probe primary server every 5 seconds
+    EventQueueTimer* timer = m_events->newTimer(5.0, nullptr);
+    m_events->adoptHandler(Event::kTimer, timer,
+        new TMethodEventJob<ClientApp>(this, &ClientApp::handleFailbackProbe, timer));
+    m_failbackProbeTimer = timer;
+}
+
+void
+ClientApp::cleanupFailbackProbe()
+{
+    if (m_failbackProbeTimer != nullptr) {
+        m_events->deleteTimer(m_failbackProbeTimer);
+        m_failbackProbeTimer = nullptr;
+    }
+}
+
+void
+ClientApp::handleFailbackProbe(const Event&, void* vtimer)
+{
+    m_events->deleteTimer(static_cast<EventQueueTimer*>(vtimer));
+    m_failbackProbeTimer = nullptr;
+
+    if (!m_usingFallback || m_client == nullptr || !m_client->isConnected()) {
+        return;
+    }
+
+    if (probeServerAddress(m_primaryServerAddress, kDefaultPort)) {
+        LOG((CLOG_NOTE "dynamic failover: primary cable server (%s) is back online! Switching from fallback back to primary.",
+             m_primaryServerAddress.c_str()));
+        m_failbackInProgress = true;
+        resetToPrimaryAddress();
+        if (m_client != nullptr) {
+            m_client->disconnect(nullptr);
+        }
+    } else {
+        scheduleFailbackProbe();
+    }
+}
+
+bool
+ClientApp::probeServerAddress(const std::string& host, int port)
+{
+    std::string cleanHost = host;
+    int cleanPort = port;
+    size_t colon = cleanHost.find(':');
+    if (colon != std::string::npos) {
+        cleanPort = std::stoi(cleanHost.substr(colon + 1));
+        cleanHost = cleanHost.substr(0, colon);
+    }
+#if SYSAPI_WIN32
+    SOCKET s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (s == INVALID_SOCKET) return false;
+    u_long mode = 1;
+    ioctlsocket(s, FIONBIO, &mode);
+    struct addrinfo hints, *resAddr = nullptr;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    char portStr[16];
+    snprintf(portStr, sizeof(portStr), "%d", cleanPort);
+    if (getaddrinfo(cleanHost.c_str(), portStr, &hints, &resAddr) != 0 || resAddr == nullptr) {
+        closesocket(s);
+        return false;
+    }
+    connect(s, resAddr->ai_addr, (int)resAddr->ai_addrlen);
+    freeaddrinfo(resAddr);
+    fd_set wset;
+    FD_ZERO(&wset);
+    FD_SET(s, &wset);
+    struct timeval tv;
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+    int res = select((int)s + 1, nullptr, &wset, nullptr, &tv);
+    closesocket(s);
+    return (res > 0);
+#else
+    int s = socket(AF_INET, SOCK_STREAM, 0);
+    if (s < 0) return false;
+    int flags = fcntl(s, F_GETFL, 0);
+    fcntl(s, F_SETFL, flags | O_NONBLOCK);
+    struct addrinfo hints, *resAddr = nullptr;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    char portStr[16];
+    snprintf(portStr, sizeof(portStr), "%d", cleanPort);
+    if (getaddrinfo(cleanHost.c_str(), portStr, &hints, &resAddr) != 0 || resAddr == nullptr) {
+        close(s);
+        return false;
+    }
+    int res = connect(s, resAddr->ai_addr, resAddr->ai_addrlen);
+    freeaddrinfo(resAddr);
+    if (res == 0) {
+        close(s);
+        return true;
+    }
+    if (errno == EINPROGRESS) {
+        fd_set wset;
+        FD_ZERO(&wset);
+        FD_SET(s, &wset);
+        struct timeval tv;
+        tv.tv_sec = 1;
+        tv.tv_usec = 0;
+        int sel = select(s + 1, nullptr, &wset, nullptr, &tv);
+        if (sel > 0) {
+            int err = 0;
+            socklen_t len = sizeof(err);
+            if (getsockopt(s, SOL_SOCKET, SO_ERROR, &err, &len) == 0 && err == 0) {
+                close(s);
+                return true;
+            }
+        }
+    }
+    close(s);
+    return false;
+#endif
+}
+
+String
+ClientApp::getFallbackCachePath() const
+{
+    barrier::fs::path profile_path = barrier::DataDirectories::profile();
+    if (!profile_path.empty()) {
+        try {
+            barrier::fs::create_directories(profile_path);
+            return (profile_path / "server_fallback.cache").u8string();
+        } catch (...) {
+        }
+    }
+    return "/tmp/barrier_server_fallback.cache";
+}
+
+void
+ClientApp::saveFallbackAddressesToCache()
+{
+    String path = getFallbackCachePath();
+    if (path.empty() || m_fallbackServerAddresses.empty()) return;
+    std::ofstream f(path.c_str());
+    if (f.is_open()) {
+        for (const auto& addr : m_fallbackServerAddresses) {
+            f << addr << "\n";
+        }
+        LOG((CLOG_DEBUG1 "saved fallback addresses to cache: %s", path.c_str()));
+    }
+}
+
+void
+ClientApp::loadFallbackAddressesFromCache()
+{
+    String path = getFallbackCachePath();
+    if (path.empty()) return;
+    std::ifstream f(path.c_str());
+    if (!f.is_open()) return;
+    std::string line;
+    m_fallbackServerAddresses.clear();
+    while (std::getline(f, line)) {
+        line.erase(0, line.find_first_not_of(" \t\r\n"));
+        line.erase(line.find_last_not_of(" \t\r\n") + 1);
+        if (!line.empty() && line != m_primaryServerHost && line != m_primaryServerAddress) {
+            if (std::find(m_fallbackServerAddresses.begin(), m_fallbackServerAddresses.end(), line) == m_fallbackServerAddresses.end()) {
+                m_fallbackServerAddresses.push_back(line);
+            }
+        }
+    }
+    if (!m_fallbackServerAddresses.empty()) {
+        LOG((CLOG_NOTE "dynamic failover: loaded %d fallback address(es) from cache", (int)m_fallbackServerAddresses.size()));
     }
 }
