@@ -29,19 +29,36 @@ export LSAN_OPTIONS="$LSAN_OPTIONS"
 export UBSAN_OPTIONS="$UBSAN_OPTIONS"
 
 if [ "$OS" = "Linux" ]; then
+    if command -v systemctl >/dev/null 2>&1; then
+        eval "$(systemctl --user show-environment 2>/dev/null | grep -E '^(DISPLAY|WAYLAND_DISPLAY|XAUTHORITY|DBUS_SESSION_BUS_ADDRESS|XDG_RUNTIME_DIR)=')"
+    fi
+    if [ -z "$XDG_RUNTIME_DIR" ]; then
+        export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+    fi
+    if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
+        export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
+    fi
+    if [ -z "$WAYLAND_DISPLAY" ] && [ -S "$XDG_RUNTIME_DIR/wayland-0" ]; then
+        export WAYLAND_DISPLAY="wayland-0"
+    fi
     if [ -z "$DISPLAY" ]; then
-        export DISPLAY=:1
+        export DISPLAY=:0
     fi
     if [ -z "$XAUTHORITY" ]; then
-        export XAUTHORITY=$(ls /run/user/$(id -u)/gdm/Xauthority /run/user/$(id -u)/Xauthority $HOME/.Xauthority 2>/dev/null | head -n 1)
+        export XAUTHORITY=$(ls -t /run/user/$(id -u)/.mutter-Xwaylandauth* /run/user/$(id -u)/xauth* /run/user/$(id -u)/gdm/Xauthority /run/user/$(id -u)/Xauthority $HOME/.Xauthority 2>/dev/null | head -n 1)
     fi
-    $NOHUP_BIN $BARRIER_SRV_BIN -f -c $BARRIER_SRV_CONF >/dev/null 2>&1 &
+    if command -v setsid >/dev/null 2>&1; then
+        setsid -f "$BARRIER_SRV_BIN" -f -c "$BARRIER_SRV_CONF" </dev/null >/dev/null 2>&1
+        setsid -f "$BARRIER_GUI_BIN" </dev/null >/dev/null 2>&1
+    else
+        $NOHUP_BIN "$BARRIER_SRV_BIN" -f -c "$BARRIER_SRV_CONF" </dev/null >/dev/null 2>&1 &
+        $NOHUP_BIN "$BARRIER_GUI_BIN" </dev/null >/dev/null 2>&1 &
+    fi
 else
     if [ -n "$SSH_CONNECTION" ]; then
         open -a "Barrier Server"
     else
         exec $BARRIER_SRV_BIN -f -c $BARRIER_SRV_CONF >/dev/null 2>&1
     fi
+    $NOHUP_BIN "$BARRIER_GUI_BIN" </dev/null >/dev/null 2>&1 &
 fi
-
-$NOHUP_BIN $BARRIER_GUI_BIN >/dev/null 2>&1 &

@@ -5,6 +5,8 @@
 #include "platform/WaylandPortal.h"
 #include "platform/WaylandInputCapture.h"
 #include "platform/WaylandClipboard.h"
+#include <set>
+#include <map>
 
 class WaylandScreen : public PlatformScreen {
 public:
@@ -49,6 +51,13 @@ public:
     virtual void         setSequenceNumber(UInt32) override;
     virtual bool         isPrimary() const override;
 
+    virtual void         fakeKeyDown(KeyID id, KeyModifierMask mask, KeyButton button) override;
+    virtual bool         fakeKeyRepeat(KeyID id, KeyModifierMask mask, SInt32 count, KeyButton button) override;
+    virtual bool         fakeKeyUp(KeyButton button) override;
+    virtual void         fakeAllKeysUp() override;
+    virtual bool         isKeyDown(KeyButton button) const override;
+    virtual void         pollPressedKeys(KeyButtonSet& pressedKeys) const override;
+
 protected:
     // PlatformScreen overrides
     virtual void         updateButtons() override;
@@ -56,10 +65,16 @@ protected:
     virtual void         handleSystemEvent(const Event& event, void*) override;
 
 private:
-    WaylandPortal* m_portal;
+    uint32_t             resolveKey(KeyID id, KeyButton button) const;
+
+    WaylandPortal*       m_portal;
     WaylandInputCapture* m_capture;
-    WaylandClipboard* m_clipboard;
-    IKeyState* m_keyState;
-    IEventQueue* m_events;
-    bool m_isPrimary;
+    WaylandClipboard*    m_clipboard;
+    IKeyState*           m_keyState;
+    IEventQueue*         m_events;
+    bool                 m_isPrimary;
+
+    std::set<UInt32>     m_buttonsDown;
+    std::set<uint32_t>   m_pressedKeys;
+    std::map<KeyButton, uint32_t> m_serverKeyToScancode;
 };
