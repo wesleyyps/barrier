@@ -46,7 +46,16 @@ if [ "$OS" = "Linux" ]; then
         fi
     fi
     if [ -z "$XAUTHORITY" ]; then
-        export XAUTHORITY=$(ls /run/user/$(id -u)/gdm/Xauthority /run/user/$(id -u)/.mutter-Xwaylandauth* /run/user/$(id -u)/Xauthority $HOME/.Xauthority 2>/dev/null | head -n 1)
+        for auth_candidate in \
+            /run/user/$(id -u)/.mutter-Xwaylandauth* \
+            /run/user/$(id -u)/gdm/Xauthority \
+            /run/user/$(id -u)/Xauthority \
+            $HOME/.Xauthority; do
+            if [ -f "$auth_candidate" ]; then
+                export XAUTHORITY="$auth_candidate"
+                break
+            fi
+        done
     fi
     $NOHUP_BIN $BARRIER_GUI_BIN </dev/null >/dev/null 2>&1 &
     $NOHUP_BIN $BARRIER_CLI_BIN -f --enable-drag-drop --display $DISPLAY -c $BARRIER_SRV_CONF "$REMOTE_IP" </dev/null >/dev/null 2>&1 &
