@@ -37,10 +37,16 @@ export UBSAN_OPTIONS="$UBSAN_OPTIONS"
 
 if [ "$OS" = "Linux" ]; then
     if [ -z "$DISPLAY" ]; then
-        export DISPLAY=:1
+        if [ -e "/tmp/.X11-unix/X0" ] && [ -n "$(ls /run/user/$(id -u)/.mutter-Xwaylandauth* 2>/dev/null)" ]; then
+            export DISPLAY=:0
+        elif [ -e "/tmp/.X11-unix/X1" ]; then
+            export DISPLAY=:1
+        else
+            export DISPLAY=:0
+        fi
     fi
     if [ -z "$XAUTHORITY" ]; then
-        export XAUTHORITY=$(ls /run/user/$(id -u)/gdm/Xauthority /run/user/$(id -u)/Xauthority $HOME/.Xauthority 2>/dev/null | head -n 1)
+        export XAUTHORITY=$(ls /run/user/$(id -u)/gdm/Xauthority /run/user/$(id -u)/.mutter-Xwaylandauth* /run/user/$(id -u)/Xauthority $HOME/.Xauthority 2>/dev/null | head -n 1)
     fi
     $NOHUP_BIN $BARRIER_GUI_BIN </dev/null >/dev/null 2>&1 &
     $NOHUP_BIN $BARRIER_CLI_BIN -f --enable-drag-drop --display $DISPLAY -c $BARRIER_SRV_CONF "$REMOTE_IP" </dev/null >/dev/null 2>&1 &
