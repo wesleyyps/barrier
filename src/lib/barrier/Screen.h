@@ -24,7 +24,9 @@
 #include "barrier/key_types.h"
 #include "barrier/mouse_types.h"
 #include "barrier/option_types.h"
+#include "barrier/protocol_types.h"
 #include "base/String.h"
+#include <vector>
 
 class IClipboard;
 class IPlatformScreen;
@@ -301,6 +303,7 @@ public:
     virtual void        getShape(SInt32& x, SInt32& y,
                             SInt32& width, SInt32& height) const;
     virtual void        getCursorPos(SInt32& x, SInt32& y) const;
+    virtual std::vector<DisplayInfo> getDisplays() const;
 
     IPlatformScreen*    getPlatformScreen() { return m_screen; }
 

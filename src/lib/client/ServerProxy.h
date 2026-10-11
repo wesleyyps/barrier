@@ -105,6 +105,7 @@ private:
     void                infoAcknowledgment();
     void                fileChunkReceived();
     void                dragInfoReceived();
+    void                serverAddressesReceived();
     void                handleClipboardSendingEvent(const Event&, void*);
 
 private:

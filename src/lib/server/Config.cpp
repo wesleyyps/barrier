@@ -750,6 +750,9 @@ Config::readSection(ConfigReadContext& s)
 	else if (name == "network") {
 		readSectionNetwork(s);
 	}
+	else if (name == "monitors") {
+		readSectionMonitors(s);
+	}
 	else {
 		throw XConfigRead(s, "unknown section name \"%{1}\"", name);
 	}
@@ -2449,4 +2452,62 @@ void Config::readSectionNetwork(ConfigReadContext& s)
         }
     }
     throw XConfigRead(s, "unexpected end of network section");
+}
+
+void Config::readSectionMonitors(ConfigReadContext& s)
+{
+    std::string line;
+    std::string monitorName;
+    while (s.readLine(line)) {
+        if (line == "end") {
+            return;
+        }
+
+        if (line[line.size() - 1] == ':') {
+            monitorName = line.substr(0, line.size() - 1);
+            if (!isValidScreenName(monitorName)) {
+                throw XConfigRead(s, "invalid monitor name \"%{1}\"", monitorName);
+            }
+            if (!isScreen(monitorName)) {
+                addScreen(monitorName);
+            }
+            m_monitors[monitorName].name = monitorName;
+        }
+        else if (monitorName.empty()) {
+            throw XConfigRead(s, "argument before first monitor");
+        }
+        else {
+            std::string::size_type i = line.find_first_of(" \t=");
+            if (i == 0) {
+                throw XConfigRead(s, "missing argument name");
+            }
+            if (i == std::string::npos) {
+                throw XConfigRead(s, "missing =");
+            }
+            std::string name = line.substr(0, i);
+            i = line.find_first_not_of(" \t", i);
+            if (i == std::string::npos || line[i] != '=') {
+                throw XConfigRead(s, "missing =");
+            }
+            i = line.find_first_not_of(" \t", i + 1);
+            std::string value;
+            if (i != std::string::npos) {
+                value = line.substr(i);
+            }
+            if (value.size() > 1 && value.front() == '"' && value.back() == '"') {
+                value = value.substr(1, value.size() - 2);
+            }
+
+            if (name == "match" || name == "pattern" || name == "name") {
+                m_monitors[monitorName].matchPattern = value;
+            }
+            else if (name == "host") {
+                m_monitors[monitorName].defaultHost = value;
+            }
+            else {
+                throw XConfigRead(s, "unknown argument \"%{1}\" in monitors", name);
+            }
+        }
+    }
+    throw XConfigRead(s, "unexpected end of monitors section");
 }

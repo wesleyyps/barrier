@@ -76,8 +76,26 @@ public:
 
     Client* getClientPtr() { return m_client; }
 
+    void handleServerAddressesReceived(const Event&, void*);
+    void handleFailbackProbe(const Event&, void* vtimer);
+    void scheduleFailbackProbe();
+    void cleanupFailbackProbe();
+    bool probeServerAddress(const std::string& host, int port);
+    bool selectNextAddress();
+    void resetToPrimaryAddress();
+    void saveFallbackAddressesToCache();
+    void loadFallbackAddressesFromCache();
+    String getFallbackCachePath() const;
+
 private:
-    Client*            m_client;
-    barrier::Screen*m_clientScreen;
-    NetworkAddress*    m_serverAddress;
+    Client*             m_client;
+    barrier::Screen*    m_clientScreen;
+    NetworkAddress*     m_serverAddress;
+    std::string         m_primaryServerAddress;
+    std::string         m_primaryServerHost;
+    std::vector<std::string> m_fallbackServerAddresses;
+    size_t              m_currentFallbackIndex;
+    bool                m_usingFallback;
+    bool                m_failbackInProgress;
+    EventQueueTimer*    m_failbackProbeTimer;
 };

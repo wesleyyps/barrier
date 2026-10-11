@@ -235,6 +235,28 @@ void MainWindow::open()
         if (!runningConfigPath.isEmpty()) {
             m_pCheckBoxExternalConfig->setChecked(true);
             m_pLineEditConfigFile->setText(runningConfigPath);
+            
+            QFile file(runningConfigPath);
+            if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                QTextStream in(&file);
+                bool inOptions = false;
+                while (!in.atEnd()) {
+                    QString line = in.readLine().trimmed();
+                    if (line == "section: options") {
+                        inOptions = true;
+                    } else if (line.startsWith("section:") || line == "end") {
+                        inOptions = false;
+                    } else if (inOptions) {
+                        if (line.startsWith("server = ")) {
+                            m_pLabelScreenName->setText(line.mid(line.indexOf('=') + 1).trimmed());
+                        } else if (line.startsWith("serverIp = ")) {
+                            m_pLineEditHostname->setText(line.mid(line.indexOf('=') + 1).trimmed());
+                        } else if (line.startsWith("autoConfig = ")) {
+                            m_pCheckBoxAutoConfig->setChecked(line.mid(line.indexOf('=') + 1).trimmed() == "true");
+                        }
+                    }
+                }
+            }
         }
 
         m_ExpectedRunningState = kStarted;
@@ -261,36 +283,10 @@ void MainWindow::open()
         }
         m_pButtonToggleStart->setText(tr("Rodando Externamente"));
         m_pButtonToggleStart->setEnabled(false);
-    }
-    
-    if (m_pCheckBoxExternalConfig->isChecked()) {
-        QString confPath = m_pLineEditConfigFile->text();
-        if (!confPath.isEmpty()) {
-            QFile file(confPath);
-            if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-                QTextStream in(&file);
-                bool inOptions = false;
-                while (!in.atEnd()) {
-                    QString line = in.readLine().trimmed();
-                    if (line == "section: options") {
-                        inOptions = true;
-                    } else if (line.startsWith("section:") || line == "end") {
-                        inOptions = false;
-                    } else if (inOptions) {
-                        if (line.startsWith("server = ")) {
-                            m_pLabelScreenName->setText(line.mid(line.indexOf('=') + 1).trimmed());
-                        } else if (line.startsWith("serverIp = ")) {
-                            m_pLineEditHostname->setText(line.mid(line.indexOf('=') + 1).trimmed());
-                        } else if (line.startsWith("autoConfig = ")) {
-                            m_pCheckBoxAutoConfig->setChecked(line.mid(line.indexOf('=') + 1).trimmed() == "true");
-                        }
-                    }
-                }
-            }
-        }
         
         // Bloqueia toda a interface gráfica de ser editada quando há um daemon em execução
         m_pGroupServer->setCheckable(false); // Mantém o grupo acessível mas não checkable
+        m_pButtonConfigureServer->setEnabled(true);
         m_pGroupClient->setEnabled(false);
         m_pGroupClient->setCheckable(false);
         m_pCheckBoxExternalConfig->setEnabled(false);
@@ -1341,7 +1337,11 @@ void MainWindow::showConfigureServer(const QString& message)
     QString runningConfigPath;
     int externalInstance = detectExistingInstance(&runningConfigPath);
     
-    if (externalInstance > 0 && !runningConfigPath.isEmpty()) {
+    if (runningConfigPath.isEmpty() && m_pCheckBoxExternalConfig->isChecked() && !m_pLineEditConfigFile->text().isEmpty()) {
+        runningConfigPath = m_pLineEditConfigFile->text();
+    }
+
+    if (!runningConfigPath.isEmpty()) {
         config.loadFromConf(runningConfigPath);
     }
 
@@ -1356,7 +1356,7 @@ void MainWindow::showConfigureServer(const QString& message)
     dlg.message(displayMessage);
     
     if (dlg.exec() == QDialog::Accepted) {
-        if (externalInstance > 0 && !runningConfigPath.isEmpty()) {
+        if (!runningConfigPath.isEmpty()) {
             config.save(runningConfigPath);
         }
     }
@@ -1483,6 +1483,21 @@ int MainWindow::detectExistingInstance(QString* outConfigPath)
             QStringList pids = pidsStr.split('\n');
             if (!pids.isEmpty() && outConfigPath) {
                 QString pid = pids[0].trimmed();
+#if defined(Q_OS_MAC)
+                QProcess psProc;
+                psProc.start("ps", QStringList() << "-p" << pid << "-o" << "args=");
+                psProc.waitForFinished(500);
+                if (psProc.exitCode() == 0) {
+                    QString cmdline = QString::fromUtf8(psProc.readAllStandardOutput()).trimmed();
+                    QStringList args = cmdline.split(QRegExp("\\s+"), Qt::SkipEmptyParts);
+                    for (int i = 0; i < args.size() - 1; ++i) {
+                        if (args[i] == "-c" || args[i] == "--config") {
+                            *outConfigPath = args[i+1];
+                            break;
+                        }
+                    }
+                }
+#else
                 QFile cmdlineFile("/proc/" + pid + "/cmdline");
                 if (cmdlineFile.open(QIODevice::ReadOnly)) {
                     QByteArray cmdlineData = cmdlineFile.readAll();
@@ -1494,6 +1509,7 @@ int MainWindow::detectExistingInstance(QString* outConfigPath)
                         }
                     }
                 }
+#endif
             }
             return true;
         }

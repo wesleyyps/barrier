@@ -84,6 +84,11 @@ class Screen : public BaseConfig
         const QString& networkClientCmd() const { return m_NetworkClientCmd; }
         void setNetworkClientCmd(const QString& cmd) { m_NetworkClientCmd = cmd; }
 
+        bool isMonitor() const { return m_IsMonitor; }
+        void setIsMonitor(bool isMon) { m_IsMonitor = isMon; }
+        const QString& monitorMatch() const { return m_MonitorMatch; }
+        void setMonitorMatch(const QString& match) { m_MonitorMatch = match; }
+
     protected:
         void init();
         QPixmap* pixmap() { return &m_Pixmap; }
@@ -116,6 +121,8 @@ class Screen : public BaseConfig
         QString m_NetworkSSHUser;
         int m_NetworkSSHPort;
         QString m_NetworkClientCmd;
+        bool m_IsMonitor;
+        QString m_MonitorMatch;
 };
 
 QDataStream& operator<<(QDataStream& outStream, const Screen& screen);

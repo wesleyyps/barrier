@@ -33,7 +33,9 @@ Screen::Screen() :
     m_NetworkIP(),
     m_NetworkSSHUser(),
     m_NetworkSSHPort(0),
-    m_NetworkClientCmd()
+    m_NetworkClientCmd(),
+    m_IsMonitor(false),
+    m_MonitorMatch()
 {
     init();
 }
@@ -50,7 +52,9 @@ Screen::Screen(const QString& name) :
     m_NetworkIP(),
     m_NetworkSSHUser(),
     m_NetworkSSHPort(0),
-    m_NetworkClientCmd()
+    m_NetworkClientCmd(),
+    m_IsMonitor(false),
+    m_MonitorMatch()
 {
     init();
     setName(name);
@@ -64,6 +68,8 @@ void Screen::init()
     switchCorners().clear();
     fixes().clear();
     setSwitchCornerSize(0);
+    m_IsMonitor = false;
+    m_MonitorMatch.clear();
 
     // m_Modifiers, m_SwitchCorners and m_Fixes are QLists we use like fixed-size arrays,
     // thus we need to make sure to fill them with the required number of elements.
@@ -171,6 +177,8 @@ QDataStream& operator<<(QDataStream& outStream, const Screen& screen)
         << screen.networkSSHUser()
         << screen.networkSSHPort()
         << screen.networkClientCmd()
+        << screen.isMonitor()
+        << screen.monitorMatch()
         ;
 }
 
@@ -189,6 +197,13 @@ QDataStream& operator>>(QDataStream& inStream, Screen& screen)
         >> screen.m_NetworkSSHPort
         >> screen.m_NetworkClientCmd
         ;
+
+    if (!inStream.atEnd()) {
+        inStream >> screen.m_IsMonitor;
+    }
+    if (!inStream.atEnd()) {
+        inStream >> screen.m_MonitorMatch;
+    }
 
     screen.m_Modifiers.clear();
     for (auto mod : modifiers) {

@@ -19,9 +19,11 @@
 #pragma once
 
 #include "barrier/clipboard_types.h"
+#include "barrier/protocol_types.h"
 #include "base/Event.h"
 #include "base/EventTypes.h"
 #include "common/IInterface.h"
+#include <vector>
 
 class IClipboard;
 
@@ -66,6 +68,9 @@ public:
     Return the current position of the cursor in \c x and \c y.
     */
     virtual void        getCursorPos(SInt32& x, SInt32& y) const = 0;
+
+    //! Get list of individual physical displays
+    virtual std::vector<DisplayInfo> getDisplays() const { return std::vector<DisplayInfo>(); }
 
     //@}
 };

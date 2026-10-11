@@ -25,6 +25,8 @@
 #include "barrier/ISecondaryScreen.h"
 #include "barrier/IKeyState.h"
 #include "barrier/option_types.h"
+#include "barrier/protocol_types.h"
+#include <vector>
 
 class IClipboard;
 
@@ -151,6 +153,7 @@ public:
     virtual void        getShape(SInt32& x, SInt32& y,
                             SInt32& width, SInt32& height) const = 0;
     virtual void        getCursorPos(SInt32& x, SInt32& y) const = 0;
+    virtual std::vector<DisplayInfo> getDisplays() const { return std::vector<DisplayInfo>(); }
 
     // IPrimaryScreen overrides
     virtual void        reconfigure(UInt32 activeSides) = 0;
