@@ -19,6 +19,7 @@
 
 #include "base/Log.h"
 #include "io/filesystem.h"
+#include <ghc/filesystem.hpp>
 
 #include <fstream>
 #include <cstdlib>
@@ -50,6 +51,14 @@ DropHelper::writeToDir(const String& destination, DragFileList& fileList, String
     LOG((CLOG_DEBUG "dropping file, files=%i target=%s", fileList.size(), dropTarget.c_str()));
 
     if (!dropTarget.empty() && fileList.size() > 0) {
+        // Ensure drop target directory exists
+        std::error_code ec;
+        barrier::fs::create_directories(barrier::fs::u8path(dropTarget), ec);
+        if (ec) {
+            LOG((CLOG_WARN "Failed to create drop target directory %s: %s",
+                 dropTarget.c_str(), ec.message().c_str()));
+        }
+
         std::fstream file;
         String filePath = dropTarget;
 #ifdef SYSAPI_WIN32
@@ -68,6 +77,13 @@ DropHelper::writeToDir(const String& destination, DragFileList& fileList, String
         file.close();
 
         LOG((CLOG_INFO "dropped file \"%s\" in \"%s\"", fileList.at(0).getFilename().c_str(), dropTarget.c_str()));
+
+#if !defined(SYSAPI_WIN32) && !defined(__APPLE__)
+        // Trigger desktop notification on Linux if notify-send is available
+        std::string notifyCmd = "notify-send -i document-save \"Barrier\" \"Arquivo recebido: " + fileList.at(0).getFilename() + "\" 2>/dev/null &";
+        int sysRet = std::system(notifyCmd.c_str());
+        (void)sysRet;
+#endif
 
         fileList.clear();
     }

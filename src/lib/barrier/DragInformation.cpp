@@ -100,15 +100,23 @@ DragInformation::getDragFileExtension(String filename)
 int
 DragInformation::setupDragInfo(DragFileList& fileList, String& output)
 {
+    int count = 0;
     int size = static_cast<int>(fileList.size());
     for (int i = 0; i < size; ++i) {
-        output.append(fileList.at(i).getFilename());
-        output.append(",");
-        String filesize = getFileSize(fileList.at(i).getFilename());
-        output.append(filesize);
-        output.append(",");
+        try {
+            String filesize = getFileSize(fileList.at(i).getFilename());
+            output.append(fileList.at(i).getFilename());
+            output.append(",");
+            output.append(filesize);
+            output.append(",");
+            count++;
+        }
+        catch (const std::exception& e) {
+            LOG((CLOG_WARN "Failed to get size for \"%s\": %s",
+                 fileList.at(i).getFilename().c_str(), e.what()));
+        }
     }
-    return size;
+    return count;
 }
 
 bool

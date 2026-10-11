@@ -2371,8 +2371,8 @@ XWindowsScreen::parseUriList(const std::string& uriList)
     std::string line;
 
     while (std::getline(stream, line)) {
-        // strip CR
-        if (!line.empty() && line.back() == '\r') {
+        // strip CR and trailing whitespace
+        while (!line.empty() && (line.back() == '\r' || line.back() == '\n' || line.back() == ' ')) {
             line.pop_back();
         }
         // skip comments and empty lines

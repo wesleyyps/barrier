@@ -43,8 +43,8 @@ if [ "$OS" = "Linux" ]; then
         export XAUTHORITY=$(ls /run/user/$(id -u)/gdm/Xauthority /run/user/$(id -u)/Xauthority $HOME/.Xauthority 2>/dev/null | head -n 1)
     fi
     $NOHUP_BIN $BARRIER_GUI_BIN </dev/null >/dev/null 2>&1 &
-    $NOHUP_BIN $BARRIER_CLI_BIN -f --display $DISPLAY -c $BARRIER_SRV_CONF "$REMOTE_IP" </dev/null >/dev/null 2>&1 &
+    $NOHUP_BIN $BARRIER_CLI_BIN -f --enable-drag-drop --display $DISPLAY -c $BARRIER_SRV_CONF "$REMOTE_IP" </dev/null >/dev/null 2>&1 &
 else
     $NOHUP_BIN $BARRIER_GUI_BIN </dev/null >/dev/null 2>&1 &
-    $NOHUP_BIN $BARRIER_CLI_BIN -f -c $BARRIER_SRV_CONF "$REMOTE_IP" </dev/null >/dev/null 2>&1 &
+    $NOHUP_BIN $BARRIER_CLI_BIN -f --enable-drag-drop -c $BARRIER_SRV_CONF "$REMOTE_IP" </dev/null >/dev/null 2>&1 &
 fi

@@ -129,6 +129,18 @@ ClientApp::parseArgs(int argc, const char* const* argv)
                     argsBase().m_enableCrypto = false;
                     LOG((CLOG_NOTE "Crypto disabled via config file"));
                 }
+                
+                if (config.getEnableDragDrop()) {
+                    argsBase().m_enableDragDrop = true;
+                    LOG((CLOG_NOTE "Drag and drop enabled via config file"));
+                }
+                
+                if (!config.getDropTarget().empty()) {
+                    if (argsBase().m_dropTarget.empty()) {
+                        argsBase().m_dropTarget = config.getDropTarget();
+                        LOG((CLOG_NOTE "Drop target set to %s via config file", argsBase().m_dropTarget.c_str()));
+                    }
+                }
             }
             catch (XConfigRead& e) {
                 LOG((CLOG_ERR "FATAL: %s", e.what()));

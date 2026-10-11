@@ -2477,27 +2477,40 @@ Server::onMouseMovePrimary(SInt32 x, SInt32 y)
 
 void Server::send_drag_info_thread(BaseClientProxy* newScreen)
 {
-	m_dragFileList.clear();
-    std::string& dragFileList = m_screen->getDraggingFilename();
-	if (!dragFileList.empty()) {
-		DragInformation di;
-		di.setFilename(dragFileList);
-		m_dragFileList.push_back(di);
-	}
+	try {
+		m_dragFileList.clear();
+		std::string& dragFileList = m_screen->getDraggingFilename();
+		if (!dragFileList.empty()) {
+			DragInformation di;
+			di.setFilename(dragFileList);
+			m_dragFileList.push_back(di);
+		}
 
 #ifdef __APPLE__
-	// on mac it seems that after faking a LMB up, system would signal back
-	// to barrier a mouse up event, which doesn't happen on windows. as a
-	// result, barrier would send dragging file to client twice. This variable
-	// is used to ignore the first file sending.
-	m_ignoreFileTransfer = true;
+		// on mac it seems that after faking a LMB up, system would signal back
+		// to barrier a mouse up event, which doesn't happen on windows. as a
+		// result, barrier would send dragging file to client twice. This variable
+		// is used to ignore the first file sending.
+		m_ignoreFileTransfer = true;
 #endif
 
-	// send drag file info to client if there is any
-	if (m_dragFileList.size() > 0) {
-		sendDragInfo(newScreen);
-		m_dragFileList.clear();
+		// send drag file info to client if there is any
+		if (m_dragFileList.size() > 0) {
+			sendDragInfo(newScreen);
+			m_dragFileList.clear();
+		}
 	}
+	catch (const std::exception& e) {
+		LOG((CLOG_ERR "send_drag_info_thread failed: %s", e.what()));
+		m_dragFileList.clear();
+		m_screen->clearDraggingFilename();
+	}
+	catch (...) {
+		LOG((CLOG_ERR "send_drag_info_thread failed with unknown exception"));
+		m_dragFileList.clear();
+		m_screen->clearDraggingFilename();
+	}
+
 	m_waitDragInfoThread = false;
 	m_sendDragInfoThread = nullptr;
 }
