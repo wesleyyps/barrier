@@ -15,6 +15,16 @@ if [ "$(uname)" = "Darwin" ]; then
     # run the osx_environment.sh script to fix paths
     . ./osx_environment.sh
     B_CMAKE_FLAGS="-DCMAKE_OSX_SYSROOT=$(xcode-select --print-path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9 $B_CMAKE_FLAGS"
+elif [ "$(uname)" = "Linux" ]; then
+    case "$B_CMAKE_FLAGS" in
+        *BARRIER_BUILD_WAYLAND*) ;;
+        *)
+            if [ "$XDG_SESSION_TYPE" = "x11" ] || [ -z "$WAYLAND_DISPLAY" ] || ! pkg-config --exists libei-1.0 2>/dev/null; then
+                echo "X11 environment detected (or libei-1.0 not found), disabling Wayland support (-DBARRIER_BUILD_WAYLAND=OFF)..."
+                B_CMAKE_FLAGS="-DBARRIER_BUILD_WAYLAND=OFF $B_CMAKE_FLAGS"
+            fi
+            ;;
+    esac
 fi
 # allow local customizations to build environment
 [ -r ./build_env.sh ] && . ./build_env.sh
