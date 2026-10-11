@@ -39,7 +39,7 @@ include_directories(${inc})
 add_library(platform STATIC ${sources})
 target_link_libraries(platform client ${libs})
 
-if (UNIX)
+if (UNIX AND NOT APPLE)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(DBUS REQUIRED dbus-1)
     pkg_check_modules(LIBEI REQUIRED libei-1.0)
