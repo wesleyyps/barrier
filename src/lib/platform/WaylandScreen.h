@@ -8,6 +8,8 @@
 #include <set>
 #include <map>
 
+class EventQueueTimer;
+
 class WaylandScreen : public PlatformScreen {
 public:
     WaylandScreen(bool isPrimary, IEventQueue* events);
@@ -70,6 +72,8 @@ protected:
 
 private:
     uint32_t             resolveKey(KeyID id, KeyButton button) const;
+    void                 sendClipboardEvent(Event::Type type, ClipboardID id);
+    void                 handleClipboardCheck(const Event&, void*);
 
     WaylandPortal*       m_portal;
     WaylandInputCapture* m_capture;
@@ -77,6 +81,9 @@ private:
     IKeyState*           m_keyState;
     IEventQueue*         m_events;
     bool                 m_isPrimary;
+
+    EventQueueTimer*     m_clipboardTimer;
+    UInt32               m_sequenceNumber;
 
     std::set<UInt32>     m_buttonsDown;
     std::set<uint32_t>   m_pressedKeys;

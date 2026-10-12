@@ -2,6 +2,8 @@
 #include "platform/WaylandPortal.h"
 #include "platform/WaylandClipboard.h"
 #include "platform/WaylandKeyState.h"
+#include "barrier/Clipboard.h"
+#include "base/TMethodEventJob.h"
 #include "base/Log.h"
 #include "barrier/IPrimaryScreen.h"
 #include <libei.h>
@@ -137,7 +139,9 @@ WaylandScreen::WaylandScreen(bool isPrimary, IEventQueue* events)
       m_clipboard(new WaylandClipboard()),
       m_keyState(new WaylandKeyState(events)),
       m_events(events),
-      m_isPrimary(isPrimary) {
+      m_isPrimary(isPrimary),
+      m_clipboardTimer(nullptr),
+      m_sequenceNumber(0) {
     LOG((CLOG_WARN "Wayland screen initialized (libei input injection enabled)"));
     
     if (!m_isPrimary) {
@@ -154,6 +158,7 @@ WaylandScreen::WaylandScreen(bool isPrimary, IEventQueue* events)
 }
 
 WaylandScreen::~WaylandScreen() {
+    disable();
     delete m_portal;
     delete m_capture;
     delete m_clipboard;
@@ -162,7 +167,10 @@ WaylandScreen::~WaylandScreen() {
 
 void* WaylandScreen::getEventTarget() const { return const_cast<WaylandScreen*>(this); }
 bool WaylandScreen::getClipboard(ClipboardID id, IClipboard* c) const {
-    return false;
+    if (!m_clipboard || !c) {
+        return false;
+    }
+    return Clipboard::copy(c, m_clipboard);
 }
 void WaylandScreen::getShape(SInt32& x, SInt32& y, SInt32& width, SInt32& height) const {
     if (!m_isPrimary && m_portal) {
@@ -288,29 +296,93 @@ void WaylandScreen::pollPressedKeys(KeyButtonSet& pressedKeys) const {
     }
 }
 
-void WaylandScreen::enable() { }
-void WaylandScreen::disable() { }
+void WaylandScreen::enable() {
+    LOG((CLOG_INFO "WaylandScreen: enable() called, starting clipboard timer"));
+    if (m_clipboardTimer == nullptr) {
+        m_clipboardTimer = m_events->newTimer(1.0, nullptr);
+        m_events->adoptHandler(Event::kTimer, m_clipboardTimer,
+                                new TMethodEventJob<WaylandScreen>(this,
+                                    &WaylandScreen::handleClipboardCheck));
+    }
+}
+
+void WaylandScreen::disable() {
+    if (m_clipboardTimer != nullptr) {
+        m_events->removeHandler(Event::kTimer, m_clipboardTimer);
+        m_events->deleteTimer(m_clipboardTimer);
+        m_clipboardTimer = nullptr;
+    }
+}
+
 void WaylandScreen::enter() {
     LOG((CLOG_DEBUG "WaylandScreen: enter"));
     m_portal->enter();
 }
+
 bool WaylandScreen::leave() {
     LOG((CLOG_DEBUG "WaylandScreen: leave"));
+    checkClipboards();
     fakeAllKeysUp();
     m_buttonsDown.clear();
     m_portal->leave();
     return true;
 }
+
 bool WaylandScreen::setClipboard(ClipboardID id, const IClipboard* c) {
-    return false;
+    if (!m_clipboard) {
+        return false;
+    }
+    if (c != nullptr) {
+        if (const_cast<IClipboard*>(c)->open(0)) {
+            String text;
+            if (c->has(IClipboard::kText)) {
+                text = c->get(IClipboard::kText);
+            }
+            c->close();
+            LOG((CLOG_INFO "WaylandScreen: setClipboard received %zu bytes from remote", text.size()));
+            m_clipboard->setLocalClipboard(text);
+            return true;
+        }
+        return false;
+    } else {
+        m_clipboard->setLocalClipboard("");
+        return true;
+    }
 }
-void WaylandScreen::checkClipboards() { }
+
+void WaylandScreen::checkClipboards() {
+    if (!m_clipboard) {
+        return;
+    }
+    if (m_clipboard->hasChanged()) {
+        LOG((CLOG_INFO "WaylandScreen: clipboard changed, notifying Barrier"));
+        sendClipboardEvent(m_events->forClipboard().clipboardGrabbed(), kClipboardClipboard);
+        sendClipboardEvent(m_events->forClipboard().clipboardGrabbed(), kClipboardSelection);
+    }
+}
+
+void WaylandScreen::sendClipboardEvent(Event::Type type, ClipboardID id) {
+    ClipboardInfo* info = (ClipboardInfo*)malloc(sizeof(ClipboardInfo));
+    if (!info) {
+        return;
+    }
+    info->m_id = id;
+    info->m_sequenceNumber = m_sequenceNumber;
+    m_events->addEvent(Event(type, getEventTarget(), info));
+}
+
+void WaylandScreen::handleClipboardCheck(const Event&, void*) {
+    checkClipboards();
+}
+
 void WaylandScreen::openScreensaver(bool notify) { }
 void WaylandScreen::closeScreensaver() { }
 void WaylandScreen::screensaver(bool activate) { }
 void WaylandScreen::resetOptions() { }
 void WaylandScreen::setOptions(const OptionsList& options) { }
-void WaylandScreen::setSequenceNumber(UInt32) { }
+void WaylandScreen::setSequenceNumber(UInt32 seq) {
+    m_sequenceNumber = seq;
+}
 bool WaylandScreen::isPrimary() const { return m_isPrimary; }
 
 void WaylandScreen::updateButtons() { }
