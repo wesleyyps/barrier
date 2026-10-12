@@ -1,5 +1,6 @@
 #include "WaylandInputCapture.h"
 #include "platform/WaylandScreen.h"
+#include "platform/XWindowsUtil.h"
 #include "barrier/IPrimaryScreen.h"
 #include "barrier/IKeyState.h"
 #include "base/Event.h"
@@ -10,7 +11,13 @@
 #include <poll.h>
 #include <dbus/dbus.h>
 #include <linux/input-event-codes.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/XKBlib.h>
+#include <X11/keysym.h>
+#include <dirent.h>
 #include <cctype>
+#include <cstring>
 
 WaylandInputCapture::WaylandInputCapture(IEventQueue* events, WaylandScreen* screen)
     : m_events(events),
@@ -22,7 +29,12 @@ WaylandInputCapture::WaylandInputCapture(IEventQueue* events, WaylandScreen* scr
       m_isCaptured(false),
       m_currentActivationId(0),
       m_activeSides(0),
-      m_activeModifiers(0) {
+      m_activeModifiers(0),
+      m_xDisplay(nullptr),
+      m_altMask(Mod1Mask),
+      m_altGrMask(Mod5Mask),
+      m_superMask(Mod4Mask),
+      m_numLockMask(Mod2Mask) {
 }
 
 WaylandInputCapture::~WaylandInputCapture() {
@@ -34,6 +46,7 @@ void WaylandInputCapture::cleanup() {
     if (m_thread.joinable()) {
         m_thread.join();
     }
+    cleanupX11();
     if (m_ei) {
         ei_unref(m_ei);
         m_ei = nullptr;
@@ -57,7 +70,84 @@ void WaylandInputCapture::cleanup() {
     }
 }
 
+bool WaylandInputCapture::initX11() {
+    if (m_xDisplay) {
+        return true;
+    }
+
+    if (getenv("DISPLAY") == nullptr) {
+        setenv("DISPLAY", ":0", 0);
+    }
+
+    if (getenv("XAUTHORITY") == nullptr) {
+        uid_t uid = getuid();
+        std::string runUserDir = "/run/user/" + std::to_string(uid);
+        DIR* dir = opendir(runUserDir.c_str());
+        if (dir) {
+            struct dirent* entry;
+            while ((entry = readdir(dir)) != nullptr) {
+                if (strncmp(entry->d_name, ".mutter-Xwaylandauth", 20) == 0) {
+                    std::string authPath = runUserDir + "/" + entry->d_name;
+                    setenv("XAUTHORITY", authPath.c_str(), 0);
+                    break;
+                }
+            }
+            closedir(dir);
+        }
+    }
+
+    m_xDisplay = XOpenDisplay(NULL);
+    if (!m_xDisplay) {
+        LOG((CLOG_WARN "WaylandInputCapture: Could not open Xwayland display; falling back to static key table"));
+        return false;
+    }
+
+    initModifierMasks();
+    return true;
+}
+
+void WaylandInputCapture::initModifierMasks() {
+    if (!m_xDisplay) return;
+
+    m_altMask = Mod1Mask;
+    m_altGrMask = Mod5Mask;
+    m_superMask = Mod4Mask;
+    m_numLockMask = Mod2Mask;
+
+    XModifierKeymap* mmap = XGetModifierMapping(m_xDisplay);
+    if (mmap) {
+        for (int modIndex = 0; modIndex < 8; ++modIndex) {
+            unsigned int mask = (1u << modIndex);
+            for (int k = 0; k < mmap->max_keypermod; ++k) {
+                KeyCode kc = mmap->modifiermap[modIndex * mmap->max_keypermod + k];
+                if (kc == 0) continue;
+                KeySym sym = XkbKeycodeToKeysym(m_xDisplay, kc, 0, 0);
+                if (sym == XK_ISO_Level3_Shift || sym == XK_Mode_switch) {
+                    m_altGrMask = mask;
+                } else if (sym == XK_Alt_L || sym == XK_Alt_R) {
+                    m_altMask = mask;
+                } else if (sym == XK_Super_L || sym == XK_Super_R) {
+                    m_superMask = mask;
+                } else if (sym == XK_Num_Lock) {
+                    m_numLockMask = mask;
+                }
+            }
+        }
+        XFreeModifiermap(mmap);
+    }
+    LOG((CLOG_INFO "WaylandInputCapture: Key layout initialized (alt=0x%x, altgr=0x%x, super=0x%x, numlock=0x%x)",
+         m_altMask, m_altGrMask, m_superMask, m_numLockMask));
+}
+
+void WaylandInputCapture::cleanupX11() {
+    if (m_xDisplay) {
+        XCloseDisplay(m_xDisplay);
+        m_xDisplay = nullptr;
+    }
+}
+
 bool WaylandInputCapture::init() {
+    initX11();
     if (!connectToDBus()) return false;
     if (!createSession()) return false;
     if (!getZones()) return false;
@@ -403,6 +493,7 @@ void WaylandInputCapture::releaseCapture() {
         LOG((CLOG_INFO "WaylandInputCapture: Capture successfully released"));
     }
     m_isCaptured = false;
+    m_pressedKeys.clear();
 }
 
 void WaylandInputCapture::handleDBusMessage(DBusMessage* msg) {
@@ -428,6 +519,22 @@ void WaylandInputCapture::handleDBusMessage(DBusMessage* msg) {
 
         m_isCaptured = true;
         m_currentActivationId = activation_id;
+
+        if (m_xDisplay) {
+            XkbStateRec xkbState;
+            if (XkbGetState(m_xDisplay, XkbUseCoreKbd, &xkbState) == Success) {
+                if (xkbState.locked_mods & LockMask) {
+                    m_activeModifiers |= KeyModifierCapsLock;
+                } else {
+                    m_activeModifiers &= ~KeyModifierCapsLock;
+                }
+                if (xkbState.locked_mods & m_numLockMask) {
+                    m_activeModifiers |= KeyModifierNumLock;
+                } else {
+                    m_activeModifiers &= ~KeyModifierNumLock;
+                }
+            }
+        }
 
         SInt32 posX = static_cast<SInt32>(cx);
         SInt32 posY = static_cast<SInt32>(cy);
@@ -456,6 +563,7 @@ void WaylandInputCapture::handleDBusMessage(DBusMessage* msg) {
         dbus_message_get_args(msg, nullptr, DBUS_TYPE_UINT32, &activation_id, DBUS_TYPE_INVALID);
         LOG((CLOG_INFO "WaylandInputCapture: Deactivated signal! activation=%u", activation_id));
         m_isCaptured = false;
+        m_pressedKeys.clear();
     }
     else if (dbus_message_is_signal(msg, "org.gnome.Mutter.InputCapture.Session", "ZonesChanged")) {
         LOG((CLOG_INFO "WaylandInputCapture: ZonesChanged signal received"));
@@ -541,8 +649,22 @@ void WaylandInputCapture::handleEIEvent(struct ei_event* ev) {
     case EI_EVENT_KEYBOARD_KEY: {
         uint32_t scancode = ei_event_keyboard_get_key(ev);
         bool is_press = ei_event_keyboard_get_key_is_press(ev);
-        updateModifiers(scancode, is_press);
-        KeyID key = scancodeToKeyID(scancode);
+        KeyID key = kKeyNone;
+        if (is_press) {
+            updateModifiers(scancode, true);
+            key = scancodeToKeyID(scancode);
+            m_pressedKeys[scancode] = key;
+        } else {
+            auto it = m_pressedKeys.find(scancode);
+            if (it != m_pressedKeys.end()) {
+                key = it->second;
+                m_pressedKeys.erase(it);
+            } else {
+                key = scancodeToKeyID(scancode);
+            }
+            updateModifiers(scancode, false);
+        }
+
         KeyButton button = static_cast<KeyButton>(scancode + 8);
         if (m_isCaptured) {
             m_events->addEvent(Event(
@@ -561,6 +683,18 @@ void WaylandInputCapture::pollEvents() {
     int checkSwitchTimeoutCount = 0;
 
     while (m_running) {
+        // 0. Process Xwayland events (e.g. keyboard layout switch)
+        if (m_xDisplay) {
+            while (XPending(m_xDisplay) > 0) {
+                XEvent xev;
+                XNextEvent(m_xDisplay, &xev);
+                if (xev.type == MappingNotify) {
+                    XRefreshKeyboardMapping(&xev.xmapping);
+                    initModifierMasks();
+                }
+            }
+        }
+
         // 1. Process DBus messages
         {
             std::lock_guard<std::mutex> lock(m_dbusMutex);
@@ -594,8 +728,8 @@ void WaylandInputCapture::pollEvents() {
             checkSwitchTimeoutCount = 0;
         }
 
-        // 4. Poll on libei and DBus fds
-        struct pollfd pfds[2];
+        // 4. Poll on libei, DBus, and X11 fds
+        struct pollfd pfds[3];
         int numFds = 0;
         if (m_ei) {
             pfds[numFds].fd = ei_get_fd(m_ei);
@@ -607,6 +741,14 @@ void WaylandInputCapture::pollEvents() {
             pfds[numFds].fd = dbusFd;
             pfds[numFds].events = POLLIN;
             numFds++;
+        }
+        if (m_xDisplay) {
+            int xfd = ConnectionNumber(m_xDisplay);
+            if (xfd >= 0) {
+                pfds[numFds].fd = xfd;
+                pfds[numFds].events = POLLIN;
+                numFds++;
+            }
         }
 
         if (numFds > 0) {
@@ -629,9 +771,19 @@ void WaylandInputCapture::updateModifiers(uint32_t scancode, bool isPress) {
         mod = KeyModifierControl;
         break;
     case KEY_LEFTALT:
-    case KEY_RIGHTALT:
         mod = KeyModifierAlt;
         break;
+    case KEY_RIGHTALT: {
+        KeyModifierMask altMod = KeyModifierAlt;
+        if (m_xDisplay) {
+            KeySym sym = XkbKeycodeToKeysym(m_xDisplay, scancode + 8, 0, 0);
+            if (sym == XK_ISO_Level3_Shift || sym == XK_Mode_switch) {
+                altMod = KeyModifierAltGr;
+            }
+        }
+        mod = altMod;
+        break;
+    }
     case KEY_LEFTMETA:
     case KEY_RIGHTMETA:
         mod = KeyModifierSuper;
@@ -657,6 +809,39 @@ void WaylandInputCapture::updateModifiers(uint32_t scancode, bool isPress) {
 }
 
 KeyID WaylandInputCapture::scancodeToKeyID(uint32_t scancode) const {
+    if (m_xDisplay) {
+        KeyCode kc = static_cast<KeyCode>(scancode + 8);
+        unsigned int state = 0;
+        if (m_activeModifiers & KeyModifierShift) state |= ShiftMask;
+        if (m_activeModifiers & KeyModifierCapsLock) state |= LockMask;
+        if (m_activeModifiers & KeyModifierControl) state |= ControlMask;
+        if (m_activeModifiers & KeyModifierAlt) state |= m_altMask;
+        if (m_activeModifiers & KeyModifierNumLock) state |= m_numLockMask;
+        if (m_activeModifiers & KeyModifierAltGr) state |= m_altGrMask;
+
+        XKeyEvent ev;
+        memset(&ev, 0, sizeof(ev));
+        ev.type = KeyPress;
+        ev.display = m_xDisplay;
+        ev.keycode = kc;
+        ev.state = state;
+
+        KeySym keysym = 0;
+        char dummy[32];
+        XLookupString(&ev, dummy, sizeof(dummy), &keysym, NULL);
+
+        if (keysym != 0) {
+            KeyID key = XWindowsUtil::mapKeySymToKeyID(keysym);
+            if (key != kKeyNone) {
+                return key;
+            }
+        }
+    }
+
+    return fallbackScancodeToKeyID(scancode);
+}
+
+KeyID WaylandInputCapture::fallbackScancodeToKeyID(uint32_t scancode) const {
     if (scancode >= KEY_1 && scancode <= KEY_9) {
         if (m_activeModifiers & KeyModifierShift) {
             static const KeyID shifted[] = { '!', '@', '#', '$', '%', '^', '&', '*', '(' };
@@ -707,6 +892,8 @@ KeyID WaylandInputCapture::scancodeToKeyID(uint32_t scancode) const {
     case KEY_COMMA: return (m_activeModifiers & KeyModifierShift) ? '<' : ',';
     case KEY_DOT: return (m_activeModifiers & KeyModifierShift) ? '>' : '.';
     case KEY_SLASH: return (m_activeModifiers & KeyModifierShift) ? '?' : '/';
+    case KEY_RO: return (m_activeModifiers & KeyModifierShift) ? '?' : '/';
+    case KEY_102ND: return (m_activeModifiers & KeyModifierShift) ? '|' : '\\';
     case KEY_SPACE: return ' ';
 
     case KEY_ENTER: return kKeyReturn;
@@ -719,7 +906,7 @@ KeyID WaylandInputCapture::scancodeToKeyID(uint32_t scancode) const {
     case KEY_LEFTCTRL: return kKeyControl_L;
     case KEY_RIGHTCTRL: return kKeyControl_R;
     case KEY_LEFTALT: return kKeyAlt_L;
-    case KEY_RIGHTALT: return kKeyAlt_R;
+    case KEY_RIGHTALT: return (m_activeModifiers & KeyModifierAltGr) ? kKeyAltGr : kKeyAlt_R;
     case KEY_LEFTMETA: return kKeySuper_L;
     case KEY_RIGHTMETA: return kKeySuper_R;
     case KEY_CAPSLOCK: return kKeyCapsLock;

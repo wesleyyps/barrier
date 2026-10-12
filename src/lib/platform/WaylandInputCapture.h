@@ -5,6 +5,7 @@
 #include "barrier/key_types.h"
 #include <string>
 #include <vector>
+#include <map>
 #include <thread>
 #include <atomic>
 #include <mutex>
@@ -13,6 +14,8 @@ struct DBusConnection;
 struct DBusMessage;
 struct ei;
 struct ei_event;
+struct _XDisplay;
+typedef struct _XDisplay Display;
 
 class WaylandScreen;
 
@@ -45,8 +48,13 @@ private:
     int  connectToEIS();
     bool setupLibEI(int fd);
 
+    bool initX11();
+    void cleanupX11();
+    void initModifierMasks();
+
     void updateModifiers(uint32_t scancode, bool isPress);
     KeyID scancodeToKeyID(uint32_t scancode) const;
+    KeyID fallbackScancodeToKeyID(uint32_t scancode) const;
 
     IEventQueue* m_events;
     WaylandScreen* m_screen;
@@ -78,4 +86,10 @@ private:
     UInt32 m_activeSides;
 
     KeyModifierMask m_activeModifiers;
+    Display* m_xDisplay;
+    unsigned int m_altMask;
+    unsigned int m_altGrMask;
+    unsigned int m_superMask;
+    unsigned int m_numLockMask;
+    std::map<uint32_t, KeyID> m_pressedKeys;
 };

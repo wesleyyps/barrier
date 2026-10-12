@@ -53,6 +53,12 @@ static uint32_t keyIDToEvdev(KeyID id) {
     case ',': case '<': return KEY_COMMA;
     case '.': case '>': return KEY_DOT;
     case '/': case '?': return KEY_SLASH;
+    case 0x00e7: case 0x00c7: return KEY_SEMICOLON;
+    case 0x00b0: return KEY_RO;
+    case 0x00aa: return KEY_RIGHTBRACE;
+    case 0x00ba: return KEY_BACKSLASH;
+    case kKeyDeadAcute: case kKeyDeadGrave: return KEY_LEFTBRACE;
+    case kKeyDeadTilde: case kKeyDeadCircumflex: return KEY_APOSTROPHE;
     case ' ': return KEY_SPACE;
 
     case kKeyReturn: return KEY_ENTER;
