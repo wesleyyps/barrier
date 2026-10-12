@@ -64,6 +64,8 @@ public:
     virtual const String& getDropTarget() const override { return m_dropTarget; }
     virtual void         setDropTarget(const String& target) override { m_dropTarget = target; }
 
+    bool                 isOnSecondary() const { return m_onSecondary; }
+
 protected:
     // PlatformScreen overrides
     virtual void         updateButtons() override;
@@ -81,6 +83,7 @@ private:
     IKeyState*           m_keyState;
     IEventQueue*         m_events;
     bool                 m_isPrimary;
+    bool                 m_onSecondary;
 
     EventQueueTimer*     m_clipboardTimer;
     UInt32               m_sequenceNumber;

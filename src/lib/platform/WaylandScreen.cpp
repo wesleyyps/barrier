@@ -135,11 +135,12 @@ uint32_t WaylandScreen::resolveKey(KeyID id, KeyButton button) const {
 WaylandScreen::WaylandScreen(bool isPrimary, IEventQueue* events)
     : PlatformScreen(events),
       m_portal(new WaylandPortal(events)),
-      m_capture(new WaylandInputCapture(events)),
+      m_capture(new WaylandInputCapture(events, this)),
       m_clipboard(new WaylandClipboard()),
       m_keyState(new WaylandKeyState(events)),
       m_events(events),
       m_isPrimary(isPrimary),
+      m_onSecondary(false),
       m_clipboardTimer(nullptr),
       m_sequenceNumber(0) {
     LOG((CLOG_WARN "Wayland screen initialized (libei input injection enabled)"));
@@ -175,6 +176,8 @@ bool WaylandScreen::getClipboard(ClipboardID id, IClipboard* c) const {
 void WaylandScreen::getShape(SInt32& x, SInt32& y, SInt32& width, SInt32& height) const {
     if (!m_isPrimary && m_portal) {
         m_portal->getShape(x, y, width, height);
+    } else if (m_capture && m_capture->hasZones()) {
+        m_capture->getShape(x, y, width, height);
     } else {
         x = 0; y = 0; width = 1920; height = 1080;
     }
@@ -187,7 +190,12 @@ void WaylandScreen::getCursorPos(SInt32& x, SInt32& y) const {
     }
 }
 
-void WaylandScreen::reconfigure(UInt32 activeSides) { }
+void WaylandScreen::reconfigure(UInt32 activeSides) {
+    LOG((CLOG_INFO "WaylandScreen: reconfigure activeSides=0x%04x", activeSides));
+    if (m_isPrimary && m_capture) {
+        m_capture->reconfigure(activeSides);
+    }
+}
 void WaylandScreen::warpCursor(SInt32 x, SInt32 y) {
     fakeMouseMove(x, y);
 }
@@ -195,7 +203,7 @@ UInt32 WaylandScreen::registerHotKey(KeyID key, KeyModifierMask mask) { return 0
 void WaylandScreen::unregisterHotKey(UInt32 id) { }
 void WaylandScreen::fakeInputBegin() { }
 void WaylandScreen::fakeInputEnd() { }
-SInt32 WaylandScreen::getJumpZoneSize() const { return 0; }
+SInt32 WaylandScreen::getJumpZoneSize() const { return 1; }
 bool WaylandScreen::isAnyMouseButtonDown(UInt32& buttonID) const {
     if (!m_buttonsDown.empty()) {
         buttonID = *m_buttonsDown.begin();
@@ -315,16 +323,24 @@ void WaylandScreen::disable() {
 }
 
 void WaylandScreen::enter() {
-    LOG((CLOG_DEBUG "WaylandScreen: enter"));
-    m_portal->enter();
+    LOG((CLOG_INFO "WaylandScreen: enter()"));
+    m_onSecondary = false;
+    if (m_isPrimary && m_capture) {
+        m_capture->releaseCapture();
+    } else if (!m_isPrimary && m_portal) {
+        m_portal->enter();
+    }
 }
 
 bool WaylandScreen::leave() {
-    LOG((CLOG_DEBUG "WaylandScreen: leave"));
+    LOG((CLOG_INFO "WaylandScreen: leave()"));
+    m_onSecondary = true;
     checkClipboards();
     fakeAllKeysUp();
     m_buttonsDown.clear();
-    m_portal->leave();
+    if (!m_isPrimary && m_portal) {
+        m_portal->leave();
+    }
     return true;
 }
 
@@ -389,24 +405,4 @@ void WaylandScreen::updateButtons() { }
 IKeyState* WaylandScreen::getKeyState() const { return m_keyState; }
 
 void WaylandScreen::handleSystemEvent(const Event& event, void*) {
-    if (event.getType() != Event::kSystem) return;
-    
-    struct ei_event* ev = static_cast<struct ei_event*>(event.getData());
-    if (!ev) return;
-    
-    enum ei_event_type type = ei_event_get_type(ev);
-    
-    if (type == EI_EVENT_POINTER_MOTION) {
-        double dx = ei_event_pointer_get_dx(ev);
-        double dy = ei_event_pointer_get_dy(ev);
-        
-        LOG((CLOG_DEBUG "WaylandScreen: got motion %f, %f", dx, dy));
-        
-        m_events->addEvent(Event(
-            m_events->forIPrimaryScreen().motionOnSecondary(),
-            getEventTarget(),
-            IPrimaryScreen::MotionInfo::alloc(dx, dy)));
-    }
-    
-    ei_event_unref(ev);
 }
