@@ -30,7 +30,9 @@ export UBSAN_OPTIONS="$UBSAN_OPTIONS"
 
 if [ "$OS" = "Linux" ]; then
     if command -v systemctl >/dev/null 2>&1; then
-        eval "$(systemctl --user show-environment 2>/dev/null | grep -E '^(DISPLAY|WAYLAND_DISPLAY|XAUTHORITY|DBUS_SESSION_BUS_ADDRESS|XDG_RUNTIME_DIR)=')"
+        while IFS= read -r line; do
+            [ -n "$line" ] && export "$line"
+        done < <(systemctl --user show-environment 2>/dev/null | grep -E '^(DISPLAY|WAYLAND_DISPLAY|XAUTHORITY|DBUS_SESSION_BUS_ADDRESS|XDG_RUNTIME_DIR)=')
     fi
     if [ -z "$XDG_RUNTIME_DIR" ]; then
         export XDG_RUNTIME_DIR="/run/user/$(id -u)"
@@ -53,6 +55,7 @@ if [ "$OS" = "Linux" ]; then
     if [ -z "$XAUTHORITY" ]; then
         export XAUTHORITY=$(ls -t /run/user/$(id -u)/.mutter-Xwaylandauth* /run/user/$(id -u)/xauth* /run/user/$(id -u)/gdm/Xauthority /run/user/$(id -u)/Xauthority $HOME/.Xauthority 2>/dev/null | head -n 1)
     fi
+    export DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_RUNTIME_DIR
     if command -v setsid >/dev/null 2>&1; then
         setsid -f "$BARRIER_SRV_BIN" -f -c "$BARRIER_SRV_CONF" </dev/null >/dev/null 2>&1
         setsid -f "$BARRIER_GUI_BIN" </dev/null >/dev/null 2>&1

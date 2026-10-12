@@ -58,6 +58,10 @@ public:
     virtual bool         isKeyDown(KeyButton button) const override;
     virtual void         pollPressedKeys(KeyButtonSet& pressedKeys) const override;
 
+    virtual void         fakeDraggingFiles(DragFileList fileList) override {}
+    virtual const String& getDropTarget() const override { return m_dropTarget; }
+    virtual void         setDropTarget(const String& target) override { m_dropTarget = target; }
+
 protected:
     // PlatformScreen overrides
     virtual void         updateButtons() override;
@@ -77,4 +81,5 @@ private:
     std::set<UInt32>     m_buttonsDown;
     std::set<uint32_t>   m_pressedKeys;
     std::map<KeyButton, uint32_t> m_serverKeyToScancode;
+    String               m_dropTarget;
 };

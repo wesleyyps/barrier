@@ -63,8 +63,10 @@ static std::string waitForResponse(DBusConnection* conn, const std::string& requ
     dbus_connection_flush(conn);
 
     std::string sessionHandle = "";
-    while (true) {
-        dbus_connection_read_write(conn, 1000);
+    int attempts = 0;
+    while (attempts < 50) {
+        attempts++;
+        dbus_connection_read_write(conn, 100);
         DBusMessage* msg = dbus_connection_pop_message(conn);
         if (msg == nullptr) continue;
 
@@ -109,13 +111,49 @@ static std::string waitForResponse(DBusConnection* conn, const std::string& requ
 }
 
 bool WaylandInputCapture::createSession() {
+    std::string token_val = "barrier_cap_" + std::to_string(rand() % 100000);
+    std::string handle_val = "barrier_cap_cr_" + std::to_string(rand() % 100000);
+
     DBusMessage* msg = dbus_message_new_method_call("org.freedesktop.portal.Desktop",
                                                     "/org/freedesktop/portal/desktop",
                                                     "org.freedesktop.portal.InputCapture",
                                                     "CreateSession");
     DBusMessageIter iter, dict;
     dbus_message_iter_init_append(msg, &iter);
+
+    const char* parentWindow = "";
+    dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &parentWindow);
+
     dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "{sv}", &dict);
+
+    DBusMessageIter entry, variant;
+    dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, NULL, &entry);
+    const char* token_key = "session_handle_token";
+    dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &token_key);
+    dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "s", &variant);
+    const char* token_c = token_val.c_str();
+    dbus_message_iter_append_basic(&variant, DBUS_TYPE_STRING, &token_c);
+    dbus_message_iter_close_container(&entry, &variant);
+    dbus_message_iter_close_container(&dict, &entry);
+
+    dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, NULL, &entry);
+    const char* handle_key = "handle_token";
+    dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &handle_key);
+    dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "s", &variant);
+    const char* handle_c = handle_val.c_str();
+    dbus_message_iter_append_basic(&variant, DBUS_TYPE_STRING, &handle_c);
+    dbus_message_iter_close_container(&entry, &variant);
+    dbus_message_iter_close_container(&dict, &entry);
+
+    uint32_t capabilities = 1 | 2; // Keyboard | Pointer
+    dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, NULL, &entry);
+    const char* cap_key = "capabilities";
+    dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &cap_key);
+    dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, "u", &variant);
+    dbus_message_iter_append_basic(&variant, DBUS_TYPE_UINT32, &capabilities);
+    dbus_message_iter_close_container(&entry, &variant);
+    dbus_message_iter_close_container(&dict, &entry);
+
     dbus_message_iter_close_container(&iter, &dict);
 
     DBusError err;
@@ -131,12 +169,17 @@ bool WaylandInputCapture::createSession() {
 
     const char* requestPath = nullptr;
     dbus_message_get_args(reply, &err, DBUS_TYPE_OBJECT_PATH, &requestPath, DBUS_TYPE_INVALID);
-    std::string reqPathStr = requestPath;
+    std::string reqPathStr = requestPath ? requestPath : "";
     dbus_message_unref(reply);
+
+    if (reqPathStr.empty()) {
+        LOG((CLOG_ERR "WaylandInputCapture: CreateSession returned empty request path"));
+        return false;
+    }
 
     m_sessionHandle = waitForResponse(m_dbusConn, reqPathStr);
     if (m_sessionHandle.empty()) {
-        LOG((CLOG_ERR "WaylandInputCapture: CreateSession signal failed"));
+        LOG((CLOG_ERR "WaylandInputCapture: CreateSession signal failed or timed out"));
         return false;
     }
     
@@ -157,8 +200,10 @@ bool WaylandInputCapture::waitForZonesResponse(DBusConnection* conn, const std::
     }
 
     bool success = false;
-    while (true) {
-        dbus_connection_read_write(conn, 1000);
+    int attempts = 0;
+    while (attempts < 50) {
+        attempts++;
+        dbus_connection_read_write(conn, 100);
         DBusMessage* msg = dbus_connection_pop_message(conn);
         if (msg == nullptr) continue;
 
@@ -264,8 +309,10 @@ bool WaylandInputCapture::waitForBarriersResponse(DBusConnection* conn, const st
     dbus_bus_add_match(conn, matchRule.c_str(), &err);
     
     bool success = false;
-    while (true) {
-        dbus_connection_read_write(conn, 1000);
+    int attempts = 0;
+    while (attempts < 50) {
+        attempts++;
+        dbus_connection_read_write(conn, 100);
         DBusMessage* msg = dbus_connection_pop_message(conn);
         if (msg == nullptr) continue;
 
