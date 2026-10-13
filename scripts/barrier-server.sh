@@ -57,10 +57,10 @@ if [ "$OS" = "Linux" ]; then
     fi
     export DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_RUNTIME_DIR
     if command -v setsid >/dev/null 2>&1; then
-        setsid -f "$BARRIER_SRV_BIN" -f -c "$BARRIER_SRV_CONF" </dev/null >/dev/null 2>&1
+        setsid -f "$BARRIER_SRV_BIN" -f -c "$BARRIER_SRV_CONF" </dev/null >/tmp/barrier-server.log 2>&1
         setsid -f "$BARRIER_GUI_BIN" </dev/null >/dev/null 2>&1
     else
-        $NOHUP_BIN "$BARRIER_SRV_BIN" -f -c "$BARRIER_SRV_CONF" </dev/null >/dev/null 2>&1 &
+        $NOHUP_BIN "$BARRIER_SRV_BIN" -f -c "$BARRIER_SRV_CONF" </dev/null >/tmp/barrier-server.log 2>&1 &
         $NOHUP_BIN "$BARRIER_GUI_BIN" </dev/null >/dev/null 2>&1 &
     fi
 else
