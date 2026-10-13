@@ -2757,6 +2757,8 @@ void Server::write_to_drop_dir_thread()
 
 	DropHelper::writeToDir(m_screen->getDropTarget(), m_fakeDragFileList,
 					m_receivedFileData);
+	m_receivedFileData.clear();
+	m_receivedFileData.shrink_to_fit();
 }
 
 bool

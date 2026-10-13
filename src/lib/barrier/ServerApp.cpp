@@ -286,8 +286,12 @@ ServerApp::loadConfig(const String& pathname)
         if (args().m_config->getEnableDragDrop()) {
             args().m_enableDragDrop = true;
         }
-        if (!args().m_config->getDropTarget().empty()) {
-            args().m_dropTarget = args().m_config->getDropTarget();
+        if (args().m_dropTarget.empty()) {
+            std::string target = args().m_config->getDropTarget(args().m_name);
+            if (!target.empty()) {
+                args().m_dropTarget = target;
+                LOG((CLOG_NOTE "Drop target set to %s via config file", args().m_dropTarget.c_str()));
+            }
         }
         
         return true;

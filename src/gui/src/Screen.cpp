@@ -142,8 +142,13 @@ QTextStream& Screen::writeScreensSection(QTextStream& outStream) const
 
     outStream << "\t\t" << "switchCornerSize = " << switchCornerSize() << Qt::endl;
 
+    if (!dropTarget().isEmpty()) {
+        outStream << "\t\t" << "dropTarget = " << dropTarget() << Qt::endl;
+    }
+
     return outStream;
 }
+
 
 QTextStream& Screen::writeAliasesSection(QTextStream& outStream) const
 {

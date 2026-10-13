@@ -425,6 +425,7 @@ public:
     std::string         getLogFilename() const;
     bool                getEnableDragDrop() const;
     const std::string&  getDropTarget() const;
+    std::string         getDropTarget(const std::string& screenName) const;
 
     //! Get the screen options
     /*!
@@ -514,6 +515,7 @@ private:
     bool                m_cryptoEnabled;
     std::string         m_logFilename;
     std::string            m_dropTarget;
+    std::map<std::string, std::string, barrier::string::CaselessCmp> m_screenDropTargets;
     NetworkAddress        m_barrierAddress;
     ScreenOptions        m_globalOptions;
     InputFilter            m_inputFilter;

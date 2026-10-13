@@ -89,6 +89,9 @@ class Screen : public BaseConfig
         const QString& monitorMatch() const { return m_MonitorMatch; }
         void setMonitorMatch(const QString& match) { m_MonitorMatch = match; }
 
+        const QString& dropTarget() const { return m_DropTarget; }
+        void setDropTarget(const QString& target) { m_DropTarget = target; }
+
     protected:
         void init();
         QPixmap* pixmap() { return &m_Pixmap; }
@@ -123,6 +126,7 @@ class Screen : public BaseConfig
         QString m_NetworkClientCmd;
         bool m_IsMonitor;
         QString m_MonitorMatch;
+        QString m_DropTarget;
 };
 
 QDataStream& operator<<(QDataStream& outStream, const Screen& screen);

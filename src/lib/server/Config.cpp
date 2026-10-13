@@ -562,9 +562,53 @@ Config::getLogFilename() const
 	return m_logFilename;
 }
 
+static std::string stripQuotes(std::string str)
+{
+	if (str.empty()) {
+		return "";
+	}
+	size_t first = str.find_first_not_of(" \t\r\n");
+	if (first == std::string::npos) {
+		return "";
+	}
+	size_t last = str.find_last_not_of(" \t\r\n");
+	str = str.substr(first, last - first + 1);
+	if (str.size() >= 2) {
+		if ((str.front() == '"' && str.back() == '"') ||
+			(str.front() == '\'' && str.back() == '\'')) {
+			str = str.substr(1, str.size() - 2);
+			first = str.find_first_not_of(" \t\r\n");
+			if (first == std::string::npos) {
+				return "";
+			}
+			last = str.find_last_not_of(" \t\r\n");
+			str = str.substr(first, last - first + 1);
+		}
+	}
+	return str;
+}
+
 const std::string& Config::getDropTarget() const
 {
     return m_dropTarget;
+}
+
+std::string Config::getDropTarget(const std::string& screenName) const
+{
+	if (!screenName.empty()) {
+		auto it = m_screenDropTargets.find(screenName);
+		if (it != m_screenDropTargets.end() && !it->second.empty()) {
+			return it->second;
+		}
+		std::string canonical = getCanonicalName(screenName);
+		if (!canonical.empty() && canonical != screenName) {
+			auto it2 = m_screenDropTargets.find(canonical);
+			if (it2 != m_screenDropTargets.end() && !it2->second.empty()) {
+				return it2->second;
+			}
+		}
+	}
+	return m_dropTarget;
 }
 
 const Config::ScreenOptions* Config::getOptions(const std::string& name) const
@@ -604,6 +648,9 @@ Config::operator==(const Config& x) const
 		return false;
 	}
 	if (m_dropTarget != x.m_dropTarget) {
+		return false;
+	}
+	if (m_screenDropTargets != x.m_screenDropTargets) {
 		return false;
 	}
 	if (m_networkNodes.size() != x.m_networkNodes.size()) {
@@ -807,7 +854,7 @@ Config::readSectionOptions(ConfigReadContext& s)
 			m_requireClientCertificate = s.parseBoolean(value);
 		}
 		else if (name == "dropTarget") {
-			m_dropTarget = value;
+			m_dropTarget = stripQuotes(value);
 		}
 		else if (name == "heartbeat") {
 			addOption("", kOptionHeartbeat, s.parseInt(value));
@@ -1012,6 +1059,9 @@ Config::readSectionScreens(ConfigReadContext& s)
 			else if (name == "preserveFocus") {
 				addOption(screen, kOptionScreenPreserveFocus,
 					s.parseBoolean(value));
+			}
+			else if (name == "dropTarget") {
+				m_screenDropTargets[screen] = stripQuotes(value);
 			}
 			else {
 				// unknown argument
@@ -1878,6 +1928,10 @@ operator<<(std::ostream& s, const Config& config)
 				}
 			}
 		}
+		auto dtIt = config.m_screenDropTargets.find(*screen);
+		if (dtIt != config.m_screenDropTargets.end() && !dtIt->second.empty()) {
+			s << "\t\tdropTarget = " << dtIt->second << "\n";
+		}
 	}
     s << "end\n";
 
@@ -1940,6 +1994,9 @@ operator<<(std::ostream& s, const Config& config)
 	if (config.m_barrierAddress.isValid()) {
 		s << "\taddress = " <<
             config.m_barrierAddress.getHostname().c_str() << "\n";
+	}
+	if (!config.m_dropTarget.empty()) {
+		s << "\tdropTarget = " << config.m_dropTarget << "\n";
 	}
 	s << config.m_inputFilter.format("\t");
     s << "end\n";

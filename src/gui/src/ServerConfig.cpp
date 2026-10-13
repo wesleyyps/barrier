@@ -689,6 +689,17 @@ bool ServerConfig::loadFromConf(const QString& path)
                 if (netProps.contains("ssh_user")) m_Screens[arrayPos].setNetworkSSHUser(netProps["ssh_user"]);
                 if (netProps.contains("ssh_port")) m_Screens[arrayPos].setNetworkSSHPort(netProps["ssh_port"].toInt());
                 if (netProps.contains("client_cmd")) m_Screens[arrayPos].setNetworkClientCmd(netProps["client_cmd"]);
+
+                for (const QString& extraLine : m_ConfExtraScreens[name]) {
+                    if (extraLine.trimmed().startsWith("dropTarget =")) {
+                        QString target = extraLine.mid(extraLine.indexOf('=') + 1).trimmed();
+                        if (target.startsWith("\"") && target.endsWith("\"")) {
+                            target = target.mid(1, target.length() - 2);
+                        }
+                        m_Screens[arrayPos].setDropTarget(target);
+                        break;
+                    }
+                }
             }
 
             qDebug() << "loadFromConf: Placed" << name << "at grid(" << gx << "," << gy << ") index" << arrayPos;
