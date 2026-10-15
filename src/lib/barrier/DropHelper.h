@@ -19,9 +19,14 @@
 
 #include "barrier/DragInformation.h"
 #include "base/String.h"
+#include <string>
 
 class DropHelper {
 public:
-    static void            writeToDir(const String& destination,
-                            DragFileList& fileList, String& data);
+    static String writeToDir(const String& destination,
+                             DragFileList& fileList, String& data);
+    static std::string decodeUri(const std::string& uri);
+    static std::string getLocalFilePathFromUri(const std::string& text);
+    static void setLastReceivedFile(const std::string& file);
+    static const std::string& getLastReceivedFile();
 };

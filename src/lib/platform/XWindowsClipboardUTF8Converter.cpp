@@ -24,7 +24,8 @@
 
 XWindowsClipboardUTF8Converter::XWindowsClipboardUTF8Converter(
                 Display* display, const char* name) :
-    m_atom(XInternAtom(display, name, False))
+    m_atom(XInternAtom(display, name, False)),
+    m_name(name ? name : "")
 {
     // do nothing
 }
@@ -54,10 +55,25 @@ XWindowsClipboardUTF8Converter::getDataSize() const
 
 std::string XWindowsClipboardUTF8Converter::fromIClipboard(const std::string& data) const
 {
+    if (m_name == "text/uri-list") {
+        if (data.rfind("file://", 0) == 0 && data.find("\n") == std::string::npos) {
+            return data + "\r\n";
+        }
+    } else if (m_name == "x-special/gnome-copied-files") {
+        if (data.rfind("file://", 0) == 0 && data.find("copy\n") == std::string::npos) {
+            return "copy\n" + data + "\n";
+        }
+    }
     return data;
 }
 
 std::string XWindowsClipboardUTF8Converter::toIClipboard(const std::string& data) const
 {
+    if (m_name == "x-special/gnome-copied-files") {
+        if (data.rfind("copy\n", 0) == 0) {
+            return data.substr(5);
+        }
+    }
     return data;
 }
+

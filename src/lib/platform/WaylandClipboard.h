@@ -46,6 +46,8 @@ private:
     Atom m_atomString;
     Atom m_atomText;
     Atom m_atomProperty;
+    Atom m_atomTextUriList;
+    Atom m_atomGnomeCopiedFiles;
 
     mutable std::mutex m_mutex;
     mutable std::condition_variable m_readCv;

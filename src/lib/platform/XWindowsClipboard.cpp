@@ -92,6 +92,10 @@ XWindowsClipboard::XWindowsClipboard(IXWindowsImpl* impl, Display* display,
     m_converters.push_back(new XWindowsClipboardUTF8Converter(m_display,
                                 "text/plain;charset=utf-8"));
     m_converters.push_back(new XWindowsClipboardUTF8Converter(m_display,
+                                "x-special/gnome-copied-files"));
+    m_converters.push_back(new XWindowsClipboardUTF8Converter(m_display,
+                                "text/uri-list"));
+    m_converters.push_back(new XWindowsClipboardUTF8Converter(m_display,
                                 "UTF8_STRING"));
     m_converters.push_back(new XWindowsClipboardUCS2Converter(m_display,
                                 "text/plain;charset=ISO-10646-UCS-2"));

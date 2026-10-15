@@ -701,9 +701,9 @@ void WaylandPortal::fakeMouseMove(int x, int y) {
     if (m_eiPointerAbs && dev == m_eiPointerAbs) {
         if (m_width > 0 && m_height > 0) {
             if (x < (int)m_x) x = m_x;
-            if (x >= (int)(m_x + m_width)) x = m_x + m_width - 1;
+            if (x > (int)(m_x + m_width)) x = m_x + m_width;
             if (y < (int)m_y) y = m_y;
-            if (y >= (int)(m_y + m_height)) y = m_y + m_height - 1;
+            if (y > (int)(m_y + m_height)) y = m_y + m_height;
         }
         ei_device_pointer_motion_absolute(dev, x, y);
     } else {

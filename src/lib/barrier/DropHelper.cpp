@@ -25,6 +25,12 @@
 #include <cstdlib>
 #ifdef SYSAPI_WIN32
 #include <windows.h>
+#else
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <vector>
 #endif
 
 static String cleanDropPath(String path)
@@ -89,7 +95,154 @@ static String getDefaultDownloadsDir()
     return defDir;
 }
 
-void
+#include <sstream>
+#include <sys/stat.h>
+
+#if !defined(SYSAPI_WIN32)
+static void spawnProcessDetached(const std::vector<std::string>& args, const std::string& inputData = "")
+{
+    if (args.empty()) {
+        return;
+    }
+
+    int pipefd[2] = { -1, -1 };
+    if (!inputData.empty()) {
+        if (pipe(pipefd) < 0) {
+            pipefd[0] = -1;
+            pipefd[1] = -1;
+        }
+    }
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        if (pipefd[0] != -1) {
+            close(pipefd[0]);
+            close(pipefd[1]);
+        }
+        return;
+    }
+
+    if (pid == 0) {
+        // Child forks again to detach grandchild from parent process
+        pid_t pid2 = fork();
+        if (pid2 > 0) {
+            _exit(0);
+        }
+        if (pid2 < 0) {
+            _exit(1);
+        }
+
+        // Grandchild process
+        if (pipefd[0] != -1) {
+            dup2(pipefd[0], STDIN_FILENO);
+            close(pipefd[0]);
+            close(pipefd[1]);
+        } else {
+            int devnull = open("/dev/null", O_RDONLY);
+            if (devnull >= 0) {
+                dup2(devnull, STDIN_FILENO);
+                close(devnull);
+            }
+        }
+
+        int devnullOut = open("/dev/null", O_WRONLY);
+        if (devnullOut >= 0) {
+            dup2(devnullOut, STDOUT_FILENO);
+            dup2(devnullOut, STDERR_FILENO);
+            close(devnullOut);
+        }
+
+        std::vector<char*> c_args;
+        c_args.reserve(args.size() + 1);
+        for (const auto& arg : args) {
+            c_args.push_back(const_cast<char*>(arg.c_str()));
+        }
+        c_args.push_back(nullptr);
+
+        execvp(c_args[0], c_args.data());
+        _exit(127);
+    }
+
+    // Parent
+    if (pipefd[1] != -1) {
+        close(pipefd[0]);
+        size_t written = 0;
+        while (written < inputData.size()) {
+            ssize_t ret = write(pipefd[1], inputData.data() + written, inputData.size() - written);
+            if (ret <= 0) break;
+            written += static_cast<size_t>(ret);
+        }
+        close(pipefd[1]);
+    }
+
+    waitpid(pid, nullptr, 0);
+}
+#endif
+
+static std::string s_lastReceivedFile;
+
+void DropHelper::setLastReceivedFile(const std::string& file)
+{
+    s_lastReceivedFile = file;
+}
+
+const std::string& DropHelper::getLastReceivedFile()
+{
+    return s_lastReceivedFile;
+}
+
+std::string DropHelper::decodeUri(const std::string& uri)
+{
+    std::string result;
+    result.reserve(uri.size());
+    for (size_t i = 0; i < uri.size(); ++i) {
+        if (uri[i] == '%' && i + 2 < uri.size()) {
+            char hex[3] = { uri[i+1], uri[i+2], '\0' };
+            char* end = nullptr;
+            long val = strtol(hex, &end, 16);
+            if (end == hex + 2) {
+                result += static_cast<char>(val);
+                i += 2;
+                continue;
+            }
+        }
+        result += uri[i];
+    }
+    return result;
+}
+
+std::string DropHelper::getLocalFilePathFromUri(const std::string& text)
+{
+    std::istringstream stream(text);
+    std::string line;
+    while (std::getline(stream, line)) {
+        while (!line.empty() && (line.back() == '\r' || line.back() == '\n' || line.back() == ' ')) {
+            line.pop_back();
+        }
+        if (line.empty() || line[0] == '#') continue;
+        if (line.compare(0, 5, "copy\n") == 0) line = line.substr(5);
+        if (line == "copy") continue;
+
+        const std::string prefix = "file://";
+        if (line.compare(0, prefix.size(), prefix) == 0) {
+            std::string path = line.substr(prefix.size());
+            if (!path.empty() && path[0] != '/') {
+                size_t slash = path.find('/');
+                if (slash != std::string::npos) {
+                    path = path.substr(slash);
+                }
+            }
+            std::string decodedPath = decodeUri(path);
+            struct stat st;
+            if (stat(decodedPath.c_str(), &st) == 0 && S_ISREG(st.st_mode)) {
+                return decodedPath;
+            }
+        }
+    }
+    return "";
+}
+
+String
 DropHelper::writeToDir(const String& destination, DragFileList& fileList, String& data)
 {
     String dropTarget = cleanDropPath(destination);
@@ -124,14 +277,15 @@ DropHelper::writeToDir(const String& destination, DragFileList& fileList, String
             filePath.append("/");
         }
 #endif
-        filePath.append(fileList.at(0).getFilename());
+        std::string filename = fileList.at(0).getFilename();
+        filePath.append(filename);
         barrier::open_utf8_path(file, filePath, std::ios::out | std::ios::binary);
         if (!file.is_open()) {
             String fallback = getDefaultDownloadsDir();
             if (dropTarget != fallback && !fallback.empty()) {
                 LOG((CLOG_WARN "Could not open %s, retrying in Downloads: %s", filePath.c_str(), fallback.c_str()));
                 dropTarget = fallback;
-                filePath = dropTarget + "/" + fileList.at(0).getFilename();
+                filePath = dropTarget + "/" + filename;
                 barrier::fs::create_directories(barrier::fs::u8path(dropTarget), ec);
                 barrier::open_utf8_path(file, filePath, std::ios::out | std::ios::binary);
             }
@@ -139,35 +293,58 @@ DropHelper::writeToDir(const String& destination, DragFileList& fileList, String
 
         if (!file.is_open()) {
             LOG((CLOG_ERR "drop file failed: can not open %s", filePath.c_str()));
-            return;
+            return "";
         }
 
         file.write(data.c_str(), data.size());
         file.close();
 
-        LOG((CLOG_INFO "dropped file \"%s\" in \"%s\"", fileList.at(0).getFilename().c_str(), dropTarget.c_str()));
+        LOG((CLOG_INFO "dropped file \"%s\" in \"%s\"", filename.c_str(), dropTarget.c_str()));
+        setLastReceivedFile(filePath);
 
 #if !defined(SYSAPI_WIN32) && !defined(__APPLE__)
         // Trigger desktop notification on Linux if notify-send is available
         std::string notifyTitle = "Barrier";
-        std::string notifyMsg = "Arquivo salvo em: " + dropTarget + "/" + fileList.at(0).getFilename();
-        for (size_t pos = 0; (pos = notifyMsg.find('"', pos)) != std::string::npos; pos += 2) {
-            notifyMsg.insert(pos, "\\");
-        }
-        std::string notifyCmd = "notify-send -i document-save \"" + notifyTitle + "\" \"" + notifyMsg + "\" 2>/dev/null &";
-        int sysRet = std::system(notifyCmd.c_str());
-        (void)sysRet;
+        std::string notifyMsg = "Arquivo salvo em: " + filePath + " (Pronto para Colar!)";
+        spawnProcessDetached({ "notify-send", "-i", "document-save", notifyTitle, notifyMsg });
+
+        // Update the Linux clipboard using wl-copy / xclip if available
+        std::string fileUri = "file://" + filePath;
+        std::string gnomeCopied = "copy\n" + fileUri + "\n";
+        std::string uriList = fileUri + "\r\n";
+
+        spawnProcessDetached({ "wl-copy", "-t", "x-special/gnome-copied-files" }, gnomeCopied);
+        spawnProcessDetached({ "wl-copy", "-t", "text/uri-list" }, uriList);
+        spawnProcessDetached({ "xclip", "-selection", "clipboard", "-t", "x-special/gnome-copied-files" }, gnomeCopied);
+        spawnProcessDetached({ "xclip", "-selection", "clipboard", "-t", "text/uri-list" }, uriList);
 #elif defined(__APPLE__)
-        // Trigger desktop notification on macOS
-        std::string script = "osascript -e 'display notification \"Salvo em: " + dropTarget + "\" with title \"Barrier: " + fileList.at(0).getFilename() + "\"' 2>/dev/null &";
-        int sysRet = std::system(script.c_str());
-        (void)sysRet;
+        // Trigger desktop notification and set pasteboard on macOS
+        std::string safePath = filePath;
+        for (size_t pos = 0; (pos = safePath.find('"', pos)) != std::string::npos; pos += 2) {
+            safePath.insert(pos, "\\");
+        }
+        std::string safeFilename = filename;
+        for (size_t pos = 0; (pos = safeFilename.find('"', pos)) != std::string::npos; pos += 2) {
+            safeFilename.insert(pos, "\\");
+        }
+        std::string safeDropTarget = dropTarget;
+        for (size_t pos = 0; (pos = safeDropTarget.find('"', pos)) != std::string::npos; pos += 2) {
+            safeDropTarget.insert(pos, "\\");
+        }
+
+        std::string setClipScript = "set the clipboard to (POSIX file \"" + safePath + "\")";
+        std::string notifScript = "display notification \"Salvo em: " + safeDropTarget + "\" with title \"Barrier: " + safeFilename + " (Pronto para Colar)\"";
+
+        spawnProcessDetached({ "osascript", "-e", setClipScript, "-e", notifScript });
 #endif
 
         fileList.clear();
+        return filePath;
     }
     else {
         LOG((CLOG_ERR "drop file failed: drop target is empty"));
+        return "";
     }
 }
+
 
