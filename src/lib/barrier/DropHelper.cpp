@@ -25,6 +25,12 @@
 #include <cstdlib>
 #ifdef SYSAPI_WIN32
 #include <windows.h>
+#else
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <vector>
 #endif
 
 static String cleanDropPath(String path)
@@ -91,6 +97,87 @@ static String getDefaultDownloadsDir()
 
 #include <sstream>
 #include <sys/stat.h>
+
+#if !defined(SYSAPI_WIN32)
+static void spawnProcessDetached(const std::vector<std::string>& args, const std::string& inputData = "")
+{
+    if (args.empty()) {
+        return;
+    }
+
+    int pipefd[2] = { -1, -1 };
+    if (!inputData.empty()) {
+        if (pipe(pipefd) < 0) {
+            pipefd[0] = -1;
+            pipefd[1] = -1;
+        }
+    }
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        if (pipefd[0] != -1) {
+            close(pipefd[0]);
+            close(pipefd[1]);
+        }
+        return;
+    }
+
+    if (pid == 0) {
+        // Child forks again to detach grandchild from parent process
+        pid_t pid2 = fork();
+        if (pid2 > 0) {
+            _exit(0);
+        }
+        if (pid2 < 0) {
+            _exit(1);
+        }
+
+        // Grandchild process
+        if (pipefd[0] != -1) {
+            dup2(pipefd[0], STDIN_FILENO);
+            close(pipefd[0]);
+            close(pipefd[1]);
+        } else {
+            int devnull = open("/dev/null", O_RDONLY);
+            if (devnull >= 0) {
+                dup2(devnull, STDIN_FILENO);
+                close(devnull);
+            }
+        }
+
+        int devnullOut = open("/dev/null", O_WRONLY);
+        if (devnullOut >= 0) {
+            dup2(devnullOut, STDOUT_FILENO);
+            dup2(devnullOut, STDERR_FILENO);
+            close(devnullOut);
+        }
+
+        std::vector<char*> c_args;
+        c_args.reserve(args.size() + 1);
+        for (const auto& arg : args) {
+            c_args.push_back(const_cast<char*>(arg.c_str()));
+        }
+        c_args.push_back(nullptr);
+
+        execvp(c_args[0], c_args.data());
+        _exit(127);
+    }
+
+    // Parent
+    if (pipefd[1] != -1) {
+        close(pipefd[0]);
+        size_t written = 0;
+        while (written < inputData.size()) {
+            ssize_t ret = write(pipefd[1], inputData.data() + written, inputData.size() - written);
+            if (ret <= 0) break;
+            written += static_cast<size_t>(ret);
+        }
+        close(pipefd[1]);
+    }
+
+    waitpid(pid, nullptr, 0);
+}
+#endif
 
 static std::string s_lastReceivedFile;
 
@@ -218,32 +305,37 @@ DropHelper::writeToDir(const String& destination, DragFileList& fileList, String
 #if !defined(SYSAPI_WIN32) && !defined(__APPLE__)
         // Trigger desktop notification on Linux if notify-send is available
         std::string notifyTitle = "Barrier";
-        std::string notifyMsg = "Arquivo salvo em: " + dropTarget + "/" + filename + " (Pronto para Colar!)";
-        for (size_t pos = 0; (pos = notifyMsg.find('"', pos)) != std::string::npos; pos += 2) {
-            notifyMsg.insert(pos, "\\");
-        }
-        std::string notifyCmd = "notify-send -i document-save \"" + notifyTitle + "\" \"" + notifyMsg + "\" 2>/dev/null &";
-        int sysRet = std::system(notifyCmd.c_str());
-        (void)sysRet;
+        std::string notifyMsg = "Arquivo salvo em: " + filePath + " (Pronto para Colar!)";
+        spawnProcessDetached({ "notify-send", "-i", "document-save", notifyTitle, notifyMsg });
 
-        // Also update the Linux clipboard using wl-copy / xclip if available
+        // Update the Linux clipboard using wl-copy / xclip if available
         std::string fileUri = "file://" + filePath;
-        std::string clipCmd =
-            "if command -v wl-copy >/dev/null 2>&1; then "
-            "  printf 'copy\\n" + fileUri + "\\n' | wl-copy -t x-special/gnome-copied-files 2>/dev/null & "
-            "  printf '" + fileUri + "\\r\\n' | wl-copy -t text/uri-list 2>/dev/null & "
-            "elif command -v xclip >/dev/null 2>&1; then "
-            "  printf 'copy\\n" + fileUri + "\\n' | xclip -selection clipboard -t x-special/gnome-copied-files 2>/dev/null & "
-            "  printf '" + fileUri + "\\r\\n' | xclip -selection clipboard -t text/uri-list 2>/dev/null & "
-            "fi &";
-        int clipRet = std::system(clipCmd.c_str());
-        (void)clipRet;
+        std::string gnomeCopied = "copy\n" + fileUri + "\n";
+        std::string uriList = fileUri + "\r\n";
+
+        spawnProcessDetached({ "wl-copy", "-t", "x-special/gnome-copied-files" }, gnomeCopied);
+        spawnProcessDetached({ "wl-copy", "-t", "text/uri-list" }, uriList);
+        spawnProcessDetached({ "xclip", "-selection", "clipboard", "-t", "x-special/gnome-copied-files" }, gnomeCopied);
+        spawnProcessDetached({ "xclip", "-selection", "clipboard", "-t", "text/uri-list" }, uriList);
 #elif defined(__APPLE__)
         // Trigger desktop notification and set pasteboard on macOS
-        std::string script = "osascript -e 'set the clipboard to (POSIX file \"" + filePath + "\")' "
-                             "-e 'display notification \"Salvo em: " + dropTarget + "\" with title \"Barrier: " + filename + " (Pronto para Colar)\"' 2>/dev/null &";
-        int sysRet = std::system(script.c_str());
-        (void)sysRet;
+        std::string safePath = filePath;
+        for (size_t pos = 0; (pos = safePath.find('"', pos)) != std::string::npos; pos += 2) {
+            safePath.insert(pos, "\\");
+        }
+        std::string safeFilename = filename;
+        for (size_t pos = 0; (pos = safeFilename.find('"', pos)) != std::string::npos; pos += 2) {
+            safeFilename.insert(pos, "\\");
+        }
+        std::string safeDropTarget = dropTarget;
+        for (size_t pos = 0; (pos = safeDropTarget.find('"', pos)) != std::string::npos; pos += 2) {
+            safeDropTarget.insert(pos, "\\");
+        }
+
+        std::string setClipScript = "set the clipboard to (POSIX file \"" + safePath + "\")";
+        std::string notifScript = "display notification \"Salvo em: " + safeDropTarget + "\" with title \"Barrier: " + safeFilename + " (Pronto para Colar)\"";
+
+        spawnProcessDetached({ "osascript", "-e", setClipScript, "-e", notifScript });
 #endif
 
         fileList.clear();
