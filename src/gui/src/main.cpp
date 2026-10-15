@@ -98,11 +98,6 @@ int main(int argc, char* argv[])
 
 	QApplication::setQuitOnLastWindowClosed(false);
 
-    if (QGuiApplication::platformName() == "wayland") {
-        QMessageBox::warning(
-        nullptr, "Barrier",
-        "You are using wayland session, which is currently not fully supported by Barrier.");
-    }
 
 	QSettings settings;
 	AppConfig appConfig (&settings);

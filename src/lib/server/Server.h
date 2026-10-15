@@ -146,6 +146,9 @@ public:
     //! Create a new thread and use it to send file to client
     void                sendFileToClient(const std::string& filename);
 
+    //! Send file metadata and data to specific client proxy
+    void                sendFileToScreen(BaseClientProxy* targetScreen, const std::string& filename);
+
     //! Received dragging information from client
     void dragInfoReceived(UInt32 fileNum, std::string content);
 
@@ -494,6 +497,9 @@ private:
 
     Thread*                m_sendDragInfoThread;
     bool                m_waitDragInfoThread;
+
+    std::string         m_lastCopiedFile;
+    std::set<BaseClientProxy*> m_copiedFileSentTo;
 
     ClientListener*        m_clientListener;
     ServerArgs            m_args;

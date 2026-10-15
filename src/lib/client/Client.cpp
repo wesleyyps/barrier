@@ -85,16 +85,14 @@ Client::Client(IEventQueue* events, const std::string& name, const NetworkAddres
                             new TMethodEventJob<Client>(this,
                                 &Client::handleResume));
 
-    if (m_args.m_enableDragDrop) {
-        m_events->adoptHandler(m_events->forFile().fileChunkSending(),
-                                this,
-                                new TMethodEventJob<Client>(this,
-                                    &Client::handleFileChunkSending));
-        m_events->adoptHandler(m_events->forFile().fileRecieveCompleted(),
-                                this,
-                                new TMethodEventJob<Client>(this,
-                                    &Client::handleFileRecieveCompleted));
-    }
+    m_events->adoptHandler(m_events->forFile().fileChunkSending(),
+                            this,
+                            new TMethodEventJob<Client>(this,
+                                &Client::handleFileChunkSending));
+    m_events->adoptHandler(m_events->forFile().fileRecieveCompleted(),
+                            this,
+                            new TMethodEventJob<Client>(this,
+                                &Client::handleFileRecieveCompleted));
 }
 
 Client::~Client()
@@ -105,10 +103,9 @@ Client::~Client()
     m_events->removeHandler(m_events->forIScreen().resume(),
                               getEventTarget());
 
-    if (m_args.m_enableDragDrop) {
-        m_events->removeHandler(m_events->forFile().fileChunkSending(), this);
-        m_events->removeHandler(m_events->forFile().fileRecieveCompleted(), this);
-    }
+    m_events->removeHandler(m_events->forFile().fileChunkSending(), this);
+    m_events->removeHandler(m_events->forFile().fileRecieveCompleted(), this);
+
 
     if (m_sendFileThread != nullptr) {
         StreamChunker::interruptFile();
@@ -433,9 +430,41 @@ Client::sendClipboard(ClipboardID id)
             m_sentClipboard[id] = true;
             m_dataClipboard[id] = data;
             m_server->onClipboardChanged(id, &clipboard);
+
+            if (clipboard.open(0)) {
+                if (clipboard.has(IClipboard::kText)) {
+                    std::string text = clipboard.get(IClipboard::kText);
+                    clipboard.close();
+
+                    std::string localFile = DropHelper::getLocalFilePathFromUri(text);
+                    if (!localFile.empty() && localFile != DropHelper::getLastReceivedFile() && localFile != m_lastCopiedFile) {
+                        LOG((CLOG_NOTE "Client: detected copied local file: %s, sending to server", localFile.c_str()));
+                        m_lastCopiedFile = localFile;
+                        try {
+                            DragInformation di;
+                            di.setFilename(localFile);
+                            DragFileList dragFileList;
+                            dragFileList.push_back(di);
+                            String info;
+                            UInt32 fileCount = DragInformation::setupDragInfo(dragFileList, info);
+                            sendDragInfo(fileCount, info, info.size());
+                            sendFileToServer(localFile.c_str());
+                        } catch (const std::exception& e) {
+                            LOG((CLOG_ERR "Client: sendFileToServer failed: %s", e.what()));
+                        } catch (...) {
+                            LOG((CLOG_ERR "Client: sendFileToServer failed with unknown exception"));
+                        }
+                    } else if (localFile.empty()) {
+                        m_lastCopiedFile.clear();
+                    }
+                } else {
+                    clipboard.close();
+                }
+            }
         }
     }
 }
+
 
 void
 Client::sendEvent(Event::Type type, void* data)
@@ -799,25 +828,33 @@ void Client::write_to_drop_dir_thread()
         ARCH->sleep(.1f);
     }
 
-    DropHelper::writeToDir(m_screen->getDropTarget(), m_dragFileList,
+    std::string savedFile = DropHelper::writeToDir(m_screen->getDropTarget(), m_dragFileList,
                     m_receivedFileData);
     m_receivedFileData.clear();
     m_receivedFileData.shrink_to_fit();
+
+    if (!savedFile.empty()) {
+        DropHelper::setLastReceivedFile(savedFile);
+        m_lastCopiedFile = savedFile;
+
+        std::string fileUri = "file://" + savedFile;
+        Clipboard newCb;
+        newCb.open(0);
+        newCb.empty();
+        newCb.add(IClipboard::kText, fileUri);
+        newCb.close();
+        m_screen->setClipboard(kClipboardClipboard, &newCb);
+    }
 }
 
 void
 Client::dragInfoReceived(UInt32 fileNum, std::string data)
 {
-    // TODO: fix duplicate function from CServer
-    if (!m_args.m_enableDragDrop) {
-        LOG((CLOG_DEBUG "drag drop not enabled, ignoring drag info."));
-        return;
-    }
-
     DragInformation::parseDragInfo(m_dragFileList, fileNum, data);
 
     m_screen->startDraggingFiles(m_dragFileList);
 }
+
 
 bool
 Client::isReceivedFileSizeValid()

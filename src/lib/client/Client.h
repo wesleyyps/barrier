@@ -231,4 +231,6 @@ private:
     bool                m_useSecureNetwork;
     ClientArgs            m_args;
     bool                m_enableClipboard;
+    std::string         m_lastCopiedFile;
 };
+

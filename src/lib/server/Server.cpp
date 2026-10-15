@@ -229,16 +229,15 @@ Server::Server(
 							new TMethodEventJob<Server>(this,
 								&Server::handleFakeInputEndEvent));
 
-	if (m_args.m_enableDragDrop) {
-		m_events->adoptHandler(m_events->forFile().fileChunkSending(),
-								this,
-								new TMethodEventJob<Server>(this,
-									&Server::handleFileChunkSendingEvent));
-		m_events->adoptHandler(m_events->forFile().fileRecieveCompleted(),
-								this,
-								new TMethodEventJob<Server>(this,
-									&Server::handleFileRecieveCompletedEvent));
-	}
+	m_events->adoptHandler(m_events->forFile().fileChunkSending(),
+							this,
+							new TMethodEventJob<Server>(this,
+								&Server::handleFileChunkSendingEvent));
+	m_events->adoptHandler(m_events->forFile().fileRecieveCompleted(),
+							this,
+							new TMethodEventJob<Server>(this,
+								&Server::handleFileRecieveCompletedEvent));
+
 
 	// add connection
 	addClient(m_primaryClient);
@@ -299,10 +298,9 @@ Server::~Server()
 							m_inputFilter);
 	m_events->removeHandler(Event::kTimer, this);
 
-	if (m_args.m_enableDragDrop) {
-		m_events->removeHandler(m_events->forFile().fileChunkSending(), this);
-		m_events->removeHandler(m_events->forFile().fileRecieveCompleted(), this);
-	}
+	m_events->removeHandler(m_events->forFile().fileChunkSending(), this);
+	m_events->removeHandler(m_events->forFile().fileRecieveCompleted(), this);
+
 
 	stopSwitch();
 
@@ -616,7 +614,17 @@ Server::switchScreen(BaseClientProxy* dst,
 			for (ClipboardID id = 0; id < kClipboardEnd; ++id) {
 				m_active->setClipboard(id, &m_clipboards[id].m_clipboard);
 			}
+
+			if (!m_lastCopiedFile.empty() && m_active != m_primaryClient && m_active != nullptr) {
+				if (m_copiedFileSentTo.find(m_active) == m_copiedFileSentTo.end()) {
+					LOG((CLOG_NOTE "Server: sending pending copied file \"%s\" to \"%s\"",
+						m_lastCopiedFile.c_str(), getName(m_active).c_str()));
+					sendFileToScreen(m_active, m_lastCopiedFile);
+					m_copiedFileSentTo.insert(m_active);
+				}
+			}
 		}
+
 
 		Server::SwitchToScreenInfo* info =
 			Server::SwitchToScreenInfo::alloc(m_active->getName());
@@ -2177,7 +2185,35 @@ Server::onClipboardChanged(BaseClientProxy* sender,
 
 	// send the new clipboard to the active screen
 	m_active->setClipboard(id, &clipboard.m_clipboard);
+
+	if (clipboard.m_clipboard.open(0)) {
+		if (clipboard.m_clipboard.has(IClipboard::kText)) {
+			std::string text = clipboard.m_clipboard.get(IClipboard::kText);
+			clipboard.m_clipboard.close();
+
+			std::string localFile = DropHelper::getLocalFilePathFromUri(text);
+			if (!localFile.empty() && localFile != DropHelper::getLastReceivedFile()) {
+				LOG((CLOG_NOTE "Server: detected copied local file on %s: %s",
+					getName(sender).c_str(), localFile.c_str()));
+				m_lastCopiedFile = localFile;
+				m_copiedFileSentTo.clear();
+
+				if (sender == m_primaryClient && m_active != m_primaryClient && m_active != nullptr) {
+					LOG((CLOG_NOTE "Server: immediately sending copied file \"%s\" to active client \"%s\"",
+						localFile.c_str(), getName(m_active).c_str()));
+					sendFileToScreen(m_active, localFile);
+					m_copiedFileSentTo.insert(m_active);
+				}
+			} else if (localFile.empty()) {
+				m_lastCopiedFile.clear();
+				m_copiedFileSentTo.clear();
+			}
+		} else {
+			clipboard.m_clipboard.close();
+		}
+	}
 }
+
 
 void
 Server::onScreensaver(bool activated)
@@ -2328,19 +2364,8 @@ Server::onMouseUp(ButtonID id)
 		m_ignoreFileTransfer = false;
 		return;
 	}
-
-	if (m_args.m_enableDragDrop) {
-		if (!m_screen->isOnScreen()) {
-            std::string& file = m_screen->getDraggingFilename();
-			if (!file.empty()) {
-				sendFileToClient(file.c_str());
-			}
-		}
-
-		// always clear dragging filename
-		m_screen->clearDraggingFilename();
-	}
 }
+
 
 bool
 Server::onMouseMovePrimary(SInt32 x, SInt32 y)
@@ -2453,23 +2478,12 @@ Server::onMouseMovePrimary(SInt32 x, SInt32 y)
 
 		// should we switch or not?
 		if (newScreen != nullptr && isSwitchOkay(newScreen, dir, targetX, targetY, xc, yc)) {
-			if (m_args.m_enableDragDrop
-				&& m_screen->isDraggingStarted()
-				&& m_active != newScreen
-				&& m_waitDragInfoThread) {
-				if (m_sendDragInfoThread == nullptr) {
-                    m_sendDragInfoThread = new Thread([this, newScreen]()
-                                                      { send_drag_info_thread(newScreen); });
-				}
-
-				return false;
-			}
-
 			// switch screen
 			switchScreen(newScreen, targetX, targetY, false);
 			m_waitDragInfoThread = true;
 			return true;
 		}
+
 	}
 
 	return false;
@@ -2755,11 +2769,25 @@ void Server::write_to_drop_dir_thread()
 		ARCH->sleep(.1f);
 	}
 
-	DropHelper::writeToDir(m_screen->getDropTarget(), m_fakeDragFileList,
+	std::string savedFile = DropHelper::writeToDir(m_screen->getDropTarget(), m_fakeDragFileList,
 					m_receivedFileData);
 	m_receivedFileData.clear();
 	m_receivedFileData.shrink_to_fit();
+
+	if (!savedFile.empty()) {
+		m_lastCopiedFile = savedFile;
+		m_copiedFileSentTo.clear();
+
+		std::string fileUri = "file://" + savedFile;
+		Clipboard newCb;
+		newCb.open(0);
+		newCb.empty();
+		newCb.add(IClipboard::kText, fileUri);
+		newCb.close();
+		m_screen->setClipboard(kClipboardClipboard, &newCb);
+	}
 }
+
 
 bool
 Server::addClient(BaseClientProxy* client)
@@ -3069,12 +3097,31 @@ void Server::send_file_thread(std::string filename)
 void
 Server::dragInfoReceived(UInt32 fileNum, std::string content)
 {
-	if (!m_args.m_enableDragDrop) {
-		LOG((CLOG_DEBUG "drag drop not enabled, ignoring drag info."));
-		return;
-	}
-
 	DragInformation::parseDragInfo(m_fakeDragFileList, fileNum, content);
 
 	m_screen->startDraggingFiles(m_fakeDragFileList);
 }
+
+void
+Server::sendFileToScreen(BaseClientProxy* targetScreen, const std::string& filename)
+{
+	if (targetScreen == nullptr || filename.empty()) {
+		return;
+	}
+	try {
+		m_dragFileList.clear();
+		DragInformation di;
+		di.setFilename(filename);
+		m_dragFileList.push_back(di);
+		sendDragInfo(targetScreen);
+		m_dragFileList.clear();
+		sendFileToClient(filename);
+	}
+	catch (const std::exception& e) {
+		LOG((CLOG_ERR "Server: sendFileToScreen failed: %s", e.what()));
+	}
+	catch (...) {
+		LOG((CLOG_ERR "Server: sendFileToScreen failed with unknown exception"));
+	}
+}
+

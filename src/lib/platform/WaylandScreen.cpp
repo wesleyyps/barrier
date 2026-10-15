@@ -161,6 +161,10 @@ WaylandScreen::WaylandScreen(bool isPrimary, IEventQueue* events)
         if (!m_capture->init()) {
             LOG((CLOG_ERR "WaylandInputCapture failed to initialize."));
         }
+        LOG((CLOG_INFO "Initializing WaylandScreen RemoteDesktop for Server (cursor control)..."));
+        if (!m_portal->init()) {
+            LOG((CLOG_WARN "WaylandPortal failed to initialize for Server."));
+        }
     }
 }
 
@@ -205,8 +209,18 @@ void WaylandScreen::reconfigure(UInt32 activeSides) {
 void WaylandScreen::warpCursor(SInt32 x, SInt32 y) {
     fakeMouseMove(x, y);
 }
-UInt32 WaylandScreen::registerHotKey(KeyID key, KeyModifierMask mask) { return 0; }
-void WaylandScreen::unregisterHotKey(UInt32 id) { }
+UInt32 WaylandScreen::registerHotKey(KeyID key, KeyModifierMask mask) {
+    if (m_capture) {
+        return m_capture->registerHotKey(key, mask);
+    }
+    return 0;
+}
+
+void WaylandScreen::unregisterHotKey(UInt32 id) {
+    if (m_capture) {
+        m_capture->unregisterHotKey(id);
+    }
+}
 void WaylandScreen::fakeInputBegin() { }
 void WaylandScreen::fakeInputEnd() { }
 SInt32 WaylandScreen::getJumpZoneSize() const { return 1; }
@@ -346,6 +360,10 @@ bool WaylandScreen::leave() {
     m_buttonsDown.clear();
     if (!m_isPrimary && m_portal) {
         m_portal->leave();
+    }
+    if (m_isPrimary && m_capture && !m_capture->isCaptured()) {
+        LOG((CLOG_INFO "WaylandScreen: Programmatic leave detected, forcing capture"));
+        m_capture->forceCapture(m_portal);
     }
     return true;
 }

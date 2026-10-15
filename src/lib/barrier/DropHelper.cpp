@@ -89,7 +89,73 @@ static String getDefaultDownloadsDir()
     return defDir;
 }
 
-void
+#include <sstream>
+#include <sys/stat.h>
+
+static std::string s_lastReceivedFile;
+
+void DropHelper::setLastReceivedFile(const std::string& file)
+{
+    s_lastReceivedFile = file;
+}
+
+const std::string& DropHelper::getLastReceivedFile()
+{
+    return s_lastReceivedFile;
+}
+
+std::string DropHelper::decodeUri(const std::string& uri)
+{
+    std::string result;
+    result.reserve(uri.size());
+    for (size_t i = 0; i < uri.size(); ++i) {
+        if (uri[i] == '%' && i + 2 < uri.size()) {
+            char hex[3] = { uri[i+1], uri[i+2], '\0' };
+            char* end = nullptr;
+            long val = strtol(hex, &end, 16);
+            if (end == hex + 2) {
+                result += static_cast<char>(val);
+                i += 2;
+                continue;
+            }
+        }
+        result += uri[i];
+    }
+    return result;
+}
+
+std::string DropHelper::getLocalFilePathFromUri(const std::string& text)
+{
+    std::istringstream stream(text);
+    std::string line;
+    while (std::getline(stream, line)) {
+        while (!line.empty() && (line.back() == '\r' || line.back() == '\n' || line.back() == ' ')) {
+            line.pop_back();
+        }
+        if (line.empty() || line[0] == '#') continue;
+        if (line.compare(0, 5, "copy\n") == 0) line = line.substr(5);
+        if (line == "copy") continue;
+
+        const std::string prefix = "file://";
+        if (line.compare(0, prefix.size(), prefix) == 0) {
+            std::string path = line.substr(prefix.size());
+            if (!path.empty() && path[0] != '/') {
+                size_t slash = path.find('/');
+                if (slash != std::string::npos) {
+                    path = path.substr(slash);
+                }
+            }
+            std::string decodedPath = decodeUri(path);
+            struct stat st;
+            if (stat(decodedPath.c_str(), &st) == 0 && S_ISREG(st.st_mode)) {
+                return decodedPath;
+            }
+        }
+    }
+    return "";
+}
+
+String
 DropHelper::writeToDir(const String& destination, DragFileList& fileList, String& data)
 {
     String dropTarget = cleanDropPath(destination);
@@ -124,14 +190,15 @@ DropHelper::writeToDir(const String& destination, DragFileList& fileList, String
             filePath.append("/");
         }
 #endif
-        filePath.append(fileList.at(0).getFilename());
+        std::string filename = fileList.at(0).getFilename();
+        filePath.append(filename);
         barrier::open_utf8_path(file, filePath, std::ios::out | std::ios::binary);
         if (!file.is_open()) {
             String fallback = getDefaultDownloadsDir();
             if (dropTarget != fallback && !fallback.empty()) {
                 LOG((CLOG_WARN "Could not open %s, retrying in Downloads: %s", filePath.c_str(), fallback.c_str()));
                 dropTarget = fallback;
-                filePath = dropTarget + "/" + fileList.at(0).getFilename();
+                filePath = dropTarget + "/" + filename;
                 barrier::fs::create_directories(barrier::fs::u8path(dropTarget), ec);
                 barrier::open_utf8_path(file, filePath, std::ios::out | std::ios::binary);
             }
@@ -139,35 +206,53 @@ DropHelper::writeToDir(const String& destination, DragFileList& fileList, String
 
         if (!file.is_open()) {
             LOG((CLOG_ERR "drop file failed: can not open %s", filePath.c_str()));
-            return;
+            return "";
         }
 
         file.write(data.c_str(), data.size());
         file.close();
 
-        LOG((CLOG_INFO "dropped file \"%s\" in \"%s\"", fileList.at(0).getFilename().c_str(), dropTarget.c_str()));
+        LOG((CLOG_INFO "dropped file \"%s\" in \"%s\"", filename.c_str(), dropTarget.c_str()));
+        setLastReceivedFile(filePath);
 
 #if !defined(SYSAPI_WIN32) && !defined(__APPLE__)
         // Trigger desktop notification on Linux if notify-send is available
         std::string notifyTitle = "Barrier";
-        std::string notifyMsg = "Arquivo salvo em: " + dropTarget + "/" + fileList.at(0).getFilename();
+        std::string notifyMsg = "Arquivo salvo em: " + dropTarget + "/" + filename + " (Pronto para Colar!)";
         for (size_t pos = 0; (pos = notifyMsg.find('"', pos)) != std::string::npos; pos += 2) {
             notifyMsg.insert(pos, "\\");
         }
         std::string notifyCmd = "notify-send -i document-save \"" + notifyTitle + "\" \"" + notifyMsg + "\" 2>/dev/null &";
         int sysRet = std::system(notifyCmd.c_str());
         (void)sysRet;
+
+        // Also update the Linux clipboard using wl-copy / xclip if available
+        std::string fileUri = "file://" + filePath;
+        std::string clipCmd =
+            "if command -v wl-copy >/dev/null 2>&1; then "
+            "  printf 'copy\\n" + fileUri + "\\n' | wl-copy -t x-special/gnome-copied-files 2>/dev/null & "
+            "  printf '" + fileUri + "\\r\\n' | wl-copy -t text/uri-list 2>/dev/null & "
+            "elif command -v xclip >/dev/null 2>&1; then "
+            "  printf 'copy\\n" + fileUri + "\\n' | xclip -selection clipboard -t x-special/gnome-copied-files 2>/dev/null & "
+            "  printf '" + fileUri + "\\r\\n' | xclip -selection clipboard -t text/uri-list 2>/dev/null & "
+            "fi &";
+        int clipRet = std::system(clipCmd.c_str());
+        (void)clipRet;
 #elif defined(__APPLE__)
-        // Trigger desktop notification on macOS
-        std::string script = "osascript -e 'display notification \"Salvo em: " + dropTarget + "\" with title \"Barrier: " + fileList.at(0).getFilename() + "\"' 2>/dev/null &";
+        // Trigger desktop notification and set pasteboard on macOS
+        std::string script = "osascript -e 'set the clipboard to (POSIX file \"" + filePath + "\")' "
+                             "-e 'display notification \"Salvo em: " + dropTarget + "\" with title \"Barrier: " + filename + " (Pronto para Colar)\"' 2>/dev/null &";
         int sysRet = std::system(script.c_str());
         (void)sysRet;
 #endif
 
         fileList.clear();
+        return filePath;
     }
     else {
         LOG((CLOG_ERR "drop file failed: drop target is empty"));
+        return "";
     }
 }
+
 

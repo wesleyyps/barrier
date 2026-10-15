@@ -39,4 +39,5 @@ public:
 
 private:
     Atom                m_atom;
+    std::string         m_name;
 };

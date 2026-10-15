@@ -51,6 +51,8 @@ WaylandClipboard::WaylandClipboard()
     m_atomString    = XA_STRING;
     m_atomText      = XInternAtom(m_display, "TEXT", False);
     m_atomProperty  = XInternAtom(m_display, "BARRIER_SELECTION", False);
+    m_atomTextUriList = XInternAtom(m_display, "text/uri-list", False);
+    m_atomGnomeCopiedFiles = XInternAtom(m_display, "x-special/gnome-copied-files", False);
 
     if (pipe(m_wakePipe) != 0) {
         LOG((CLOG_ERR "WaylandClipboard: failed to create wake pipe"));
@@ -180,9 +182,41 @@ void WaylandClipboard::handleXEvent(const XEvent& ev) {
         reply.xselection.property = None;
 
         if (req.target == m_atomTargets) {
-            Atom targets[] = { m_atomTargets, m_atomUtf8, m_atomString, m_atomText };
+            Atom targets[6];
+            int ntargets = 0;
+            targets[ntargets++] = m_atomTargets;
+            targets[ntargets++] = m_atomUtf8;
+            targets[ntargets++] = m_atomString;
+            targets[ntargets++] = m_atomText;
+            bool isFile = false;
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                isFile = (m_ownedText.rfind("file://", 0) == 0);
+            }
+            if (isFile) {
+                targets[ntargets++] = m_atomTextUriList;
+                targets[ntargets++] = m_atomGnomeCopiedFiles;
+            }
             XChangeProperty(m_display, req.requestor, req.property, XA_ATOM, 32,
-                            PropModeReplace, reinterpret_cast<unsigned char*>(targets), 4);
+                            PropModeReplace, reinterpret_cast<unsigned char*>(targets), ntargets);
+            reply.xselection.property = req.property;
+        } else if (req.target == m_atomTextUriList) {
+            std::string uriList;
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                uriList = m_ownedText + "\r\n";
+            }
+            XChangeProperty(m_display, req.requestor, req.property, req.target, 8,
+                            PropModeReplace, reinterpret_cast<const unsigned char*>(uriList.data()), uriList.size());
+            reply.xselection.property = req.property;
+        } else if (req.target == m_atomGnomeCopiedFiles) {
+            std::string gnomeFiles;
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                gnomeFiles = "copy\n" + m_ownedText + "\n";
+            }
+            XChangeProperty(m_display, req.requestor, req.property, req.target, 8,
+                            PropModeReplace, reinterpret_cast<const unsigned char*>(gnomeFiles.data()), gnomeFiles.size());
             reply.xselection.property = req.property;
         } else if (req.target == m_atomUtf8 || req.target == m_atomString || req.target == m_atomText) {
             std::string text;
@@ -222,6 +256,13 @@ void WaylandClipboard::handleXEvent(const XEvent& ev) {
                 XFree(propVal);
                 XDeleteProperty(m_display, m_window, sel.property);
             }
+        }
+
+        if (result.empty() && sel.target == m_atomUtf8) {
+            // Fallback to text/uri-list if UTF8_STRING was empty (e.g. file manager copy)
+            XConvertSelection(m_display, m_atomClipboard, m_atomTextUriList, m_atomProperty, m_window, CurrentTime);
+            XFlush(m_display);
+            return;
         }
 
         std::lock_guard<std::mutex> lock(m_mutex);

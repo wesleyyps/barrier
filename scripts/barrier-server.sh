@@ -29,6 +29,10 @@ export LSAN_OPTIONS="$LSAN_OPTIONS"
 export UBSAN_OPTIONS="$UBSAN_OPTIONS"
 
 if [ "$OS" = "Linux" ]; then
+    gsettings set org.gnome.mutter.wayland xwayland-allow-grabs true 2>/dev/null || true
+    mkdir -p "$HOME/.local/bin"
+    ln -sf "$SCRIPT_DIR/barrier-ctl.sh" "$HOME/.local/bin/barrier-ctl" 2>/dev/null || true
+    "$SCRIPT_DIR/setup-gnome-shortcuts.sh" 2>/dev/null || true
     if command -v systemctl >/dev/null 2>&1; then
         while IFS= read -r line; do
             [ -n "$line" ] && export "$line"
@@ -57,10 +61,10 @@ if [ "$OS" = "Linux" ]; then
     fi
     export DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_RUNTIME_DIR
     if command -v setsid >/dev/null 2>&1; then
-        setsid -f "$BARRIER_SRV_BIN" -f -c "$BARRIER_SRV_CONF" </dev/null >/tmp/barrier-server.log 2>&1
+        setsid -f "$BARRIER_SRV_BIN" -f -d DEBUG1 -c "$BARRIER_SRV_CONF" </dev/null >/tmp/barrier-server.log 2>&1
         setsid -f "$BARRIER_GUI_BIN" </dev/null >/dev/null 2>&1
     else
-        $NOHUP_BIN "$BARRIER_SRV_BIN" -f -c "$BARRIER_SRV_CONF" </dev/null >/tmp/barrier-server.log 2>&1 &
+        $NOHUP_BIN "$BARRIER_SRV_BIN" -f -d DEBUG1 -c "$BARRIER_SRV_CONF" </dev/null >/tmp/barrier-server.log 2>&1 &
         $NOHUP_BIN "$BARRIER_GUI_BIN" </dev/null >/dev/null 2>&1 &
     fi
 else

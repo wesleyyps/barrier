@@ -1,5 +1,6 @@
 #include "WaylandInputCapture.h"
 #include "platform/WaylandScreen.h"
+#include "platform/WaylandPortal.h"
 #include "platform/XWindowsUtil.h"
 #include "barrier/IPrimaryScreen.h"
 #include "barrier/IKeyState.h"
@@ -18,6 +19,8 @@
 #include <dirent.h>
 #include <cctype>
 #include <cstring>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 WaylandInputCapture::WaylandInputCapture(IEventQueue* events, WaylandScreen* screen)
     : m_events(events),
@@ -34,7 +37,26 @@ WaylandInputCapture::WaylandInputCapture(IEventQueue* events, WaylandScreen* scr
       m_altMask(Mod1Mask),
       m_altGrMask(Mod5Mask),
       m_superMask(Mod4Mask),
-      m_numLockMask(Mod2Mask) {
+      m_numLockMask(Mod2Mask),
+      m_frameHasDiscreteScroll(false),
+      m_frameDiscreteX(0),
+      m_frameDiscreteY(0),
+      m_frameDeltaX(0.0),
+      m_frameDeltaY(0.0),
+      m_smoothScrollAccX(0.0),
+      m_smoothScrollAccY(0.0),
+      m_nextHotKeyId(1),
+      m_cmdSock(-1) {
+}
+
+void WaylandInputCapture::resetScrollState() {
+    m_frameHasDiscreteScroll = false;
+    m_frameDiscreteX = 0;
+    m_frameDiscreteY = 0;
+    m_frameDeltaX = 0.0;
+    m_frameDeltaY = 0.0;
+    m_smoothScrollAccX = 0.0;
+    m_smoothScrollAccY = 0.0;
 }
 
 WaylandInputCapture::~WaylandInputCapture() {
@@ -43,8 +65,26 @@ WaylandInputCapture::~WaylandInputCapture() {
 
 void WaylandInputCapture::cleanup() {
     m_running = false;
+    cleanupCommandSocket();
     if (m_thread.joinable()) {
         m_thread.join();
+    }
+    {
+        std::lock_guard<std::recursive_mutex> lock(m_hotKeyMutex);
+        if (m_xDisplay) {
+            Window root = DefaultRootWindow(m_xDisplay);
+            for (const auto& kv : m_hotKeys) {
+                if (kv.second.keycode != 0) {
+                    XUngrabKey(m_xDisplay, kv.second.keycode, AnyModifier, root);
+                }
+            }
+            XFlush(m_xDisplay);
+        }
+        m_hotKeys.clear();
+        m_hotKeysByCodeMod.clear();
+        m_hotKeysByKeyMask.clear();
+        m_activeCapturedHotKeys.clear();
+        m_activeX11HotKeys.clear();
     }
     cleanupX11();
     if (m_ei) {
@@ -494,6 +534,11 @@ void WaylandInputCapture::releaseCapture() {
     }
     m_isCaptured = false;
     m_pressedKeys.clear();
+    {
+        std::lock_guard<std::recursive_mutex> lock(m_hotKeyMutex);
+        m_activeCapturedHotKeys.clear();
+    }
+    resetScrollState();
 }
 
 void WaylandInputCapture::handleDBusMessage(DBusMessage* msg) {
@@ -519,6 +564,7 @@ void WaylandInputCapture::handleDBusMessage(DBusMessage* msg) {
 
         m_isCaptured = true;
         m_currentActivationId = activation_id;
+        resetScrollState();
 
         if (m_xDisplay) {
             XkbStateRec xkbState;
@@ -553,10 +599,12 @@ void WaylandInputCapture::handleDBusMessage(DBusMessage* msg) {
             }
         }
 
-        m_events->addEvent(Event(
-            m_events->forIPrimaryScreen().motionOnPrimary(),
-            m_screen->getEventTarget(),
-            IPrimaryScreen::MotionInfo::alloc(posX, posY)));
+        if (!m_screen->isOnSecondary()) {
+            m_events->addEvent(Event(
+                m_events->forIPrimaryScreen().motionOnPrimary(),
+                m_screen->getEventTarget(),
+                IPrimaryScreen::MotionInfo::alloc(posX, posY)));
+        }
     }
     else if (dbus_message_is_signal(msg, "org.gnome.Mutter.InputCapture.Session", "Deactivated")) {
         uint32_t activation_id = 0;
@@ -564,6 +612,7 @@ void WaylandInputCapture::handleDBusMessage(DBusMessage* msg) {
         LOG((CLOG_INFO "WaylandInputCapture: Deactivated signal! activation=%u", activation_id));
         m_isCaptured = false;
         m_pressedKeys.clear();
+        resetScrollState();
     }
     else if (dbus_message_is_signal(msg, "org.gnome.Mutter.InputCapture.Session", "ZonesChanged")) {
         LOG((CLOG_INFO "WaylandInputCapture: ZonesChanged signal received"));
@@ -621,29 +670,125 @@ void WaylandInputCapture::handleEIEvent(struct ei_event* ev) {
         break;
     }
     case EI_EVENT_SCROLL_DELTA: {
-        double dx = ei_event_scroll_get_dx(ev);
-        double dy = ei_event_scroll_get_dy(ev);
-        SInt32 yDelta = static_cast<SInt32>(-dy * 12.0);
-        SInt32 xDelta = static_cast<SInt32>(dx * 12.0);
-        if ((xDelta != 0 || yDelta != 0) && m_isCaptured) {
-            m_events->addEvent(Event(
-                m_events->forIPrimaryScreen().wheel(),
-                m_screen->getEventTarget(),
-                IPrimaryScreen::WheelInfo::alloc(xDelta, yDelta)));
-        }
+        m_frameDeltaX += ei_event_scroll_get_dx(ev);
+        m_frameDeltaY += ei_event_scroll_get_dy(ev);
         break;
     }
     case EI_EVENT_SCROLL_DISCRETE: {
-        int32_t ddy = ei_event_scroll_get_discrete_dy(ev);
-        int32_t ddx = ei_event_scroll_get_discrete_dx(ev);
-        SInt32 yDelta = -ddy * 120;
-        SInt32 xDelta = ddx * 120;
-        if ((xDelta != 0 || yDelta != 0) && m_isCaptured) {
-            m_events->addEvent(Event(
-                m_events->forIPrimaryScreen().wheel(),
-                m_screen->getEventTarget(),
-                IPrimaryScreen::WheelInfo::alloc(xDelta, yDelta)));
+        m_frameHasDiscreteScroll = true;
+        m_frameDiscreteX += ei_event_scroll_get_discrete_dx(ev);
+        m_frameDiscreteY += ei_event_scroll_get_discrete_dy(ev);
+        break;
+    }
+    case EI_EVENT_SCROLL_STOP:
+    case EI_EVENT_SCROLL_CANCEL: {
+        if (m_isCaptured) {
+            const double kStep = 40.0;
+            if (m_smoothScrollAccX >= 20.0) {
+                m_events->addEvent(Event(
+                    m_events->forIPrimaryScreen().wheel(),
+                    m_screen->getEventTarget(),
+                    IPrimaryScreen::WheelInfo::alloc(static_cast<SInt32>(kStep), 0)));
+            } else if (m_smoothScrollAccX <= -20.0) {
+                m_events->addEvent(Event(
+                    m_events->forIPrimaryScreen().wheel(),
+                    m_screen->getEventTarget(),
+                    IPrimaryScreen::WheelInfo::alloc(static_cast<SInt32>(-kStep), 0)));
+            }
+            if (m_smoothScrollAccY >= 20.0) {
+                m_events->addEvent(Event(
+                    m_events->forIPrimaryScreen().wheel(),
+                    m_screen->getEventTarget(),
+                    IPrimaryScreen::WheelInfo::alloc(0, static_cast<SInt32>(kStep))));
+            } else if (m_smoothScrollAccY <= -20.0) {
+                m_events->addEvent(Event(
+                    m_events->forIPrimaryScreen().wheel(),
+                    m_screen->getEventTarget(),
+                    IPrimaryScreen::WheelInfo::alloc(0, static_cast<SInt32>(-kStep))));
+            }
         }
+        m_smoothScrollAccX = 0.0;
+        m_smoothScrollAccY = 0.0;
+        break;
+    }
+    case EI_EVENT_FRAME: {
+        if (m_isCaptured) {
+            if (m_frameHasDiscreteScroll) {
+                int32_t discY = m_frameDiscreteY;
+                int32_t discX = m_frameDiscreteX;
+
+                if (discY != 0 && std::abs(discY) < 15) {
+                    discY *= 120;
+                }
+                if (discX != 0 && std::abs(discX) < 15) {
+                    discX *= 120;
+                }
+
+                SInt32 yDelta = -discY;
+                SInt32 xDelta = discX;
+
+                // Send X and Y wheel events separately because X11 clients (and Windows)
+                // drop or ignore events that have both xDelta and yDelta non-zero.
+                if (xDelta != 0) {
+                    m_events->addEvent(Event(
+                        m_events->forIPrimaryScreen().wheel(),
+                        m_screen->getEventTarget(),
+                        IPrimaryScreen::WheelInfo::alloc(xDelta, 0)));
+                }
+                if (yDelta != 0) {
+                    m_events->addEvent(Event(
+                        m_events->forIPrimaryScreen().wheel(),
+                        m_screen->getEventTarget(),
+                        IPrimaryScreen::WheelInfo::alloc(0, yDelta)));
+                }
+
+                m_smoothScrollAccX = 0.0;
+                m_smoothScrollAccY = 0.0;
+            } else if (m_frameDeltaX != 0.0 || m_frameDeltaY != 0.0) {
+                // Continuous smooth scroll (touchpad)
+                // 15 logical pixels = 120 Barrier units (8.0 units per pixel)
+                m_smoothScrollAccX += m_frameDeltaX * 8.0;
+                m_smoothScrollAccY += -m_frameDeltaY * 8.0;
+
+                const double kStep = 40.0;
+
+                while (m_smoothScrollAccX >= kStep) {
+                    m_events->addEvent(Event(
+                        m_events->forIPrimaryScreen().wheel(),
+                        m_screen->getEventTarget(),
+                        IPrimaryScreen::WheelInfo::alloc(static_cast<SInt32>(kStep), 0)));
+                    m_smoothScrollAccX -= kStep;
+                }
+                while (m_smoothScrollAccX <= -kStep) {
+                    m_events->addEvent(Event(
+                        m_events->forIPrimaryScreen().wheel(),
+                        m_screen->getEventTarget(),
+                        IPrimaryScreen::WheelInfo::alloc(static_cast<SInt32>(-kStep), 0)));
+                    m_smoothScrollAccX += kStep;
+                }
+
+                while (m_smoothScrollAccY >= kStep) {
+                    m_events->addEvent(Event(
+                        m_events->forIPrimaryScreen().wheel(),
+                        m_screen->getEventTarget(),
+                        IPrimaryScreen::WheelInfo::alloc(0, static_cast<SInt32>(kStep))));
+                    m_smoothScrollAccY -= kStep;
+                }
+                while (m_smoothScrollAccY <= -kStep) {
+                    m_events->addEvent(Event(
+                        m_events->forIPrimaryScreen().wheel(),
+                        m_screen->getEventTarget(),
+                        IPrimaryScreen::WheelInfo::alloc(0, static_cast<SInt32>(-kStep))));
+                    m_smoothScrollAccY += kStep;
+                }
+            }
+        }
+
+        m_frameHasDiscreteScroll = false;
+        m_frameDiscreteX = 0;
+        m_frameDiscreteY = 0;
+        m_frameDeltaX = 0.0;
+        m_frameDeltaY = 0.0;
         break;
     }
     case EI_EVENT_KEYBOARD_KEY: {
@@ -666,6 +811,42 @@ void WaylandInputCapture::handleEIEvent(struct ei_event* ev) {
         }
 
         KeyButton button = static_cast<KeyButton>(scancode + 8);
+
+        // Check if this key matches a registered hotkey
+        {
+            std::lock_guard<std::recursive_mutex> lock(m_hotKeyMutex);
+            if (is_press) {
+                KeyModifierMask normMask = m_activeModifiers & (KeyModifierShift | KeyModifierControl | KeyModifierAlt | KeyModifierSuper | KeyModifierAltGr);
+                auto hit = m_hotKeysByKeyMask.find(std::make_pair(key, normMask));
+                if (hit != m_hotKeysByKeyMask.end()) {
+                    UInt32 hotKeyId = hit->second;
+                    m_activeCapturedHotKeys[scancode] = hotKeyId;
+                    LOG((CLOG_INFO "WaylandInputCapture: Captured hotkey triggered id=%u key=0x%x mask=0x%x Press",
+                         hotKeyId, key, normMask));
+
+                    m_events->addEvent(Event(
+                        m_events->forIPrimaryScreen().hotKeyDown(),
+                        m_screen->getEventTarget(),
+                        IPlatformScreen::HotKeyInfo::alloc(hotKeyId)));
+                    break;
+                }
+            } else {
+                auto it = m_activeCapturedHotKeys.find(scancode);
+                if (it != m_activeCapturedHotKeys.end()) {
+                    UInt32 hotKeyId = it->second;
+                    m_activeCapturedHotKeys.erase(it);
+                    LOG((CLOG_INFO "WaylandInputCapture: Captured hotkey released id=%u key=0x%x Release",
+                         hotKeyId, key));
+
+                    m_events->addEvent(Event(
+                        m_events->forIPrimaryScreen().hotKeyUp(),
+                        m_screen->getEventTarget(),
+                        IPlatformScreen::HotKeyInfo::alloc(hotKeyId)));
+                    break;
+                }
+            }
+        }
+
         if (m_isCaptured) {
             m_events->addEvent(Event(
                 is_press ? m_events->forIKeyState().keyDown() : m_events->forIKeyState().keyUp(),
@@ -680,17 +861,21 @@ void WaylandInputCapture::handleEIEvent(struct ei_event* ev) {
 }
 
 void WaylandInputCapture::pollEvents() {
+    setupCommandSocket();
     int checkSwitchTimeoutCount = 0;
 
     while (m_running) {
-        // 0. Process Xwayland events (e.g. keyboard layout switch)
+        // 0. Process Xwayland events (e.g. keyboard layout switch, hotkeys)
         if (m_xDisplay) {
+            std::lock_guard<std::recursive_mutex> lock(m_hotKeyMutex);
             while (XPending(m_xDisplay) > 0) {
                 XEvent xev;
                 XNextEvent(m_xDisplay, &xev);
                 if (xev.type == MappingNotify) {
                     XRefreshKeyboardMapping(&xev.xmapping);
                     initModifierMasks();
+                } else if (xev.type == KeyPress || xev.type == KeyRelease) {
+                    handleX11KeyEvent(&xev.xkey);
                 }
             }
         }
@@ -728,8 +913,8 @@ void WaylandInputCapture::pollEvents() {
             checkSwitchTimeoutCount = 0;
         }
 
-        // 4. Poll on libei, DBus, and X11 fds
-        struct pollfd pfds[3];
+        // 4. Poll on libei, DBus, X11, and control socket fds
+        struct pollfd pfds[4];
         int numFds = 0;
         if (m_ei) {
             pfds[numFds].fd = ei_get_fd(m_ei);
@@ -750,13 +935,27 @@ void WaylandInputCapture::pollEvents() {
                 numFds++;
             }
         }
+        if (m_cmdSock >= 0) {
+            pfds[numFds].fd = m_cmdSock;
+            pfds[numFds].events = POLLIN;
+            numFds++;
+        }
 
         if (numFds > 0) {
             poll(pfds, numFds, 10);
+            if (m_cmdSock >= 0) {
+                for (int i = 0; i < numFds; ++i) {
+                    if (pfds[i].fd == m_cmdSock && (pfds[i].revents & POLLIN)) {
+                        processCommandSocket();
+                        break;
+                    }
+                }
+            }
         } else {
             usleep(10000);
         }
     }
+    cleanupCommandSocket();
 }
 
 void WaylandInputCapture::updateModifiers(uint32_t scancode, bool isPress) {
@@ -985,4 +1184,411 @@ void WaylandInputCapture::getShape(SInt32& x, SInt32& y, SInt32& width, SInt32& 
     y = minY;
     width = maxX - minX;
     height = maxY - minY;
+}
+
+KeyCode WaylandInputCapture::keyIDToKeyCode(KeyID key) const {
+    if (!m_xDisplay) return 0;
+
+    KeySym sym = NoSymbol;
+    if (key >= 0x20 && key <= 0x7e) {
+        sym = static_cast<KeySym>(key);
+    } else if (key >= 0xef00 && key <= 0xefff) {
+        sym = static_cast<KeySym>(key - 0xef00 + 0xff00);
+    }
+    if (sym != NoSymbol) {
+        KeyCode kc = XKeysymToKeycode(m_xDisplay, sym);
+        if (kc != 0) return kc;
+    }
+
+    int minKeycode = 8, maxKeycode = 255;
+    XDisplayKeycodes(m_xDisplay, &minKeycode, &maxKeycode);
+    for (int kc = minKeycode; kc <= maxKeycode; ++kc) {
+        KeySym ksym = XkbKeycodeToKeysym(m_xDisplay, kc, 0, 0);
+        if (ksym != NoSymbol && XWindowsUtil::mapKeySymToKeyID(ksym) == key) {
+            return static_cast<KeyCode>(kc);
+        }
+    }
+    return 0;
+}
+
+unsigned int WaylandInputCapture::mapModifiersToX(KeyModifierMask mask) const {
+    unsigned int xMods = 0;
+    if (mask & KeyModifierShift) xMods |= ShiftMask;
+    if (mask & KeyModifierControl) xMods |= ControlMask;
+    if (mask & KeyModifierAlt) xMods |= m_altMask;
+    if (mask & KeyModifierSuper) xMods |= m_superMask;
+    if (mask & KeyModifierAltGr) xMods |= m_altGrMask;
+    return xMods;
+}
+
+UInt32 WaylandInputCapture::registerHotKey(KeyID key, KeyModifierMask mask) {
+    std::lock_guard<std::recursive_mutex> lock(m_hotKeyMutex);
+
+    if (!m_xDisplay) {
+        initX11();
+    }
+
+    UInt32 id = m_nextHotKeyId++;
+    HotKeyItem item;
+    item.id = id;
+    item.key = key;
+    item.mask = mask & (KeyModifierShift | KeyModifierControl | KeyModifierAlt | KeyModifierSuper | KeyModifierAltGr);
+    item.keycode = keyIDToKeyCode(key);
+    item.xMods = mapModifiersToX(item.mask);
+
+    LOG((CLOG_INFO "WaylandInputCapture: Registering hotkey id=%u key=0x%x mask=0x%x keycode=%u xMods=0x%x",
+         id, key, item.mask, (unsigned int)item.keycode, item.xMods));
+
+    if (m_xDisplay && item.keycode != 0) {
+        Window root = DefaultRootWindow(m_xDisplay);
+        unsigned int ignoredMods[] = {
+            0,
+            LockMask,
+            m_numLockMask,
+            LockMask | m_numLockMask
+        };
+        for (unsigned int ig : ignoredMods) {
+            XGrabKey(m_xDisplay, item.keycode, item.xMods | ig, root, True, GrabModeAsync, GrabModeAsync);
+        }
+        XFlush(m_xDisplay);
+    }
+
+    m_hotKeys[id] = item;
+    if (item.keycode != 0) {
+        m_hotKeysByCodeMod[std::make_pair(item.keycode, item.xMods)] = id;
+    }
+    m_hotKeysByKeyMask[std::make_pair(item.key, item.mask)] = id;
+
+    if (item.key >= 'A' && item.key <= 'Z') {
+        KeyID lower = item.key - 'A' + 'a';
+        m_hotKeysByKeyMask[std::make_pair(lower, item.mask)] = id;
+    } else if (item.key >= 'a' && item.key <= 'z') {
+        KeyID upper = item.key - 'a' + 'A';
+        m_hotKeysByKeyMask[std::make_pair(upper, item.mask)] = id;
+    }
+
+    return id;
+}
+
+void WaylandInputCapture::unregisterHotKey(UInt32 id) {
+    std::lock_guard<std::recursive_mutex> lock(m_hotKeyMutex);
+
+    auto it = m_hotKeys.find(id);
+    if (it == m_hotKeys.end()) return;
+
+    const HotKeyItem& item = it->second;
+    if (m_xDisplay && item.keycode != 0) {
+        Window root = DefaultRootWindow(m_xDisplay);
+        unsigned int ignoredMods[] = {
+            0,
+            LockMask,
+            m_numLockMask,
+            LockMask | m_numLockMask
+        };
+        for (unsigned int ig : ignoredMods) {
+            XUngrabKey(m_xDisplay, item.keycode, item.xMods | ig, root);
+        }
+        XFlush(m_xDisplay);
+    }
+
+    if (item.keycode != 0) {
+        m_hotKeysByCodeMod.erase(std::make_pair(item.keycode, item.xMods));
+    }
+    m_hotKeysByKeyMask.erase(std::make_pair(item.key, item.mask));
+    if (item.key >= 'A' && item.key <= 'Z') {
+        m_hotKeysByKeyMask.erase(std::make_pair(item.key - 'A' + 'a', item.mask));
+    } else if (item.key >= 'a' && item.key <= 'z') {
+        m_hotKeysByKeyMask.erase(std::make_pair(item.key - 'a' + 'A', item.mask));
+    }
+
+    m_hotKeys.erase(it);
+}
+
+void WaylandInputCapture::handleX11KeyEvent(const XKeyEvent* xkey) {
+    unsigned int state = xkey->state & (ShiftMask | ControlMask | m_altMask | m_superMask | m_altGrMask);
+    UInt32 hotKeyId = 0;
+
+    if (xkey->type == KeyPress) {
+        auto it = m_hotKeysByCodeMod.find(std::make_pair(xkey->keycode, state));
+        if (it != m_hotKeysByCodeMod.end()) {
+            hotKeyId = it->second;
+            m_activeX11HotKeys[xkey->keycode] = hotKeyId;
+        }
+    } else {
+        auto it = m_activeX11HotKeys.find(xkey->keycode);
+        if (it != m_activeX11HotKeys.end()) {
+            hotKeyId = it->second;
+            m_activeX11HotKeys.erase(it);
+        } else {
+            auto it2 = m_hotKeysByCodeMod.find(std::make_pair(xkey->keycode, state));
+            if (it2 != m_hotKeysByCodeMod.end()) {
+                hotKeyId = it2->second;
+            }
+        }
+    }
+
+    if (hotKeyId == 0) {
+        return;
+    }
+
+    LOG((CLOG_INFO "WaylandInputCapture: X11 hotkey triggered id=%u keycode=%u type=%s",
+         hotKeyId, (unsigned int)xkey->keycode, (xkey->type == KeyPress ? "Press" : "Release")));
+
+    Event::Type type = (xkey->type == KeyPress) ?
+        m_events->forIPrimaryScreen().hotKeyDown() :
+        m_events->forIPrimaryScreen().hotKeyUp();
+
+    m_events->addEvent(Event(
+        type,
+        m_screen->getEventTarget(),
+        IPlatformScreen::HotKeyInfo::alloc(hotKeyId)));
+}
+
+void WaylandInputCapture::triggerHotKey(UInt32 id) {
+    LOG((CLOG_INFO "WaylandInputCapture: Triggering hotkey id=%u", id));
+    m_events->addEvent(Event(
+        m_events->forIPrimaryScreen().hotKeyDown(),
+        m_screen->getEventTarget(),
+        IPlatformScreen::HotKeyInfo::alloc(id)));
+    m_events->addEvent(Event(
+        m_events->forIPrimaryScreen().hotKeyUp(),
+        m_screen->getEventTarget(),
+        IPlatformScreen::HotKeyInfo::alloc(id)));
+}
+
+bool WaylandInputCapture::forceCapture(WaylandPortal* portal) {
+    if (m_isCaptured) {
+        return true;
+    }
+    if (!portal || m_barriers.empty()) {
+        LOG((CLOG_WARN "WaylandInputCapture: forceCapture cannot proceed: portal=%p, barriers=%zu",
+             portal, m_barriers.size()));
+        return false;
+    }
+
+    SInt32 curX = 960, curY = 540;
+    portal->getCursorPos(curX, curY);
+
+    EDirection preferredDir = (curX >= 960) ? kRight : kLeft;
+    const BarrierEntry* targetBarrier = nullptr;
+    for (const auto& b : m_barriers) {
+        if (b.direction == preferredDir) {
+            targetBarrier = &b;
+            break;
+        }
+    }
+    if (!targetBarrier) {
+        for (const auto& b : m_barriers) {
+            if (b.direction == kRight || b.direction == kLeft) {
+                targetBarrier = &b;
+                break;
+            }
+        }
+    }
+    if (!targetBarrier) {
+        targetBarrier = &m_barriers[0];
+    }
+
+    auto tryBarrier = [&](const BarrierEntry* b) -> bool {
+        int startX = 0, startY = 0;
+        int hitX = 0, hitY = 0;
+
+        hitY = (b->y1 + b->y2) / 2;
+
+        if (b->direction == kRight) {
+            hitX = b->x1;
+            startX = hitX - 10;
+            startY = hitY;
+        } else if (b->direction == kLeft) {
+            hitX = b->x1;
+            startX = hitX + 10;
+            startY = hitY;
+        } else if (b->direction == kBottom) {
+            hitX = (b->x1 + b->x2) / 2;
+            hitY = b->y1;
+            startX = hitX;
+            startY = hitY - 10;
+        } else {
+            hitX = (b->x1 + b->x2) / 2;
+            hitY = b->y1;
+            startX = hitX;
+            startY = hitY + 10;
+        }
+
+        LOG((CLOG_INFO "WaylandInputCapture: Warping cursor to trigger barrier %u (%d,%d) -> (%d,%d)",
+             b->id, startX, startY, hitX, hitY));
+
+        portal->fakeMouseMove(startX, startY);
+        usleep(10000);
+        portal->fakeMouseMove(hitX, hitY);
+
+        for (int i = 0; i < 30; ++i) {
+            if (m_isCaptured) {
+                LOG((CLOG_INFO "WaylandInputCapture: forceCapture succeeded on barrier %u in %d ms!", b->id, i * 5));
+                return true;
+            }
+            {
+                std::lock_guard<std::mutex> lock(m_dbusMutex);
+                if (m_dbusConn) {
+                    dbus_connection_read_write(m_dbusConn, 0);
+                    while (DBusMessage* msg = dbus_connection_pop_message(m_dbusConn)) {
+                        handleDBusMessage(msg);
+                        dbus_message_unref(msg);
+                    }
+                }
+            }
+            if (m_isCaptured) {
+                LOG((CLOG_INFO "WaylandInputCapture: forceCapture succeeded on barrier %u in %d ms!", b->id, i * 5));
+                return true;
+            }
+            usleep(5000);
+        }
+        return false;
+    };
+
+    if (tryBarrier(targetBarrier)) {
+        return true;
+    }
+
+    // Fallback: try any other barrier
+    for (const auto& b : m_barriers) {
+        if (&b != targetBarrier) {
+            if (tryBarrier(&b)) {
+                return true;
+            }
+        }
+    }
+
+    LOG((CLOG_WARN "WaylandInputCapture: forceCapture timed out waiting for Activated signal"));
+    return false;
+}
+
+void WaylandInputCapture::setupCommandSocket() {
+    const char* runtimeDir = getenv("XDG_RUNTIME_DIR");
+    if (runtimeDir && runtimeDir[0] != '\0') {
+        m_cmdSockPath = std::string(runtimeDir) + "/barrier.sock";
+    } else {
+        m_cmdSockPath = "/tmp/barrier-" + std::to_string(getuid()) + ".sock";
+    }
+
+    unlink(m_cmdSockPath.c_str());
+
+    m_cmdSock = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    if (m_cmdSock < 0) {
+        LOG((CLOG_WARN "WaylandInputCapture: Failed to create control socket: %s", strerror(errno)));
+        return;
+    }
+
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, m_cmdSockPath.c_str(), sizeof(addr.sun_path) - 1);
+
+    if (bind(m_cmdSock, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) < 0) {
+        LOG((CLOG_WARN "WaylandInputCapture: Failed to bind control socket to %s: %s",
+             m_cmdSockPath.c_str(), strerror(errno)));
+        close(m_cmdSock);
+        m_cmdSock = -1;
+        return;
+    }
+
+    if (listen(m_cmdSock, 5) < 0) {
+        LOG((CLOG_WARN "WaylandInputCapture: Failed to listen on control socket: %s", strerror(errno)));
+        close(m_cmdSock);
+        m_cmdSock = -1;
+        return;
+    }
+
+    LOG((CLOG_INFO "WaylandInputCapture: Control socket listening on %s", m_cmdSockPath.c_str()));
+}
+
+void WaylandInputCapture::cleanupCommandSocket() {
+    if (m_cmdSock >= 0) {
+        close(m_cmdSock);
+        m_cmdSock = -1;
+    }
+    if (!m_cmdSockPath.empty()) {
+        unlink(m_cmdSockPath.c_str());
+        m_cmdSockPath.clear();
+    }
+}
+
+void WaylandInputCapture::processCommandSocket() {
+    if (m_cmdSock < 0) return;
+
+    int clientFd = accept(m_cmdSock, nullptr, nullptr);
+    if (clientFd < 0) return;
+
+    char buf[256];
+    ssize_t n = read(clientFd, buf, sizeof(buf) - 1);
+    if (n > 0) {
+        buf[n] = '\0';
+        std::string cmd(buf);
+        while (!cmd.empty() && (cmd.back() == '\n' || cmd.back() == '\r' || cmd.back() == ' ')) {
+            cmd.pop_back();
+        }
+        handleSocketCommand(cmd);
+        const char* reply = "OK\n";
+        write(clientFd, reply, strlen(reply));
+    }
+    close(clientFd);
+}
+
+void WaylandInputCapture::handleSocketCommand(const std::string& cmd) {
+    if (cmd.empty()) return;
+
+    std::string arg = cmd;
+    if (arg.rfind("switch ", 0) == 0) {
+        arg = arg.substr(7);
+    } else if (arg.rfind("hotkey ", 0) == 0) {
+        arg = arg.substr(7);
+    } else if (arg.rfind("key ", 0) == 0) {
+        arg = arg.substr(4);
+    }
+
+    while (!arg.empty() && (arg.front() == ' ' || arg.front() == '\t')) arg.erase(arg.begin());
+    while (!arg.empty() && (arg.back() == ' ' || arg.back() == '\t')) arg.pop_back();
+
+    if (arg.empty()) return;
+
+    LOG((CLOG_INFO "WaylandInputCapture: Handling socket command for target: '%s'", arg.c_str()));
+
+    UInt32 targetId = 0;
+    if (arg.size() == 1 && arg[0] >= '0' && arg[0] <= '9') {
+        KeyID targetKey = static_cast<KeyID>(arg[0]);
+        std::lock_guard<std::recursive_mutex> lock(m_hotKeyMutex);
+        for (const auto& kv : m_hotKeys) {
+            if (kv.second.key == targetKey) {
+                targetId = kv.first;
+                break;
+            }
+        }
+    }
+
+    if (targetId == 0) {
+        try {
+            unsigned long val = std::stoul(arg);
+            if (val > 0) {
+                targetId = static_cast<UInt32>(val);
+            }
+        } catch (...) {}
+    }
+
+    if (targetId == 0) {
+        std::string lowerArg = arg;
+        for (char& c : lowerArg) c = tolower(c);
+
+        if (lowerArg.find("sync") != std::string::npos) targetId = 1;
+        else if (lowerArg.find("wesley") != std::string::npos || lowerArg.find("inspiron") != std::string::npos) targetId = 2;
+        else if (lowerArg.find("mac") != std::string::npos) targetId = 3;
+        else if (lowerArg.find("nb0140") != std::string::npos || lowerArg.find("its") != std::string::npos || lowerArg.find("local") != std::string::npos) targetId = 4;
+        else if (lowerArg.find("w1934") != std::string::npos) targetId = 5;
+        else if (lowerArg.find("dmais") != std::string::npos || lowerArg.find("oem") != std::string::npos) targetId = 6;
+    }
+
+    if (targetId > 0) {
+        triggerHotKey(targetId);
+    } else {
+        LOG((CLOG_WARN "WaylandInputCapture: Unrecognized socket command target: '%s'", arg.c_str()));
+    }
 }
