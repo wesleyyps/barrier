@@ -283,9 +283,8 @@ ServerApp::loadConfig(const String& pathname)
             LOG((CLOG_NOTE "Crypto disabled via config file"));
         }
         
-        if (args().m_config->getEnableDragDrop()) {
-            args().m_enableDragDrop = true;
-        }
+        // Legacy interactive drag-drop disabled unconditionally in favor of clipboard file copy & paste
+        args().m_enableDragDrop = false;
         if (args().m_dropTarget.empty()) {
             std::string target = args().m_config->getDropTarget(args().m_name);
             if (!target.empty()) {
@@ -561,7 +560,7 @@ ServerApp::openServerScreen()
     if (!argsBase().m_dropTarget.empty()) {
         screen->setDropTarget(argsBase().m_dropTarget);
     }
-    screen->setEnableDragDrop(argsBase().m_enableDragDrop);
+    screen->setEnableDragDrop(false);
     m_events->adoptHandler(m_events->forIScreen().error(),
         screen->getEventTarget(),
         new TMethodEventJob<ServerApp>(

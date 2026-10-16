@@ -116,8 +116,6 @@ PlatformScreen::pollPressedKeys(KeyButtonSet& pressedKeys) const
 bool
 PlatformScreen::isDraggingStarted()
 {
-    if (App::instance().argsBase().m_enableDragDrop) {
-        return m_draggingStarted;
-    }
+    // Legacy interactive edge DnD disabled in favor of clipboard file copy & paste
     return false;
 }

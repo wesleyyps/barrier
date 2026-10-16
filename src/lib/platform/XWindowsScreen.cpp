@@ -2439,8 +2439,8 @@ XWindowsScreen::getDraggingFilename()
 bool
 XWindowsScreen::isDraggingStarted()
 {
-    Window owner = XGetSelectionOwner(m_display, m_atomXdndSelection);
-    return (owner != None);
+    // Legacy interactive edge DnD disabled in favor of clipboard file copy & paste
+    return false;
 }
 
 // IPlatformScreen override — source side

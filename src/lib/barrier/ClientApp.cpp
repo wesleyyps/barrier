@@ -134,10 +134,8 @@ ClientApp::parseArgs(int argc, const char* const* argv)
                     LOG((CLOG_NOTE "Crypto disabled via config file"));
                 }
                 
-                if (config.getEnableDragDrop()) {
-                    argsBase().m_enableDragDrop = true;
-                    LOG((CLOG_NOTE "Drag and drop enabled via config file"));
-                }
+                // Legacy interactive drag-drop disabled unconditionally in favor of clipboard file copy & paste
+                argsBase().m_enableDragDrop = false;
                 
                 if (argsBase().m_dropTarget.empty()) {
                     std::string target = config.getDropTarget(args().m_name);
@@ -328,7 +326,7 @@ ClientApp::openClientScreen()
     if (!argsBase().m_dropTarget.empty()) {
         screen->setDropTarget(argsBase().m_dropTarget);
     }
-    screen->setEnableDragDrop(argsBase().m_enableDragDrop);
+    screen->setEnableDragDrop(false);
     m_events->adoptHandler(m_events->forIScreen().error(),
         screen->getEventTarget(),
         new TMethodEventJob<ClientApp>(

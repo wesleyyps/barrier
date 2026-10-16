@@ -851,8 +851,8 @@ void
 Client::dragInfoReceived(UInt32 fileNum, std::string data)
 {
     DragInformation::parseDragInfo(m_dragFileList, fileNum, data);
-
-    m_screen->startDraggingFiles(m_dragFileList);
+    // Legacy interactive fake mouse-drag disabled; files are transferred to drop directory
+    // and placed on clipboard by DropHelper.
 }
 
 

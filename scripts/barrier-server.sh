@@ -19,9 +19,9 @@ BARRIER_SRV_BIN="${BARRIER_BIN_PATH}barriers"
 
 OS="$(uname -s)"
 if [ "$OS" = "Linux" ]; then
-    killall -q barrier barriers barrierc || true
+    killall -9 -q barrier barriers barrierc 2>/dev/null || true
 else
-    killall -9 barrier barriers barrierc || true
+    killall -9 barrier barriers barrierc 2>/dev/null || true
 fi
 
 export ASAN_OPTIONS="$ASAN_OPTIONS"
