@@ -6,6 +6,7 @@
 #include <cstring>
 #include <cerrno>
 #include <chrono>
+#include <dbus/dbus.h>
 
 static UInt32 getCurrentTimeMs() {
     return static_cast<UInt32>(std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -13,7 +14,8 @@ static UInt32 getCurrentTimeMs() {
 }
 
 WaylandClipboard::WaylandClipboard()
-    : m_display(nullptr),
+    : m_dbusConn(nullptr),
+      m_display(nullptr),
       m_window(0),
       m_running(false),
       m_atomClipboard(None),
@@ -32,6 +34,8 @@ WaylandClipboard::WaylandClipboard()
       m_time(0),
       m_timeOwned(getCurrentTimeMs())
 {
+    initMutterSession();
+
     m_wakePipe[0] = -1;
     m_wakePipe[1] = -1;
 
@@ -78,6 +82,8 @@ void WaylandClipboard::stop() {
         return;
     }
     m_running = false;
+
+    cleanupMutterSession();
 
     {
         std::lock_guard<std::mutex> lock(m_mutex);
@@ -202,22 +208,34 @@ void WaylandClipboard::handleXEvent(const XEvent& ev) {
             reply.xselection.property = req.property;
         } else if (req.target == m_atomTextUriList) {
             std::string uriList;
+            bool isFile = false;
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
-                uriList = m_ownedText + "\r\n";
+                if (m_ownedText.rfind("file://", 0) == 0) {
+                    uriList = m_ownedText + "\r\n";
+                    isFile = true;
+                }
             }
-            XChangeProperty(m_display, req.requestor, req.property, req.target, 8,
-                            PropModeReplace, reinterpret_cast<const unsigned char*>(uriList.data()), uriList.size());
-            reply.xselection.property = req.property;
+            if (isFile && !uriList.empty()) {
+                XChangeProperty(m_display, req.requestor, req.property, req.target, 8,
+                                PropModeReplace, reinterpret_cast<const unsigned char*>(uriList.data()), uriList.size());
+                reply.xselection.property = req.property;
+            }
         } else if (req.target == m_atomGnomeCopiedFiles) {
             std::string gnomeFiles;
+            bool isFile = false;
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
-                gnomeFiles = "copy\n" + m_ownedText + "\n";
+                if (m_ownedText.rfind("file://", 0) == 0) {
+                    gnomeFiles = "copy\n" + m_ownedText + "\n";
+                    isFile = true;
+                }
             }
-            XChangeProperty(m_display, req.requestor, req.property, req.target, 8,
-                            PropModeReplace, reinterpret_cast<const unsigned char*>(gnomeFiles.data()), gnomeFiles.size());
-            reply.xselection.property = req.property;
+            if (isFile && !gnomeFiles.empty()) {
+                XChangeProperty(m_display, req.requestor, req.property, req.target, 8,
+                                PropModeReplace, reinterpret_cast<const unsigned char*>(gnomeFiles.data()), gnomeFiles.size());
+                reply.xselection.property = req.property;
+            }
         } else if (req.target == m_atomUtf8 || req.target == m_atomString || req.target == m_atomText) {
             std::string text;
             {
@@ -286,16 +304,200 @@ std::string WaylandClipboard::requestSystemText() const {
     ssize_t res = ::write(m_wakePipe[1], "R", 1);
     (void)res;
 
-    m_readCv.wait_for(lock, std::chrono::milliseconds(250), [this]() {
+    m_readCv.wait_for(lock, std::chrono::milliseconds(500), [this]() {
         return m_readDone;
     });
 
     return m_readResultText;
 }
 
+void WaylandClipboard::initMutterSession() {
+    DBusError err;
+    dbus_error_init(&err);
+
+    m_dbusConn = dbus_bus_get(DBUS_BUS_SESSION, &err);
+    if (dbus_error_is_set(&err) || !m_dbusConn) {
+        LOG((CLOG_DEBUG1 "WaylandClipboard: DBus session bus not available: %s",
+            err.message ? err.message : "unknown"));
+        dbus_error_free(&err);
+        return;
+    }
+
+    DBusMessage* msg = dbus_message_new_method_call("org.gnome.Mutter.RemoteDesktop",
+                                                    "/org/gnome/Mutter/RemoteDesktop",
+                                                    "org.gnome.Mutter.RemoteDesktop",
+                                                    "CreateSession");
+    if (!msg) return;
+
+    DBusMessage* reply = dbus_connection_send_with_reply_and_block(m_dbusConn, msg, 1000, &err);
+    dbus_message_unref(msg);
+
+    if (dbus_error_is_set(&err) || !reply) {
+        LOG((CLOG_DEBUG1 "WaylandClipboard: Mutter CreateSession not available: %s",
+            err.message ? err.message : "unknown"));
+        dbus_error_free(&err);
+        return;
+    }
+
+    const char* sessionPath = nullptr;
+    if (!dbus_message_get_args(reply, &err, DBUS_TYPE_OBJECT_PATH, &sessionPath, DBUS_TYPE_INVALID)) {
+        dbus_error_free(&err);
+        dbus_message_unref(reply);
+        return;
+    }
+
+    m_mutterSessionPath = sessionPath;
+    dbus_message_unref(reply);
+    LOG((CLOG_INFO "WaylandClipboard: Mutter RemoteDesktop clipboard session created: %s", m_mutterSessionPath.c_str()));
+
+    msg = dbus_message_new_method_call("org.gnome.Mutter.RemoteDesktop",
+                                       m_mutterSessionPath.c_str(),
+                                       "org.gnome.Mutter.RemoteDesktop.Session",
+                                       "Start");
+    reply = dbus_connection_send_with_reply_and_block(m_dbusConn, msg, 1000, &err);
+    dbus_message_unref(msg);
+    if (dbus_error_is_set(&err) || !reply) {
+        LOG((CLOG_WARN "WaylandClipboard: Mutter Session Start failed: %s",
+            err.message ? err.message : "unknown"));
+        dbus_error_free(&err);
+        m_mutterSessionPath.clear();
+        return;
+    }
+    dbus_message_unref(reply);
+
+    msg = dbus_message_new_method_call("org.gnome.Mutter.RemoteDesktop",
+                                       m_mutterSessionPath.c_str(),
+                                       "org.gnome.Mutter.RemoteDesktop.Session",
+                                       "EnableClipboard");
+    DBusMessageIter iter, dict;
+    dbus_message_iter_init_append(msg, &iter);
+    dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "{sv}", &dict);
+    dbus_message_iter_close_container(&iter, &dict);
+
+    reply = dbus_connection_send_with_reply_and_block(m_dbusConn, msg, 1000, &err);
+    dbus_message_unref(msg);
+    if (!dbus_error_is_set(&err) && reply) {
+        LOG((CLOG_INFO "WaylandClipboard: Mutter native Wayland clipboard enabled"));
+        dbus_message_unref(reply);
+    } else {
+        LOG((CLOG_WARN "WaylandClipboard: Failed to enable Mutter clipboard: %s",
+            err.message ? err.message : "unknown"));
+        dbus_error_free(&err);
+    }
+}
+
+void WaylandClipboard::cleanupMutterSession() {
+    if (!m_mutterSessionPath.empty() && m_dbusConn) {
+        DBusError err;
+        dbus_error_init(&err);
+        DBusMessage* msg = dbus_message_new_method_call("org.gnome.Mutter.RemoteDesktop",
+                                                        m_mutterSessionPath.c_str(),
+                                                        "org.gnome.Mutter.RemoteDesktop.Session",
+                                                        "Stop");
+        if (msg) {
+            DBusMessage* reply = dbus_connection_send_with_reply_and_block(m_dbusConn, msg, 1000, &err);
+            dbus_message_unref(msg);
+            if (reply) dbus_message_unref(reply);
+            if (dbus_error_is_set(&err)) dbus_error_free(&err);
+        }
+        m_mutterSessionPath.clear();
+    }
+    if (m_dbusConn) {
+        dbus_connection_unref(m_dbusConn);
+        m_dbusConn = nullptr;
+    }
+}
+
+std::string WaylandClipboard::readMutterMime(const char* mime) const {
+    if (m_mutterSessionPath.empty() || !m_dbusConn) {
+        return "";
+    }
+
+    DBusError err;
+    dbus_error_init(&err);
+    DBusMessage* msg = dbus_message_new_method_call("org.gnome.Mutter.RemoteDesktop",
+                                                    m_mutterSessionPath.c_str(),
+                                                    "org.gnome.Mutter.RemoteDesktop.Session",
+                                                    "SelectionRead");
+    if (!msg) return "";
+
+    dbus_message_append_args(msg, DBUS_TYPE_STRING, &mime, DBUS_TYPE_INVALID);
+
+    DBusMessage* reply = dbus_connection_send_with_reply_and_block(m_dbusConn, msg, 500, &err);
+    dbus_message_unref(msg);
+
+    if (dbus_error_is_set(&err) || !reply) {
+        dbus_error_free(&err);
+        return "";
+    }
+
+    int fd = -1;
+    if (!dbus_message_get_args(reply, &err, DBUS_TYPE_UNIX_FD, &fd, DBUS_TYPE_INVALID) || fd < 0) {
+        if (dbus_error_is_set(&err)) dbus_error_free(&err);
+        dbus_message_unref(reply);
+        return "";
+    }
+    dbus_message_unref(reply);
+
+    std::string text;
+    struct pollfd pfd;
+    pfd.fd = fd;
+    pfd.events = POLLIN | POLLHUP;
+
+    while (poll(&pfd, 1, 100) > 0) {
+        char buf[4096];
+        ssize_t n = ::read(fd, buf, sizeof(buf));
+        if (n > 0) {
+            text.append(buf, n);
+        } else if (n == 0) {
+            break;
+        } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            continue;
+        } else {
+            break;
+        }
+    }
+    ::close(fd);
+    return text;
+}
+
+std::string WaylandClipboard::readMutterClipboard() const {
+    std::string text = readMutterMime("text/plain;charset=utf-8");
+    if (text.empty()) {
+        std::string uriList = readMutterMime("text/uri-list");
+        if (uriList.rfind("file://", 0) == 0 || uriList.find("://") != std::string::npos) {
+            text = uriList;
+        }
+    }
+    return text;
+}
+
 bool WaylandClipboard::hasChanged() {
+    // 1. Check Mutter native Wayland clipboard
+    if (!m_mutterSessionPath.empty()) {
+        std::string mutterText = readMutterClipboard();
+        if (!mutterText.empty() && mutterText != m_lastSentText) {
+            LOG((CLOG_INFO "WaylandClipboard: Mutter Wayland clipboard changed (%zu bytes)", mutterText.size()));
+            m_lastSentText = mutterText;
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                m_cachedSystemText = mutterText;
+                m_ownedByMe = false;
+                m_timeOwned = getCurrentTimeMs();
+            }
+            return true;
+        }
+    }
+
+    // 2. Check Xwayland / X11 bridge
     if (!m_display) {
         return false;
+    }
+
+    Window owner = XGetSelectionOwner(m_display, m_atomClipboard);
+    if (owner != m_window && owner != None) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_ownedByMe = false;
     }
 
     bool lost = false;
@@ -307,22 +509,10 @@ bool WaylandClipboard::hasChanged() {
         }
     }
 
-    if (lost) {
-        std::string text = requestSystemText();
-        if (text != m_lastSentText) {
-            LOG((CLOG_INFO "WaylandClipboard: selection lost and text changed (%zu bytes)", text.size()));
-            m_lastSentText = text;
-            {
-                std::lock_guard<std::mutex> lock(m_mutex);
-                m_cachedSystemText = text;
-                m_timeOwned = getCurrentTimeMs();
-            }
-            return true;
-        }
-    } else if (!m_ownedByMe) {
+    if (lost || !m_ownedByMe) {
         std::string text = requestSystemText();
         if (!text.empty() && text != m_lastSentText) {
-            LOG((CLOG_INFO "WaylandClipboard: local text changed (%zu bytes)", text.size()));
+            LOG((CLOG_INFO "WaylandClipboard: X11 clipboard changed (%zu bytes)", text.size()));
             m_lastSentText = text;
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
@@ -342,6 +532,7 @@ void WaylandClipboard::setLocalClipboard(const String& data) {
         m_ownedText = data;
         m_writeText = data;
         m_lastSentText = data;
+        m_cachedSystemText = data;
         m_pendingWrite = true;
         m_ownedByMe = true;
         m_selectionLost = false;
@@ -358,14 +549,15 @@ bool WaylandClipboard::empty() {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_ownedText.clear();
         m_writeText.clear();
-        m_pendingWrite = true;
-        m_ownedByMe = true;
+        m_cachedSystemText.clear();
+        m_pendingWrite = false;
+        m_ownedByMe = false;
         m_selectionLost = false;
         m_timeOwned = getCurrentTimeMs();
     }
-    if (m_wakePipe[1] != -1) {
-        ssize_t res = ::write(m_wakePipe[1], "W", 1);
-        (void)res;
+    if (!m_mutterSessionPath.empty()) {
+        std::string currentMutter = readMutterClipboard();
+        m_lastSentText = currentMutter;
     }
     return true;
 }
@@ -379,9 +571,10 @@ void WaylandClipboard::add(EFormat format, const String& data) {
 bool WaylandClipboard::open(Time time) const {
     m_open = true;
     m_time = time;
+
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        if (m_ownedByMe) {
+        if (m_ownedByMe && !m_ownedText.empty()) {
             m_currentText = m_ownedText;
             return true;
         }
@@ -390,14 +583,27 @@ bool WaylandClipboard::open(Time time) const {
             return true;
         }
     }
+
+    if (!m_mutterSessionPath.empty()) {
+        std::string mutterText = readMutterClipboard();
+        if (!mutterText.empty()) {
+            m_currentText = mutterText;
+            return true;
+        }
+    }
+
+    Window owner = XGetSelectionOwner(m_display, m_atomClipboard);
+    if (owner != m_window && owner != None) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_ownedByMe = false;
+    }
+
     m_currentText = requestSystemText();
     return true;
 }
 
 void WaylandClipboard::close() const {
     m_open = false;
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_cachedSystemText.clear();
 }
 
 IClipboard::Time WaylandClipboard::getTime() const {

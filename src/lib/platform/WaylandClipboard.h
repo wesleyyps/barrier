@@ -9,6 +9,8 @@
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 
+struct DBusConnection;
+
 class WaylandClipboard : public IClipboard {
 public:
     WaylandClipboard();
@@ -33,6 +35,14 @@ private:
     std::string requestSystemText() const;
     void stop();
 
+    void initMutterSession();
+    void cleanupMutterSession();
+    std::string readMutterMime(const char* mime) const;
+    std::string readMutterClipboard() const;
+
+    DBusConnection* m_dbusConn;
+    std::string m_mutterSessionPath;
+
     Display* m_display;
     Window m_window;
     std::thread m_thread;
@@ -51,7 +61,7 @@ private:
 
     mutable std::mutex m_mutex;
     mutable std::condition_variable m_readCv;
-    bool m_ownedByMe;
+    mutable bool m_ownedByMe;
     bool m_selectionLost;
     std::string m_ownedText;
     std::string m_writeText;
@@ -67,3 +77,4 @@ private:
     std::string m_lastSentText;
     mutable UInt32 m_timeOwned;
 };
+

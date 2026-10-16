@@ -330,8 +330,8 @@ void WaylandScreen::pollPressedKeys(KeyButtonSet& pressedKeys) const {
 void WaylandScreen::enable() {
     LOG((CLOG_INFO "WaylandScreen: enable() called, starting clipboard timer"));
     if (m_clipboardTimer == nullptr) {
-        m_clipboardTimer = m_events->newTimer(1.0, nullptr);
-        m_events->adoptHandler(Event::kTimer, m_clipboardTimer,
+        m_clipboardTimer = m_events->newTimer(0.25, this);
+        m_events->adoptHandler(Event::kTimer, this,
                                 new TMethodEventJob<WaylandScreen>(this,
                                     &WaylandScreen::handleClipboardCheck));
     }
@@ -339,7 +339,7 @@ void WaylandScreen::enable() {
 
 void WaylandScreen::disable() {
     if (m_clipboardTimer != nullptr) {
-        m_events->removeHandler(Event::kTimer, m_clipboardTimer);
+        m_events->removeHandler(Event::kTimer, this);
         m_events->deleteTimer(m_clipboardTimer);
         m_clipboardTimer = nullptr;
     }
@@ -357,8 +357,8 @@ void WaylandScreen::enter() {
 
 bool WaylandScreen::leave() {
     LOG((CLOG_INFO "WaylandScreen: leave()"));
-    m_onSecondary = true;
     checkClipboards();
+    m_onSecondary = true;
     fakeAllKeysUp();
     m_buttonsDown.clear();
     if (!m_isPrimary && m_portal) {
@@ -391,7 +391,7 @@ bool WaylandScreen::setClipboard(ClipboardID id, const IClipboard* c) {
         }
         return false;
     } else {
-        m_clipboard->setLocalClipboard("");
+        m_clipboard->empty();
         return true;
     }
 }
@@ -400,9 +400,15 @@ void WaylandScreen::checkClipboards() {
     if (!m_clipboard) {
         return;
     }
+    // If the cursor is currently on a secondary screen, the user is working on that machine.
+    // We must never check or claim clipboard from the primary host while active on secondary.
+    if (m_isPrimary && m_onSecondary) {
+        return;
+    }
     if (m_clipboard->hasChanged()) {
         LOG((CLOG_INFO "WaylandScreen: clipboard changed, notifying Barrier"));
         sendClipboardEvent(m_events->forClipboard().clipboardGrabbed(), kClipboardClipboard);
+
     }
 }
 
