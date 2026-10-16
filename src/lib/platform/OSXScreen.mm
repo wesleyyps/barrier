@@ -234,8 +234,11 @@ OSXScreen::getEventTarget() const
 }
 
 bool
-OSXScreen::getClipboard(ClipboardID, IClipboard* dst) const
+OSXScreen::getClipboard(ClipboardID id, IClipboard* dst) const
 {
+	if (id != kClipboardClipboard) {
+		return false;
+	}
 	Clipboard::copy(dst, &m_pasteboard);
 	return true;
 }
@@ -970,8 +973,11 @@ OSXScreen::leave()
 }
 
 bool
-OSXScreen::setClipboard(ClipboardID, const IClipboard* src)
+OSXScreen::setClipboard(ClipboardID id, const IClipboard* src)
 {
+	if (id != kClipboardClipboard) {
+		return false;
+	}
 	if (src != nullptr) {
 		LOG((CLOG_DEBUG "setting clipboard"));
 		Clipboard::copy(&m_pasteboard, src);
@@ -986,7 +992,6 @@ OSXScreen::checkClipboards()
 	if (m_pasteboard.synchronize()) {
 		LOG((CLOG_DEBUG "clipboard changed"));
 		sendClipboardEvent(m_events->forClipboard().clipboardGrabbed(), kClipboardClipboard);
-		sendClipboardEvent(m_events->forClipboard().clipboardGrabbed(), kClipboardSelection);
 	}
 }
 

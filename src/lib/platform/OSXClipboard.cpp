@@ -19,6 +19,7 @@
 #include "platform/OSXClipboard.h"
 
 #include "barrier/Clipboard.h"
+#include "platform/OSXClipboardUTF8Converter.h"
 #include "platform/OSXClipboardUTF16Converter.h"
 #include "platform/OSXClipboardTextConverter.h"
 #include "platform/OSXClipboardBMPConverter.h"
@@ -36,6 +37,7 @@ OSXClipboard::OSXClipboard() :
 {
     m_converters.push_back(new OSXClipboardHTMLConverter);
     m_converters.push_back(new OSXClipboardBMPConverter);
+    m_converters.push_back(new OSXClipboardUTF8Converter);
     m_converters.push_back(new OSXClipboardUTF16Converter);
     m_converters.push_back(new OSXClipboardTextConverter);
 
@@ -124,6 +126,10 @@ void OSXClipboard::add(EFormat format, const std::string& data)
                 dataRef,
                 kPasteboardFlavorNoFlags);
 
+            if (dataRef != nullptr) {
+                CFRelease(dataRef);
+            }
+
             LOG((CLOG_DEBUG "added %d bytes to clipboard format: %d", data.size(), format));
         }
 
@@ -160,8 +166,15 @@ OSXClipboard::has(EFormat format) const
     if (m_pboard == nullptr)
         return false;
 
+    ItemCount itemCount = 0;
+    if (PasteboardGetItemCount(m_pboard, &itemCount) != noErr || itemCount == 0) {
+        return false;
+    }
+
     PasteboardItemID item;
-    PasteboardGetItemIdentifier(m_pboard, static_cast<CFIndex>(1), &item);
+    if (PasteboardGetItemIdentifier(m_pboard, static_cast<CFIndex>(1), &item) != noErr) {
+        return false;
+    }
 
     for (auto converter : m_converters) {
         if (converter->getFormat() == format) {
@@ -186,7 +199,14 @@ std::string OSXClipboard::get(EFormat format) const
     if (m_pboard == nullptr)
         return result;
 
-    PasteboardGetItemIdentifier(m_pboard, static_cast<CFIndex>(1), &item);
+    ItemCount itemCount = 0;
+    if (PasteboardGetItemCount(m_pboard, &itemCount) != noErr || itemCount == 0) {
+        return result;
+    }
+
+    if (PasteboardGetItemIdentifier(m_pboard, static_cast<CFIndex>(1), &item) != noErr) {
+        return result;
+    }
 
 
     // find the converter for the first clipboard format we can handle

@@ -377,8 +377,11 @@ void MSWindowsScreen::send_drag_thread()
 }
 
 bool
-MSWindowsScreen::setClipboard(ClipboardID, const IClipboard* src)
+MSWindowsScreen::setClipboard(ClipboardID id, const IClipboard* src)
 {
+    if (id != kClipboardClipboard) {
+        return false;
+    }
     MSWindowsClipboard dst(m_window);
     if (src != NULL) {
         // save clipboard data
@@ -413,7 +416,6 @@ MSWindowsScreen::checkClipboards()
         LOG((CLOG_DEBUG "clipboard changed: lost ownership and no notification received"));
         m_ownClipboard = false;
         sendClipboardEvent(m_events->forClipboard().clipboardGrabbed(), kClipboardClipboard);
-        sendClipboardEvent(m_events->forClipboard().clipboardGrabbed(), kClipboardSelection);
     }
 }
 
@@ -490,8 +492,11 @@ MSWindowsScreen::getEventTarget() const
 }
 
 bool
-MSWindowsScreen::getClipboard(ClipboardID, IClipboard* dst) const
+MSWindowsScreen::getClipboard(ClipboardID id, IClipboard* dst) const
 {
+    if (id != kClipboardClipboard) {
+        return false;
+    }
     MSWindowsClipboard src(m_window);
     Clipboard::copy(dst, &src);
     return true;

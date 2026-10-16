@@ -178,6 +178,9 @@ WaylandScreen::~WaylandScreen() {
 
 void* WaylandScreen::getEventTarget() const { return const_cast<WaylandScreen*>(this); }
 bool WaylandScreen::getClipboard(ClipboardID id, IClipboard* c) const {
+    if (id != kClipboardClipboard) {
+        return false;
+    }
     if (!m_clipboard || !c) {
         return false;
     }
@@ -369,6 +372,9 @@ bool WaylandScreen::leave() {
 }
 
 bool WaylandScreen::setClipboard(ClipboardID id, const IClipboard* c) {
+    if (id != kClipboardClipboard) {
+        return false;
+    }
     if (!m_clipboard) {
         return false;
     }
@@ -397,7 +403,6 @@ void WaylandScreen::checkClipboards() {
     if (m_clipboard->hasChanged()) {
         LOG((CLOG_INFO "WaylandScreen: clipboard changed, notifying Barrier"));
         sendClipboardEvent(m_events->forClipboard().clipboardGrabbed(), kClipboardClipboard);
-        sendClipboardEvent(m_events->forClipboard().clipboardGrabbed(), kClipboardSelection);
     }
 }
 

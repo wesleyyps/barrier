@@ -78,12 +78,10 @@ std::string OSXClipboardTextConverter::convertString(const std::string& data,
 
 std::string OSXClipboardTextConverter::doFromIClipboard(const std::string& data) const
 {
-    return convertString(data, kCFStringEncodingUTF8,
-                            CFStringGetSystemEncoding());
+    return data;
 }
 
 std::string OSXClipboardTextConverter::doToIClipboard(const std::string& data) const
 {
-    return convertString(data, CFStringGetSystemEncoding(),
-                            kCFStringEncodingUTF8);
+    return data;
 }
