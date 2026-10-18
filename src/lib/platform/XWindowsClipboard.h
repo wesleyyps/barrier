@@ -84,6 +84,8 @@ public:
     */
     Atom                getSelection() const;
 
+    bool                isOwned() const { return m_owner; }
+
     // IClipboard overrides
     virtual bool        empty();
     virtual void add(EFormat, const std::string& data);
@@ -322,6 +324,8 @@ private:
     Atom                m_atomMotifClipHeader;
     Atom                m_atomMotifClipAccess;
     Atom                m_atomGDKSelection;
+    Atom                m_atomGnomeCopiedFiles;
+    Atom                m_atomTextUriList;
 };
 
 //! Clipboard format converter interface

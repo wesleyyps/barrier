@@ -59,10 +59,12 @@ std::string XWindowsClipboardUTF8Converter::fromIClipboard(const std::string& da
         if (data.rfind("file://", 0) == 0 && data.find("\n") == std::string::npos) {
             return data + "\r\n";
         }
+        return "";
     } else if (m_name == "x-special/gnome-copied-files") {
         if (data.rfind("file://", 0) == 0 && data.find("copy\n") == std::string::npos) {
             return "copy\n" + data + "\n";
         }
+        return "";
     }
     return data;
 }

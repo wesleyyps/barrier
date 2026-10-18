@@ -1799,16 +1799,13 @@ Server::handleClipboardGrabbed(const Event& event, void* vclient)
 	// ignore grab if sequence number is old.  always allow primary
 	// screen to grab.
 	ClipboardInfo& clipboard = m_clipboards[info->m_id];
-	if (grabber != m_primaryClient &&
-		info->m_sequenceNumber < clipboard.m_clipboardSeqNum) {
-		LOG((CLOG_INFO "ignored screen \"%s\" grab of clipboard %d", getName(grabber).c_str(), info->m_id));
-		return;
+	if (info->m_sequenceNumber > clipboard.m_clipboardSeqNum) {
+		clipboard.m_clipboardSeqNum = info->m_sequenceNumber;
 	}
 
 	// mark screen as owning clipboard
 	LOG((CLOG_INFO "screen \"%s\" grabbed clipboard %d from \"%s\"", getName(grabber).c_str(), info->m_id, clipboard.m_clipboardOwner.c_str()));
 	clipboard.m_clipboardOwner  = getName(grabber);
-	clipboard.m_clipboardSeqNum = info->m_sequenceNumber;
 
 	// clear the clipboard data (since it's not known at this point)
 	if (clipboard.m_clipboard.open(0)) {
@@ -2153,14 +2150,10 @@ Server::onClipboardChanged(BaseClientProxy* sender,
 {
 	ClipboardInfo& clipboard = m_clipboards[id];
 
-	// ignore update if sequence number is old
-	if (seqNum < clipboard.m_clipboardSeqNum) {
-		LOG((CLOG_INFO "ignored screen \"%s\" update of clipboard %d (missequenced)", getName(sender).c_str(), id));
-		return;
+	if (seqNum > clipboard.m_clipboardSeqNum) {
+		clipboard.m_clipboardSeqNum = seqNum;
 	}
-
-	// should be the expected client
-	assert(sender == m_clients.find(clipboard.m_clipboardOwner)->second);
+	clipboard.m_clipboardOwner = getName(sender);
 
 	// get data
 	sender->getClipboard(id, &clipboard.m_clipboard);
@@ -2183,8 +2176,14 @@ Server::onClipboardChanged(BaseClientProxy* sender,
 		client->setClipboardDirty(id, client != sender);
 	}
 
-	// send the new clipboard to the active screen
-	m_active->setClipboard(id, &clipboard.m_clipboard);
+	// send the new clipboard to all clients except sender
+	for (ClientList::const_iterator index = m_clients.begin();
+								index != m_clients.end(); ++index) {
+		BaseClientProxy* client = index->second;
+		if (client != sender) {
+			client->setClipboard(id, &clipboard.m_clipboard);
+		}
+	}
 
 	if (clipboard.m_clipboard.open(0)) {
 		if (clipboard.m_clipboard.has(IClipboard::kText)) {

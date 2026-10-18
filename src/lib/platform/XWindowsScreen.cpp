@@ -403,7 +403,17 @@ XWindowsScreen::setClipboard(ClipboardID id, const IClipboard* clipboard)
 void
 XWindowsScreen::checkClipboards()
 {
-	// do nothing, we're always up to date
+	for (ClipboardID id = 0; id < kClipboardEnd; ++id) {
+		if (m_clipboard[id] != NULL) {
+			Window owner = m_impl->XGetSelectionOwner(m_display, m_clipboard[id]->getSelection());
+			if (owner != None && owner != m_clipboard[id]->getWindow()) {
+				if (m_clipboard[id]->isOwned()) {
+					m_clipboard[id]->lost(CurrentTime);
+				}
+				sendClipboardEvent(m_events->forClipboard().clipboardGrabbed(), id);
+			}
+		}
+	}
 }
 
 void

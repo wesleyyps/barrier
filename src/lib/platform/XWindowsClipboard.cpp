@@ -68,6 +68,10 @@ XWindowsClipboard::XWindowsClipboard(IXWindowsImpl* impl, Display* display,
                                 "_MOTIF_CLIP_LOCK_ACCESS_VALID", False);
     m_atomGDKSelection    = m_impl->XInternAtom(m_display, "GDK_SELECTION",
                                                 False);
+    m_atomGnomeCopiedFiles = m_impl->XInternAtom(m_display, "x-special/gnome-copied-files",
+                                                False);
+    m_atomTextUriList      = m_impl->XInternAtom(m_display, "text/uri-list",
+                                                False);
 
     // set selection atom based on clipboard id
     switch (id) {
@@ -428,6 +432,12 @@ XWindowsClipboard::getConverter(Atom target, bool onlyIfNotAdded) const
         return NULL;
     }
 
+    if (target == m_atomGnomeCopiedFiles || target == m_atomTextUriList) {
+        if (!m_added[IClipboard::kText] || m_data[IClipboard::kText].rfind("file://", 0) != 0) {
+            return NULL;
+        }
+    }
+
     // optionally skip already handled targets
     if (onlyIfNotAdded) {
         if (m_added[converter->getFormat()]) {
@@ -442,6 +452,10 @@ XWindowsClipboard::getConverter(Atom target, bool onlyIfNotAdded) const
 void
 XWindowsClipboard::checkCache() const
 {
+    if (m_owner) {
+        m_checkCache = false;
+        return;
+    }
     if (!m_checkCache) {
         return;
     }
@@ -487,6 +501,9 @@ XWindowsClipboard::doClearCache()
 void
 XWindowsClipboard::fillCache() const
 {
+    if (m_owner) {
+        return;
+    }
     // get the selection data if not already cached
     checkCache();
     if (!m_cached) {
@@ -1202,29 +1219,21 @@ XWindowsClipboard::wasOwnedAtTime(::Time time) const
         return false;
     }
 
-    // if time is CurrentTime then return true if we still own the
-    // selection and false if we do not.  else if we still own the
-    // selection then get the current time, otherwise use
-    // m_timeLost as the end time.
-    Time lost = m_timeLost;
+    // If we currently own the selection, always fulfill the request.
+    // Applications frequently pass event timestamps (e.g. from key press)
+    // that may be slightly earlier than m_timeOwned when clipboard arrived remotely.
     if (m_timeLost == 0) {
-        if (time == CurrentTime) {
-            return true;
-        }
-        else {
-            lost = XWindowsUtil::getCurrentTime(m_display, m_window);
-        }
-    }
-    else {
-        if (time == CurrentTime) {
-            return false;
-        }
+        return true;
     }
 
-    // compare time to range
-    Time duration = lost - m_timeOwned;
-    Time when     = time - m_timeOwned;
-    return (/*when >= 0 &&*/ when <= duration);
+    if (time == CurrentTime) {
+        return false;
+    }
+
+    if (time < m_timeOwned) {
+        return false;
+    }
+    return (time <= m_timeLost);
 }
 
 Atom XWindowsClipboard::getTargetsData(std::string& data, int* format) const
@@ -1236,6 +1245,12 @@ Atom XWindowsClipboard::getTargetsData(std::string& data, int* format) const
     XWindowsUtil::appendAtomData(data, m_atomMultiple);
     XWindowsUtil::appendAtomData(data, m_atomTimestamp);
 
+    bool isFile = false;
+    if (m_added[IClipboard::kText]) {
+        const std::string& text = m_data[IClipboard::kText];
+        isFile = (text.rfind("file://", 0) == 0);
+    }
+
     // add targets we can convert to
     for (ConverterList::const_iterator index = m_converters.begin();
                                 index != m_converters.end(); ++index) {
@@ -1243,7 +1258,11 @@ Atom XWindowsClipboard::getTargetsData(std::string& data, int* format) const
 
         // skip formats we don't have
         if (m_added[converter->getFormat()]) {
-            XWindowsUtil::appendAtomData(data, converter->getAtom());
+            Atom atom = converter->getAtom();
+            if ((atom == m_atomGnomeCopiedFiles || atom == m_atomTextUriList) && !isFile) {
+                continue;
+            }
+            XWindowsUtil::appendAtomData(data, atom);
         }
     }
 

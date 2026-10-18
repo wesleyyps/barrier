@@ -293,9 +293,11 @@ Client::leave()
 void
 Client::setClipboard(ClipboardID id, const IClipboard* clipboard)
 {
-     m_screen->setClipboard(id, clipboard);
+    m_screen->setClipboard(id, clipboard);
     m_ownClipboard[id]  = false;
-    m_sentClipboard[id] = false;
+    m_sentClipboard[id] = true;
+    m_dataClipboard[id] = clipboard ? IClipboard::marshall(clipboard) : "";
+    m_timeClipboard[id] = clipboard ? clipboard->getTime() : 0;
 }
 
 void
@@ -416,50 +418,45 @@ Client::sendClipboard(ClipboardID id)
     }
     m_screen->getClipboard(id, &clipboard);
 
-    // check time
-    if (m_timeClipboard[id] == 0 ||
-        clipboard.getTime() != m_timeClipboard[id]) {
-        // save new time
-        m_timeClipboard[id] = clipboard.getTime();
+    m_timeClipboard[id] = clipboard.getTime();
 
-        // marshall the data
-        std::string data = clipboard.marshall();
+    // marshall the data
+    std::string data = clipboard.marshall();
 
-        // save and send data if different or not yet sent
-        if (!m_sentClipboard[id] || data != m_dataClipboard[id]) {
-            m_sentClipboard[id] = true;
-            m_dataClipboard[id] = data;
-            m_server->onClipboardChanged(id, &clipboard);
+    // save and send data if different or not yet sent
+    if (!m_sentClipboard[id] || data != m_dataClipboard[id]) {
+        m_sentClipboard[id] = true;
+        m_dataClipboard[id] = data;
+        m_server->onClipboardChanged(id, &clipboard);
 
-            if (clipboard.open(0)) {
-                if (clipboard.has(IClipboard::kText)) {
-                    std::string text = clipboard.get(IClipboard::kText);
-                    clipboard.close();
+        if (clipboard.open(0)) {
+            if (clipboard.has(IClipboard::kText)) {
+                std::string text = clipboard.get(IClipboard::kText);
+                clipboard.close();
 
-                    std::string localFile = DropHelper::getLocalFilePathFromUri(text);
-                    if (!localFile.empty() && localFile != DropHelper::getLastReceivedFile() && localFile != m_lastCopiedFile) {
-                        LOG((CLOG_NOTE "Client: detected copied local file: %s, sending to server", localFile.c_str()));
-                        m_lastCopiedFile = localFile;
-                        try {
-                            DragInformation di;
-                            di.setFilename(localFile);
-                            DragFileList dragFileList;
-                            dragFileList.push_back(di);
-                            String info;
-                            UInt32 fileCount = DragInformation::setupDragInfo(dragFileList, info);
-                            sendDragInfo(fileCount, info, info.size());
-                            sendFileToServer(localFile.c_str());
-                        } catch (const std::exception& e) {
-                            LOG((CLOG_ERR "Client: sendFileToServer failed: %s", e.what()));
-                        } catch (...) {
-                            LOG((CLOG_ERR "Client: sendFileToServer failed with unknown exception"));
-                        }
-                    } else if (localFile.empty()) {
-                        m_lastCopiedFile.clear();
+                std::string localFile = DropHelper::getLocalFilePathFromUri(text);
+                if (!localFile.empty() && localFile != DropHelper::getLastReceivedFile() && localFile != m_lastCopiedFile) {
+                    LOG((CLOG_NOTE "Client: detected copied local file: %s, sending to server", localFile.c_str()));
+                    m_lastCopiedFile = localFile;
+                    try {
+                        DragInformation di;
+                        di.setFilename(localFile);
+                        DragFileList dragFileList;
+                        dragFileList.push_back(di);
+                        String info;
+                        UInt32 fileCount = DragInformation::setupDragInfo(dragFileList, info);
+                        sendDragInfo(fileCount, info, info.size());
+                        sendFileToServer(localFile.c_str());
+                    } catch (const std::exception& e) {
+                        LOG((CLOG_ERR "Client: sendFileToServer failed: %s", e.what()));
+                    } catch (...) {
+                        LOG((CLOG_ERR "Client: sendFileToServer failed with unknown exception"));
                     }
-                } else {
-                    clipboard.close();
+                } else if (localFile.empty()) {
+                    m_lastCopiedFile.clear();
                 }
+            } else {
+                clipboard.close();
             }
         }
     }
