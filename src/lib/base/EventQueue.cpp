@@ -613,9 +613,11 @@ EventQueue::waitForReady() const
     double timeout = ARCH->time() + 10;
     Lock lock(m_readyMutex);
 
-    while (!m_readyCondVar->wait()) {
-        if (ARCH->time() > timeout) {
-            throw std::runtime_error("event queue is not ready within 5 sec");
+    while (!*m_readyCondVar) {
+        if (!m_readyCondVar->wait(1.0)) {
+            if (ARCH->time() > timeout) {
+                throw std::runtime_error("event queue is not ready within 5 sec");
+            }
         }
     }
 }

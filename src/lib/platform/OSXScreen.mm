@@ -2186,26 +2186,27 @@ void
 OSXScreen::waitForCarbonLoop() const
 {
 #ifdef MAC_OS_X_VERSION_10_7
+	Lock lock(m_carbonLoopMutex);
+
 	if (*m_carbonLoopReady) {
 		LOG((CLOG_DEBUG "carbon loop already ready"));
 		return;
 	}
 
-	Lock lock(m_carbonLoopMutex);
-
 	LOG((CLOG_DEBUG "waiting for carbon loop"));
 
 	double timeout = ARCH->time() + kCarbonLoopWaitTimeout;
-	while (!m_carbonLoopReady->wait()) {
-		if (ARCH->time() > timeout) {
-			LOG((CLOG_DEBUG "carbon loop not ready, waiting again"));
-			timeout = ARCH->time() + kCarbonLoopWaitTimeout;
+	while (!*m_carbonLoopReady) {
+		if (!m_carbonLoopReady->wait(1.0)) {
+			if (ARCH->time() > timeout) {
+				LOG((CLOG_DEBUG "carbon loop not ready, waiting again"));
+				timeout = ARCH->time() + kCarbonLoopWaitTimeout;
+			}
 		}
 	}
 
 	LOG((CLOG_DEBUG "carbon loop ready"));
 #endif
-
 }
 
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"

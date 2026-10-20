@@ -1000,8 +1000,8 @@ ClientApp::probeServerAddress(const std::string& host, int port)
         FD_ZERO(&wset);
         FD_SET(s, &wset);
         struct timeval tv;
-        tv.tv_sec = 1;
-        tv.tv_usec = 0;
+        tv.tv_sec = 0;
+        tv.tv_usec = 50000; // 50ms max timeout for LAN probe
         int sel = select(s + 1, nullptr, &wset, nullptr, &tv);
         if (sel > 0) {
             int err = 0;
