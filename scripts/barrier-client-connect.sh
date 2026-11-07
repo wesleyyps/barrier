@@ -25,10 +25,13 @@ else
     killall -9 barrier barriers barrierc || true
 fi
 
-if [[ "$1" == *:* ]]; then
-    REMOTE_IP="$1"
-else
-    REMOTE_IP="$1:24800"
+REMOTE_IP=""
+if [ -n "$1" ]; then
+    if [[ "$1" == *:* ]]; then
+        REMOTE_IP="$1"
+    else
+        REMOTE_IP="$1:24800"
+    fi
 fi
 
 export ASAN_OPTIONS="$ASAN_OPTIONS"
@@ -65,12 +68,24 @@ if [ "$OS" = "Linux" ]; then
     export DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_RUNTIME_DIR
     if command -v setsid >/dev/null 2>&1; then
         setsid -f "$BARRIER_GUI_BIN" </dev/null >/tmp/barrier-gui.log 2>&1
-        setsid -f "$BARRIER_CLI_BIN" -f --display "$DISPLAY" -c "$BARRIER_SRV_CONF" "$REMOTE_IP" </dev/null >/tmp/barrier-client.log 2>&1
+        if [ -n "$REMOTE_IP" ]; then
+            setsid -f "$BARRIER_CLI_BIN" -f --display "$DISPLAY" -c "$BARRIER_SRV_CONF" "$REMOTE_IP" </dev/null >/tmp/barrier-client.log 2>&1
+        else
+            setsid -f "$BARRIER_CLI_BIN" -f --display "$DISPLAY" -c "$BARRIER_SRV_CONF" </dev/null >/tmp/barrier-client.log 2>&1
+        fi
     else
         $NOHUP_BIN "$BARRIER_GUI_BIN" </dev/null >/tmp/barrier-gui.log 2>&1 &
-        $NOHUP_BIN "$BARRIER_CLI_BIN" -f --display "$DISPLAY" -c "$BARRIER_SRV_CONF" "$REMOTE_IP" </dev/null >/tmp/barrier-client.log 2>&1 &
+        if [ -n "$REMOTE_IP" ]; then
+            $NOHUP_BIN "$BARRIER_CLI_BIN" -f --display "$DISPLAY" -c "$BARRIER_SRV_CONF" "$REMOTE_IP" </dev/null >/tmp/barrier-client.log 2>&1 &
+        else
+            $NOHUP_BIN "$BARRIER_CLI_BIN" -f --display "$DISPLAY" -c "$BARRIER_SRV_CONF" </dev/null >/tmp/barrier-client.log 2>&1 &
+        fi
     fi
 else
     $NOHUP_BIN "$BARRIER_GUI_BIN" </dev/null >/tmp/barrier-gui.log 2>&1 &
-    $NOHUP_BIN "$BARRIER_CLI_BIN" -f -c "$BARRIER_SRV_CONF" "$REMOTE_IP" </dev/null >/tmp/barrier-client.log 2>&1 &
+    if [ -n "$REMOTE_IP" ]; then
+        $NOHUP_BIN "$BARRIER_CLI_BIN" -f -c "$BARRIER_SRV_CONF" "$REMOTE_IP" </dev/null >/tmp/barrier-client.log 2>&1 &
+    else
+        $NOHUP_BIN "$BARRIER_CLI_BIN" -f -c "$BARRIER_SRV_CONF" </dev/null >/tmp/barrier-client.log 2>&1 &
+    fi
 fi

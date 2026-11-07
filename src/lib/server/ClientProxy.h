@@ -52,6 +52,8 @@ public:
     */
     barrier::IStream*    getStream() const;
 
+    virtual bool        isResponsive() const override;
+
     //@}
 
     // IScreen

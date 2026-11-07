@@ -233,6 +233,7 @@ private:
     // returns true if the client has a neighbor anywhere along the edge
     // indicated by the direction.
     bool                hasAnyNeighbor(BaseClientProxy*, EDirection) const;
+    bool                hasConnectedNeighbor(BaseClientProxy*, EDirection) const;
 
     // lookup neighboring screen, mapping the coordinate independent of
     // the direction to the neighbor's coordinate space.

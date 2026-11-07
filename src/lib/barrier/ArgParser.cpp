@@ -125,13 +125,6 @@ ArgParser::parseClientArgs(ClientArgs& args, int argc, const char* const* argv)
     if (args.m_shouldExit)
         return true;
 
-    // exactly one non-option argument (server-address) if no config file
-    if (i == argc && args.m_configFile.empty()) {
-        LOG((CLOG_PRINT "%s: a server address or name is required" BYE,
-            args.m_exename.c_str()));
-        return false;
-    }
-
     if (checkUnexpectedArgs()) {
         return false;
     }

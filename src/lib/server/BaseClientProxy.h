@@ -55,6 +55,7 @@ public:
     Return if this proxy is for client or primary.
     */
     virtual bool        isPrimary() const { return false; }
+    virtual bool        isResponsive() const { return true; }
 
     //@}
 

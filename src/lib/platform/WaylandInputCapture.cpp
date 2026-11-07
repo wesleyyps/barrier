@@ -411,6 +411,9 @@ bool WaylandInputCapture::disableCapture() {
 
 void WaylandInputCapture::reconfigure(UInt32 activeSides) {
     std::lock_guard<std::mutex> lock(m_dbusMutex);
+    if (m_activeSides == activeSides && (activeSides == 0 || !m_barriers.empty())) {
+        return;
+    }
     LOG((CLOG_INFO "WaylandInputCapture: reconfigure activeSides=0x%04x", activeSides));
     m_activeSides = activeSides;
 

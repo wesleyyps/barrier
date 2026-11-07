@@ -98,6 +98,12 @@ StreamFilter::getSize() const
     return getStream()->getSize();
 }
 
+UInt32
+StreamFilter::getOutputSize() const
+{
+    return getStream()->getOutputSize();
+}
+
 barrier::IStream*
 StreamFilter::getStream() const
 {

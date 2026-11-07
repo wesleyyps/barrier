@@ -39,6 +39,7 @@ Config::Config(IEventQueue* events) :
 	m_inputFilter(events),
 	m_hasLockToScreenAction(false),
 	m_events(events),
+	m_port(kDefaultPort),
 	m_clientAutoConfig(false),
 	m_enableDragDrop(false),
 	m_requireClientCertificate(true),
@@ -532,6 +533,20 @@ const std::string& Config::getServerName() const
 
 const std::string& Config::getServerIp() const
 {
+	if (!m_serverIp.empty()) {
+		return m_serverIp;
+	}
+	if (!m_serverName.empty()) {
+		auto it = m_networkNodes.find(m_serverName);
+		if (it != m_networkNodes.end() && !it->second.ip.empty()) {
+			return it->second.ip;
+		}
+		auto itCanon = m_networkNodes.find(getCanonicalName(m_serverName));
+		if (itCanon != m_networkNodes.end() && !itCanon->second.ip.empty()) {
+			return itCanon->second.ip;
+		}
+		return m_serverName;
+	}
 	return m_serverIp;
 }
 
@@ -895,12 +910,16 @@ Config::readSectionOptions(ConfigReadContext& s)
 		else if (name == "cryptoEnabled") {
 			m_cryptoEnabled = s.parseBoolean(value);
 		}
+		else if (name == "port") {
+			m_port = s.parseInt(value);
+			handled = true;
+		}
 		else if (name == "logFilename") {
 			m_logFilename = value;
 			handled = true;
 		}
 		else if (name == "logLevel" || name == "logToFile" || 
-                 name == "serverIp" || name == "autoConfig" || name == "networkInterface" || name == "port" ||
+                 name == "serverIp" || name == "autoConfig" || name == "networkInterface" ||
                  name == "gridSize") {
 			handled = true; // Ignore GUI-only options
 		}

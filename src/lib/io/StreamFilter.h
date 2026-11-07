@@ -48,6 +48,7 @@ public:
     virtual void*        getEventTarget() const;
     virtual bool        isReady() const;
     virtual UInt32        getSize() const;
+    virtual UInt32        getOutputSize() const;
 
     //! Get the stream
     /*!

@@ -26,6 +26,7 @@
 #include <sstream>
 #include "common/DataDirectories.h"
 
+#include <set>
 #if SYSAPI_WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -36,6 +37,7 @@
 #include <netdb.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <ifaddrs.h>
 #endif
 
 #include "barrier/Screen.h"
@@ -97,6 +99,30 @@ ClientApp::~ClientApp()
     delete m_serverAddress;
 }
 
+static std::set<std::string> getLocalInterfaceIPs()
+{
+    std::set<std::string> ips;
+#if !SYSAPI_WIN32
+    struct ifaddrs* ifaddr = nullptr;
+    if (getifaddrs(&ifaddr) == 0 && ifaddr != nullptr) {
+        for (struct ifaddrs* ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
+            if (ifa->ifa_addr != nullptr && ifa->ifa_addr->sa_family == AF_INET) {
+                struct sockaddr_in* sa = reinterpret_cast<struct sockaddr_in*>(ifa->ifa_addr);
+                char addr[INET_ADDRSTRLEN] = {0};
+                if (inet_ntop(AF_INET, &(sa->sin_addr), addr, sizeof(addr)) != nullptr) {
+                    std::string ipStr(addr);
+                    if (ipStr != "127.0.0.1") {
+                        ips.insert(ipStr);
+                    }
+                }
+            }
+        }
+        freeifaddrs(ifaddr);
+    }
+#endif
+    return ips;
+}
+
 void
 ClientApp::parseArgs(int argc, const char* const* argv)
 {
@@ -107,6 +133,33 @@ ClientApp::parseArgs(int argc, const char* const* argv)
         m_bye(kExitArgs);
     }
     else {
+        if (args().m_configFile.empty()) {
+            std::vector<std::string> candidates;
+            const char* home = getenv("HOME");
+            if (home != nullptr) {
+                candidates.push_back(std::string(home) + "/barrier.conf");
+                candidates.push_back(std::string(home) + "/.barrier.conf");
+            }
+            barrier::fs::path profilePath = argsBase().m_profileDirectory;
+            if (profilePath.empty()) {
+                profilePath = barrier::DataDirectories::profile();
+            }
+            if (!profilePath.empty()) {
+                candidates.push_back((profilePath / "barrier.conf").u8string());
+                candidates.push_back((profilePath / ".barrier.conf").u8string());
+            }
+            candidates.push_back((barrier::DataDirectories::systemconfig() / "barrier.conf").u8string());
+            candidates.push_back("/etc/barrier.conf");
+
+            for (const auto& path : candidates) {
+                if (barrier::fs::exists(path)) {
+                    args().m_configFile = path;
+                    LOG((CLOG_NOTE "Using default configuration file \"%s\"", path.c_str()));
+                    break;
+                }
+            }
+        }
+
         // Read configuration file if specified
         if (!args().m_configFile.empty()) {
             LOG((CLOG_DEBUG "opening configuration \"%s\"", args().m_configFile.c_str()));
@@ -125,7 +178,12 @@ ClientApp::parseArgs(int argc, const char* const* argv)
                     // Only override if not set via command line or if it was empty
                     if (args().m_barrierAddress.empty()) {
                         args().m_barrierAddress = config.getServerIp();
-                        LOG((CLOG_NOTE "Server address dynamically set to %s via config options", args().m_barrierAddress.c_str()));
+                        int port = config.getPort();
+                        if (port > 0 && args().m_barrierAddress.find(':') == std::string::npos) {
+                            args().m_barrierAddress += ":" + std::to_string(port);
+                        }
+                        LOG((CLOG_NOTE "Server address dynamically set to %s via config options (server '%s')",
+                            args().m_barrierAddress.c_str(), config.getServerName().c_str()));
                     }
                 }
                 
@@ -144,6 +202,30 @@ ClientApp::parseArgs(int argc, const char* const* argv)
                         LOG((CLOG_NOTE "Drop target set to %s via config file", argsBase().m_dropTarget.c_str()));
                     }
                 }
+
+                // Resolve client screen name from local network IP if current name is not in config
+                std::string canonName = config.getCanonicalName(args().m_name);
+                bool nameInConfig = false;
+                for (Config::const_iterator sc = config.begin(); sc != config.end(); ++sc) {
+                    if (*sc == args().m_name || *sc == canonName) {
+                        nameInConfig = true;
+                        args().m_name = *sc;
+                        break;
+                    }
+                }
+
+                if (!nameInConfig) {
+                    auto localIps = getLocalInterfaceIPs();
+                    const auto& nodes = config.getNetworkNodes();
+                    for (const auto& kv : nodes) {
+                        if (localIps.find(kv.second.ip) != localIps.end()) {
+                            args().m_name = kv.first;
+                            LOG((CLOG_NOTE "Client screen name dynamically resolved to \"%s\" by local IP (%s)",
+                                 args().m_name.c_str(), kv.second.ip.c_str()));
+                            break;
+                        }
+                    }
+                }
             }
             catch (XConfigRead& e) {
                 LOG((CLOG_ERR "FATAL: %s", e.what()));
@@ -153,7 +235,8 @@ ClientApp::parseArgs(int argc, const char* const* argv)
 
         // Check again if we have a server address (from args or from config)
         if (args().m_barrierAddress.empty()) {
-            LOG((CLOG_PRINT "%s: a server address or name is required" BYE, args().m_exename.c_str()));
+            LOG((CLOG_PRINT "%s: a server address or name is required (pass on command line or set 'server' in config file)" BYE,
+                args().m_exename.c_str()));
             m_bye(kExitArgs);
         }
 
@@ -729,11 +812,6 @@ bool ClientApp::loadConfig(const String& pathname) {
 
         Config config(m_events);
         configStream >> config;
-        
-        if (!config.getServerName().empty()) {
-            args().m_name = config.getServerName();
-            LOG((CLOG_NOTE "Client name dynamically set to %s via config options", args().m_name.c_str()));
-        }
 
         // Dynamically configure log file based on configuration
         if (args().m_logFile == NULL) {

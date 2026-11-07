@@ -419,6 +419,7 @@ public:
 
     const std::string&  getServerName() const;
     const std::string&  getServerIp() const;
+    int                 getPort() const { return m_port; }
     bool                getClientAutoConfig() const;
     bool                getRequireClientCertificate() const;
     bool                getCryptoEnabled() const;
@@ -509,6 +510,7 @@ private:
     MonitorMap             m_monitors;
     std::string            m_serverName;
     std::string            m_serverIp;
+    int                    m_port;
     bool                m_clientAutoConfig;
     bool                m_enableDragDrop;
     bool                m_requireClientCertificate;

@@ -174,6 +174,13 @@ TCPSocket::write(const void* buffer, UInt32 n)
             return;
         }
 
+        // Circuit breaker: drop connection if output buffer exceeds 16MB without draining
+        if (m_outputBuffer.getSize() > 16 * 1024 * 1024) {
+            LOG((CLOG_WARN "output buffer saturated (%u bytes), client is unresponsive", m_outputBuffer.getSize()));
+            sendEvent(m_events->forIStream().outputError());
+            return;
+        }
+
         // copy data to the output buffer
         wasEmpty = (m_outputBuffer.getSize() == 0);
         m_outputBuffer.write(buffer, n);
@@ -271,6 +278,13 @@ TCPSocket::getSize() const
 {
     Lock lock(&m_mutex);
     return m_inputBuffer.getSize();
+}
+
+UInt32
+TCPSocket::getOutputSize() const
+{
+    Lock lock(&m_mutex);
+    return m_outputBuffer.getSize();
 }
 
 void

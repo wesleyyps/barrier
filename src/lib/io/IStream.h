@@ -114,6 +114,12 @@ public:
     */
     virtual UInt32        getSize() const = 0;
 
+    //! Get bytes pending to write
+    /*!
+    Returns the number of buffered bytes waiting to be written.
+    */
+    virtual UInt32        getOutputSize() const { return 0; }
+
     //@}
 };
 

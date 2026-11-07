@@ -497,16 +497,16 @@ Server::getActivePrimarySides() const
 {
 	UInt32 sides = 0;
 	if (!isLockedToScreenServer()) {
-		if (hasAnyNeighbor(m_primaryClient, kLeft)) {
+		if (hasConnectedNeighbor(m_primaryClient, kLeft)) {
 			sides |= kLeftMask;
 		}
-		if (hasAnyNeighbor(m_primaryClient, kRight)) {
+		if (hasConnectedNeighbor(m_primaryClient, kRight)) {
 			sides |= kRightMask;
 		}
-		if (hasAnyNeighbor(m_primaryClient, kTop)) {
+		if (hasConnectedNeighbor(m_primaryClient, kTop)) {
 			sides |= kTopMask;
 		}
-		if (hasAnyNeighbor(m_primaryClient, kBottom)) {
+		if (hasConnectedNeighbor(m_primaryClient, kBottom)) {
 			sides |= kBottomMask;
 		}
 	}
@@ -811,7 +811,7 @@ Server::getActiveMonitorShape(BaseClientProxy* client, SInt32 x, SInt32 y,
 			}
 		}
 
-		if (bestDisp != nullptr && minDistanceSq <= 2500) {
+		if (bestDisp != nullptr) {
 			ax = bestDisp->m_x;
 			ay = bestDisp->m_y;
 			aw = bestDisp->m_w;
@@ -986,6 +986,90 @@ Server::hasAnyNeighbor(BaseClientProxy* client, EDirection dir) const
 	return false;
 }
 
+bool
+Server::hasConnectedNeighbor(BaseClientProxy* client, EDirection dir) const
+{
+	assert(client != nullptr);
+
+	if (!hasAnyNeighbor(client, dir)) {
+		return false;
+	}
+
+	SInt32 sx, sy, sw, sh;
+	client->getShape(sx, sy, sw, sh);
+
+	const int kProbes = 5;
+	for (int i = 0; i <= kProbes; ++i) {
+		float fraction = static_cast<float>(i) / static_cast<float>(kProbes);
+		if (fraction >= 1.0f) {
+			fraction = 0.999f;
+		}
+		SInt32 px = sx;
+		SInt32 py = sy;
+		mapToPixel(client, dir, fraction, px, py);
+		switch (dir) {
+		case kLeft:
+			px = sx;
+			break;
+		case kRight:
+			px = sx + sw - 1;
+			break;
+		case kTop:
+			py = sy;
+			break;
+		case kBottom:
+			py = sy + sh - 1;
+			break;
+		default:
+			break;
+		}
+		BaseClientProxy* neighbor = getNeighbor(client, dir, px, py);
+		if (neighbor != nullptr && neighbor != client && neighbor->isResponsive()) {
+			return true;
+		}
+	}
+
+	for (const auto& kv : m_activeMonitors) {
+		if (kv.second.m_host == client) {
+			const DisplayInfo& disp = kv.second.m_display;
+			for (int i = 0; i <= kProbes; ++i) {
+				float fraction = static_cast<float>(i) / static_cast<float>(kProbes);
+				if (fraction >= 1.0f) {
+					fraction = 0.999f;
+				}
+				SInt32 px = disp.m_x;
+				SInt32 py = disp.m_y;
+				switch (dir) {
+				case kLeft:
+					px = disp.m_x;
+					py = disp.m_y + static_cast<SInt32>(fraction * disp.m_h);
+					break;
+				case kRight:
+					px = disp.m_x + disp.m_w - 1;
+					py = disp.m_y + static_cast<SInt32>(fraction * disp.m_h);
+					break;
+				case kTop:
+					px = disp.m_x + static_cast<SInt32>(fraction * disp.m_w);
+					py = disp.m_y;
+					break;
+				case kBottom:
+					px = disp.m_x + static_cast<SInt32>(fraction * disp.m_w);
+					py = disp.m_y + disp.m_h - 1;
+					break;
+				default:
+					break;
+				}
+				BaseClientProxy* neighbor = getNeighbor(client, dir, px, py);
+				if (neighbor != nullptr && neighbor != client && neighbor->isResponsive()) {
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
 BaseClientProxy*
 Server::getNeighbor(BaseClientProxy* src,
 				EDirection dir, SInt32& x, SInt32& y) const
@@ -1047,6 +1131,13 @@ Server::getNeighbor(BaseClientProxy* src,
 		auto monIt = m_activeMonitors.find(dstName);
 		if (monIt != m_activeMonitors.end() && monIt->second.m_host != nullptr) {
 			BaseClientProxy* dstClient = monIt->second.m_host;
+			if (!dstClient->isResponsive()) {
+				LOG((CLOG_WARN "skipping unresponsive client monitor \"%s\" on %s of \"%s\"",
+					dstName.c_str(), Config::dirName(dir), srcName.c_str()));
+				srcName = dstName;
+				t = tTmp;
+				continue;
+			}
 			const DisplayInfo& disp = monIt->second.m_display;
 			LOG((CLOG_DEBUG2 "\"%s\" (monitor on \"%s\") is on %s of \"%s\" at %f",
 				dstName.c_str(), getName(dstClient).c_str(), Config::dirName(dir), srcName.c_str(), t));
@@ -1083,8 +1174,15 @@ Server::getNeighbor(BaseClientProxy* src,
 		// ready then we can stop.
 		auto index = m_clients.find(dstName);
 		if (index != m_clients.end()) {
-			LOG((CLOG_DEBUG2 "\"%s\" is on %s of \"%s\" at %f", dstName.c_str(), Config::dirName(dir), srcName.c_str(), t));
 			BaseClientProxy* dstClient = index->second;
+			if (!dstClient->isResponsive()) {
+				LOG((CLOG_WARN "skipping unresponsive client \"%s\" on %s of \"%s\"",
+					dstName.c_str(), Config::dirName(dir), srcName.c_str()));
+				srcName = dstName;
+				t = tTmp;
+				continue;
+			}
+			LOG((CLOG_DEBUG2 "\"%s\" is on %s of \"%s\" at %f", dstName.c_str(), Config::dirName(dir), srcName.c_str(), t));
 			std::vector<DisplayInfo> dstDisplays = dstClient->getDisplays();
 			std::vector<DisplayInfo> targetDisplays;
 			for (const auto& disp : dstDisplays) {
@@ -2176,11 +2274,15 @@ Server::onClipboardChanged(BaseClientProxy* sender,
 		client->setClipboardDirty(id, client != sender);
 	}
 
-	// send the new clipboard to all clients except sender
+	// send the new clipboard to all responsive clients except sender
 	for (ClientList::const_iterator index = m_clients.begin();
 								index != m_clients.end(); ++index) {
 		BaseClientProxy* client = index->second;
 		if (client != sender) {
+			if (!client->isResponsive()) {
+				LOG((CLOG_WARN "skipping clipboard sync for unresponsive client \"%s\"", getName(client).c_str()));
+				continue;
+			}
 			client->setClipboard(id, &clipboard.m_clipboard);
 		}
 	}
@@ -2445,22 +2547,17 @@ Server::onMouseMovePrimary(SInt32 x, SInt32 y)
 			continue;
 		}
 
+		std::string nextLocalMon;
+		bool hasLocal = hasLocalDisplayInDirection(m_active, xc, yc, ax, ay, aw, ah, dir, nextLocalMon);
 		bool hasNeighbor = false;
-		if (m_config->isMonitor(monName) && m_config->hasNeighbor(monName, dir)) {
-			hasNeighbor = true;
+		if (hasLocal) {
+			hasNeighbor = false;
 		}
 		else {
-			std::string nextLocalMon;
-			bool hasLocal = hasLocalDisplayInDirection(m_active, xc, yc, ax, ay, aw, ah, dir, nextLocalMon);
-			if (hasLocal) {
-				if (m_config->isMonitor(nextLocalMon) && m_config->hasNeighbor(monName, dir)) {
-					hasNeighbor = true;
-				}
-				else {
-					hasNeighbor = false;
-				}
+			if (m_config->isMonitor(monName)) {
+				hasNeighbor = m_config->hasNeighbor(monName, dir);
 			}
-			else if (m_config->hasNeighbor(getName(m_active), dir)) {
+			if (!hasNeighbor && m_config->hasNeighbor(getName(m_active), dir)) {
 				hasNeighbor = true;
 			}
 		}
@@ -2631,22 +2728,17 @@ Server::onMouseMoveSecondary(SInt32 dx, SInt32 dy)
 
 	if (dir != kNoDirection) {
 		// Check if current monitor or screen has a link configured in this direction
+		std::string nextLocalMon;
+		bool hasLocal = hasLocalDisplayInDirection(m_active, xc, yc, ax, ay, aw, ah, dir, nextLocalMon);
 		bool hasNeighbor = false;
-		if (m_config->isMonitor(monName) && m_config->hasNeighbor(monName, dir)) {
-			hasNeighbor = true;
+		if (hasLocal) {
+			hasNeighbor = false;
 		}
 		else {
-			std::string nextLocalMon;
-			bool hasLocal = hasLocalDisplayInDirection(m_active, xc, yc, ax, ay, aw, ah, dir, nextLocalMon);
-			if (hasLocal) {
-				if (m_config->isMonitor(nextLocalMon) && m_config->hasNeighbor(monName, dir)) {
-					hasNeighbor = true;
-				}
-				else {
-					hasNeighbor = false;
-				}
+			if (m_config->isMonitor(monName)) {
+				hasNeighbor = m_config->hasNeighbor(monName, dir);
 			}
-			else if (m_config->hasNeighbor(getName(m_active), dir)) {
+			if (!hasNeighbor && m_config->hasNeighbor(getName(m_active), dir)) {
 				hasNeighbor = true;
 			}
 		}

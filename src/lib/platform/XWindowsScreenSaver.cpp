@@ -27,6 +27,9 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <atomic>
+#include <chrono>
+#include <thread>
 
 #include <X11/Xatom.h>
 #include <X11/extensions/XTest.h>
@@ -501,49 +504,58 @@ XWindowsScreenSaver::updateDisableTimer()
     }
 }
 
+static std::atomic<bool> s_sessionLocked{false};
+static std::atomic<bool> s_checkerStarted{false};
+
+static void ensureSessionLockChecker()
+{
+    if (s_checkerStarted.exchange(true)) {
+        return;
+    }
+    std::thread([]() {
+        while (true) {
+            FILE* fp = popen("/usr/bin/loginctl show-session auto -p LockedHint --value 2>/dev/null", "r");
+            if (fp) {
+                char buf[32] = {0};
+                if (fgets(buf, sizeof(buf), fp) != nullptr) {
+                    s_sessionLocked.store(strncmp(buf, "yes", 3) == 0);
+                }
+                pclose(fp);
+            }
+            std::this_thread::sleep_for(std::chrono::seconds(3));
+        }
+    }).detach();
+}
+
 void
 XWindowsScreenSaver::handleDisableTimer(const Event&, void*)
 {
-    // Fix for GNOME/systemd lock screens on Linux:
-    // We dynamically re-enable DPMS if the session is locked via systemd.
-    FILE* fp = popen("/usr/bin/loginctl show-session $(/usr/bin/loginctl show-user $(/usr/bin/whoami) -p Display --value 2>/dev/null) -p LockedHint 2>&1", "r");
-    if (fp) {
-        char buffer[256];
-        bool locked = false;
-        while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-            LOG((CLOG_DEBUG "loginctl output: %s", buffer));
-            if (strstr(buffer, "LockedHint=yes")) {
-                locked = true;
-                break;
-            }
-        }
-        pclose(fp);
-        LOG((CLOG_DEBUG "Parsed locked state: %d", locked));
+    ensureSessionLockChecker();
+    bool locked = s_sessionLocked.load();
 
-        static bool wasLocked = false;
-        if (m_dpmsEnabled || m_timeout != 0 || locked) {
-            if (locked) {
-                // Screen is locked. Force DPMS on and turn off monitor.
-                enableDPMS(true);
-                if (m_timeout != 0) {
-                    m_impl->XSetScreenSaver(m_display, m_timeout, m_interval, m_preferBlanking, m_allowExposures);
-                }
-                if (!wasLocked) {
-                    LOG((CLOG_DEBUG "Forcing screen off via DPMSForceLevel"));
-                    m_impl->DPMSForceLevel(m_display, 3); // 3 = DPMSModeOff
-                    wasLocked = true;
-                }
-                m_impl->XFlush(m_display);
-                return; // Let the OS sleep naturally
-            } else {
-                wasLocked = false;
-                // Screen is unlocked. Re-disable to keep awake while reading.
-                if (m_dpmsEnabled) enableDPMS(false);
-                if (m_timeout != 0) {
-                    m_impl->XSetScreenSaver(m_display, 0, m_interval, m_preferBlanking, m_allowExposures);
-                }
-                m_impl->XFlush(m_display);
+    static bool wasLocked = false;
+    if (m_dpmsEnabled || m_timeout != 0 || locked) {
+        if (locked) {
+            // Screen is locked. Force DPMS on and turn off monitor.
+            enableDPMS(true);
+            if (m_timeout != 0) {
+                m_impl->XSetScreenSaver(m_display, m_timeout, m_interval, m_preferBlanking, m_allowExposures);
             }
+            if (!wasLocked) {
+                LOG((CLOG_DEBUG "Forcing screen off via DPMSForceLevel"));
+                m_impl->DPMSForceLevel(m_display, 3); // 3 = DPMSModeOff
+                wasLocked = true;
+            }
+            m_impl->XFlush(m_display);
+            return; // Let the OS sleep naturally
+        } else {
+            wasLocked = false;
+            // Screen is unlocked. Re-disable to keep awake while reading.
+            if (m_dpmsEnabled) enableDPMS(false);
+            if (m_timeout != 0) {
+                m_impl->XSetScreenSaver(m_display, 0, m_interval, m_preferBlanking, m_allowExposures);
+            }
+            m_impl->XFlush(m_display);
         }
     }
 
