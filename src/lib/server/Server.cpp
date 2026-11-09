@@ -2549,17 +2549,37 @@ Server::onMouseMovePrimary(SInt32 x, SInt32 y)
 
 		std::string nextLocalMon;
 		bool hasLocal = hasLocalDisplayInDirection(m_active, xc, yc, ax, ay, aw, ah, dir, nextLocalMon);
-		bool hasNeighbor = false;
-		if (hasLocal) {
-			hasNeighbor = false;
-		}
-		else {
-			if (m_config->isMonitor(monName)) {
-				hasNeighbor = m_config->hasNeighbor(monName, dir);
+
+		std::string configuredDst;
+		float tVal = 0.0f;
+		float tOut = 0.0f;
+		if (m_config->isMonitor(monName)) {
+			if (m_config->hasNeighbor(monName, dir)) {
+				configuredDst = m_config->getNeighbor(monName, dir, tVal, &tOut);
 			}
-			if (!hasNeighbor && m_config->hasNeighbor(getName(m_active), dir)) {
+		}
+		else if (m_config->hasNeighbor(getName(m_active), dir)) {
+			configuredDst = m_config->getNeighbor(getName(m_active), dir, tVal, &tOut);
+		}
+
+		bool hasNeighbor = false;
+		bool isConfiguredMon = m_config->isMonitor(monName) ||
+		                       m_config->isMonitor(nextLocalMon) ||
+		                       (!nextLocalMon.empty() && m_activeMonitors.find(nextLocalMon) != m_activeMonitors.end());
+
+		if (!configuredDst.empty()) {
+			if (hasLocal && isConfiguredMon) {
+				hasNeighbor = (configuredDst != nextLocalMon);
+			}
+			else if (hasLocal) {
+				hasNeighbor = false;
+			}
+			else {
 				hasNeighbor = true;
 			}
+		}
+		else {
+			hasNeighbor = false;
 		}
 
 		if (!hasNeighbor) {
@@ -2730,17 +2750,37 @@ Server::onMouseMoveSecondary(SInt32 dx, SInt32 dy)
 		// Check if current monitor or screen has a link configured in this direction
 		std::string nextLocalMon;
 		bool hasLocal = hasLocalDisplayInDirection(m_active, xc, yc, ax, ay, aw, ah, dir, nextLocalMon);
-		bool hasNeighbor = false;
-		if (hasLocal) {
-			hasNeighbor = false;
-		}
-		else {
-			if (m_config->isMonitor(monName)) {
-				hasNeighbor = m_config->hasNeighbor(monName, dir);
+
+		std::string configuredDst;
+		float tVal = 0.0f;
+		float tOut = 0.0f;
+		if (m_config->isMonitor(monName)) {
+			if (m_config->hasNeighbor(monName, dir)) {
+				configuredDst = m_config->getNeighbor(monName, dir, tVal, &tOut);
 			}
-			if (!hasNeighbor && m_config->hasNeighbor(getName(m_active), dir)) {
+		}
+		else if (m_config->hasNeighbor(getName(m_active), dir)) {
+			configuredDst = m_config->getNeighbor(getName(m_active), dir, tVal, &tOut);
+		}
+
+		bool hasNeighbor = false;
+		bool isConfiguredMon = m_config->isMonitor(monName) ||
+		                       m_config->isMonitor(nextLocalMon) ||
+		                       (!nextLocalMon.empty() && m_activeMonitors.find(nextLocalMon) != m_activeMonitors.end());
+
+		if (!configuredDst.empty()) {
+			if (hasLocal && isConfiguredMon) {
+				hasNeighbor = (configuredDst != nextLocalMon);
+			}
+			else if (hasLocal) {
+				hasNeighbor = false;
+			}
+			else {
 				hasNeighbor = true;
 			}
+		}
+		else {
+			hasNeighbor = false;
 		}
 
 		if (hasNeighbor) {
