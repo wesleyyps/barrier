@@ -820,12 +820,44 @@ void WaylandInputCapture::handleEIEvent(struct ei_event* ev) {
             std::lock_guard<std::recursive_mutex> lock(m_hotKeyMutex);
             if (is_press) {
                 KeyModifierMask normMask = m_activeModifiers & (KeyModifierShift | KeyModifierControl | KeyModifierAlt | KeyModifierSuper | KeyModifierAltGr);
-                auto hit = m_hotKeysByKeyMask.find(std::make_pair(key, normMask));
-                if (hit != m_hotKeysByKeyMask.end()) {
-                    UInt32 hotKeyId = hit->second;
+                UInt32 hotKeyId = 0;
+
+                // 1. Match by KeyCode + X11 modifiers (layout-independent)
+                KeyCode kc = static_cast<KeyCode>(scancode + 8);
+                unsigned int xMods = mapModifiersToX(normMask);
+                auto hitCode = m_hotKeysByCodeMod.find(std::make_pair(kc, xMods));
+                if (hitCode != m_hotKeysByCodeMod.end()) {
+                    hotKeyId = hitCode->second;
+                }
+
+                // 2. Match by (key, normMask)
+                if (hotKeyId == 0) {
+                    auto hit = m_hotKeysByKeyMask.find(std::make_pair(key, normMask));
+                    if (hit != m_hotKeysByKeyMask.end()) {
+                        hotKeyId = hit->second;
+                    }
+                }
+
+                // 3. If Shift was held, try matching unshifted digit/character
+                if (hotKeyId == 0 && (normMask & KeyModifierShift)) {
+                    KeyID unshiftedKey = kKeyNone;
+                    if (scancode >= KEY_1 && scancode <= KEY_9) {
+                        unshiftedKey = '1' + (scancode - KEY_1);
+                    } else if (scancode == KEY_0) {
+                        unshiftedKey = '0';
+                    }
+                    if (unshiftedKey != kKeyNone) {
+                        auto hit = m_hotKeysByKeyMask.find(std::make_pair(unshiftedKey, normMask));
+                        if (hit != m_hotKeysByKeyMask.end()) {
+                            hotKeyId = hit->second;
+                        }
+                    }
+                }
+
+                if (hotKeyId != 0) {
                     m_activeCapturedHotKeys[scancode] = hotKeyId;
-                    LOG((CLOG_INFO "WaylandInputCapture: Captured hotkey triggered id=%u key=0x%x mask=0x%x Press",
-                         hotKeyId, key, normMask));
+                    LOG((CLOG_INFO "WaylandInputCapture: Captured hotkey triggered id=%u key=0x%x scancode=%u Press",
+                         hotKeyId, key, scancode));
 
                     m_events->addEvent(Event(
                         m_events->forIPrimaryScreen().hotKeyDown(),
@@ -838,8 +870,8 @@ void WaylandInputCapture::handleEIEvent(struct ei_event* ev) {
                 if (it != m_activeCapturedHotKeys.end()) {
                     UInt32 hotKeyId = it->second;
                     m_activeCapturedHotKeys.erase(it);
-                    LOG((CLOG_INFO "WaylandInputCapture: Captured hotkey released id=%u key=0x%x Release",
-                         hotKeyId, key));
+                    LOG((CLOG_INFO "WaylandInputCapture: Captured hotkey released id=%u scancode=%u Release",
+                         hotKeyId, scancode));
 
                     m_events->addEvent(Event(
                         m_events->forIPrimaryScreen().hotKeyUp(),

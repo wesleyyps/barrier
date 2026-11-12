@@ -687,6 +687,19 @@ Server::jumpToScreen(BaseClientProxy* newScreen)
 		x = targetDisp->m_x + targetDisp->m_w / 2;
 		y = targetDisp->m_y + targetDisp->m_h / 2;
 	}
+	else if (newScreen == m_primaryClient || hostDisplays.empty()) {
+		if (x == 0 && y == 0) {
+			if (newScreen == m_primaryClient) {
+				m_primaryClient->getCursorCenter(x, y);
+			}
+			else {
+				SInt32 sx = 0, sy = 0, sw = 0, sh = 0;
+				newScreen->getShape(sx, sy, sw, sh);
+				x = sx + sw / 2;
+				y = sy + sh / 2;
+			}
+		}
+	}
 
 	switchScreen(newScreen, x, y, false);
 }
@@ -2076,10 +2089,23 @@ Server::handleSwitchToScreenEvent(const Event& event, void*)
 	}
 
 	if (index == m_clients.end()) {
+		if (screenName == getName(m_primaryClient)) {
+			SInt32 cx = 0, cy = 0;
+			m_primaryClient->getCursorCenter(cx, cy);
+			jumpToScreen(m_primaryClient, cx, cy);
+			return;
+		}
 		LOG((CLOG_DEBUG1 "screen \"%s\" not active", screenName.c_str()));
 	}
 	else {
 		BaseClientProxy* client = index->second;
+		if (client == m_primaryClient) {
+			SInt32 cx = 0, cy = 0;
+			m_primaryClient->getCursorCenter(cx, cy);
+			jumpToScreen(client, cx, cy);
+			return;
+		}
+
 		std::vector<DisplayInfo> displays = client->getDisplays();
 		std::vector<DisplayInfo> hostDisplays;
 		for (const auto& disp : displays) {
@@ -2111,7 +2137,9 @@ Server::handleSwitchToScreenEvent(const Event& event, void*)
 			jumpToScreen(client, hx, hy);
 		}
 		else {
-			jumpToScreen(client);
+			SInt32 sx = 0, sy = 0, sw = 0, sh = 0;
+			client->getShape(sx, sy, sw, sh);
+			jumpToScreen(client, sx + sw / 2, sy + sh / 2);
 		}
 	}
 }
